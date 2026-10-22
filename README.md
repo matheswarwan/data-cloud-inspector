@@ -38,5 +38,6 @@ npm test
 npm run build
 ```
 
-Load `dist/` as an unpacked extension (chrome://extensions, Developer mode, Load unpacked).
+Test and release zips are in `releases/` (also attached to the GitHub releases). Unzip one, or
+load `dist/` after a build, as an unpacked extension (chrome://extensions, Developer mode, Load unpacked).
 Click the toolbar icon on a Salesforce tab to open the inspector on that org.
