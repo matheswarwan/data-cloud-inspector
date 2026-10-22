@@ -3,6 +3,7 @@
 
 import { getCookie, getAllCookies } from './chromeAsync.js'
 import { groupSessions, orgIdFromSid, toApiHost } from './orgs.js'
+import { oauthSession } from './oauth.js'
 
 const DOMAINS = ['salesforce.com', 'cloudforce.com']
 
@@ -27,8 +28,13 @@ export async function orgForUrl(url) {
   return orgs.find((o) => o.orgId === orgId) || { orgId, host: toApiHost(parsed.hostname) }
 }
 
-/** `{ host, sid }` for an org, or null when there is no session (logged out). */
+/**
+ * `{ host, sid }` for an org, or null when there is no session (logged out). An OAuth token
+ * from Settings, Log in with OAuth, comes first (`oauth: true`).
+ */
 export async function sessionFor(orgId) {
+  const oauth = await oauthSession(orgId)
+  if (oauth) return oauth
   const cookies = await allSidCookies()
   const org = groupSessions(cookies).find((o) => o.orgId === orgId)
   if (!org) return null

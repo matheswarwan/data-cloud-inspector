@@ -8,7 +8,7 @@ import { loadStreams, loadAllMappings } from '../lib/lineage.js'
 import { loadRecordIds } from '../lib/links.js'
 import { loadUsage } from '../lib/usage.js'
 import { fetchAllPages } from '../lib/pages.js'
-import { storeGet, storeSet, storeRemove } from '../lib/store.js'
+import { storeGet, storeSet, storeRemove, sessionCached, sessionForget } from '../lib/store.js'
 import { useOrg } from './useOrg.js'
 
 const org = useOrg()
@@ -23,6 +23,10 @@ export function orgCall() {
 }
 
 const cacheKey = (orgId) => `dci_catalog_${orgId}`
+// Streams, mappings, record IDs and usage change more often than metadata: kept for 30 minutes
+// in session storage (gone when the browser closes); Refresh on the Objects page reloads them.
+const SESSION_TTL = 30 * 60 * 1000
+const sessionKey = (orgId, what) => `dci_s_${orgId}_${what}`
 
 export async function ensureCatalog({ refresh = false } = {}) {
   const { orgId, version } = org
@@ -31,6 +35,7 @@ export async function ensureCatalog({ refresh = false } = {}) {
   if (state.orgId !== orgId) Object.assign(state, { objects: [], errors: [], loadedAt: '', streams: null, mappings: null, recordIds: null, usage: null })
   state.orgId = orgId
   state.error = ''
+  if (refresh) await sessionForget(`dci_s_${orgId}_`)
   if (!refresh) {
     const cached = await storeGet(cacheKey(orgId))
     if (cached?.objects?.length) {
@@ -53,36 +58,38 @@ export async function ensureCatalog({ refresh = false } = {}) {
 
 export async function ensureStreams() {
   if (state.streams || !org.version) return state.streams
-  state.streams = await loadStreams(orgCall(), org.version).catch((err) => { state.error = err.message; return null })
+  const { orgId, version } = org
+  state.streams = await sessionCached(sessionKey(orgId, 'streams'), SESSION_TTL, () => loadStreams(orgCall(), version))
+    .catch((err) => { state.error = err.message; return null })
   return state.streams
 }
 
 export async function ensureAllMappings() {
   if (state.mappings || !org.version) return state.mappings
   const dmos = state.objects.filter((o) => o.kind === 'DMO').map((o) => o.name)
-  state.mappings = await loadAllMappings(orgCall(), org.version, dmos, {
+  state.mappings = await sessionCached(sessionKey(org.orgId, 'mappings'), SESSION_TTL, () => loadAllMappings(orgCall(), org.version, dmos, {
     onProgress: (done, total) => { state.mappingsProgress = `${done} of ${total} DMOs` },
-  })
+  }))
   state.mappingsProgress = ''
   return state.mappings
 }
 
 let recordIdsLoading = null
-/** Record IDs of DLOs, DMOs and CIs by API name, for links into the org (memory only). */
+/** Record IDs of DLOs, DMOs and CIs by API name, for links into the org. */
 export function ensureRecordIds() {
   if (state.recordIds || !org.version) return Promise.resolve(state.recordIds)
-  recordIdsLoading ||= loadRecordIds(orgCall(), org.version, fetchAllPages)
+  recordIdsLoading ||= sessionCached(sessionKey(org.orgId, 'recordIds'), SESSION_TTL, () => loadRecordIds(orgCall(), org.version, fetchAllPages))
     .then((ids) => { state.recordIds = ids; return ids })
     .finally(() => { recordIdsLoading = null })
   return recordIdsLoading
 }
 
 let usageLoading = null
-/** Calculated insights, segments and activations, for "Used by" (memory only; Refresh reloads). */
+/** Calculated insights, segments and activations, for "Used by" (Refresh reloads). */
 export function ensureUsage({ refresh = false } = {}) {
   if (refresh) state.usage = null
   if (state.usage || !org.version) return Promise.resolve(state.usage)
-  usageLoading ||= loadUsage(orgCall(), org.version)
+  usageLoading ||= sessionCached(sessionKey(org.orgId, 'usage'), SESSION_TTL, () => loadUsage(orgCall(), org.version), { refresh })
     .then((u) => { state.usage = u; return u })
     .finally(() => { usageLoading = null })
   return usageLoading
@@ -91,6 +98,7 @@ export function ensureUsage({ refresh = false } = {}) {
 /** Forget the cached metadata of an org (Settings). */
 export async function forgetCatalog(orgId) {
   await storeRemove(cacheKey(orgId))
+  await sessionForget(`dci_s_${orgId}_`)
   if (state.orgId === orgId) Object.assign(state, { orgId: null, objects: [], errors: [], loadedAt: '', streams: null, mappings: null, recordIds: null })
 }
 
@@ -98,4 +106,9 @@ watch(() => [org.orgId, org.version], () => { ensureCatalog() })
 
 export function useCatalog() {
   return state
+}
+
+/** Identity resolution rulesets for Profiles, kept 5 minutes (their last-run status changes). */
+export function cachedRulesets(load, { refresh = false } = {}) {
+  return sessionCached(sessionKey(org.orgId, 'rulesets'), 5 * 60 * 1000, load, { refresh })
 }

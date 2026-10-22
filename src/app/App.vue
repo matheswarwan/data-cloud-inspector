@@ -37,6 +37,10 @@ onMounted(loadOrgs)
       No Salesforce session found. Log in to your org (the one with Data Cloud) in this browser,
       then choose Find orgs again in the connection menu (top right). Data Cloud Inspector uses that login and only reads.
     </div>
+    <div v-else-if="org.problem" class="m-4 p-3 rounded-md border border-amber-400 bg-card text-sm">
+      {{ org.problem.message }}
+      <RouterLink v-if="org.problem.kind === 'rejected'" to="/settings" class="text-link hover:underline ml-1">Open Settings</RouterLink>
+    </div>
     <div v-else-if="org.error" class="m-4 p-3 rounded-md border border-destructive text-sm">
       Could not reach the org: {{ org.error }}
     </div>

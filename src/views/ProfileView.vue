@@ -7,7 +7,7 @@ import RecordLink from '../components/RecordLink.vue'
 import { recordUrl, recordKind } from '../lib/links.js'
 import { currentOrg } from '../app/useOrg.js'
 import { useOrg } from '../app/useOrg.js'
-import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
+import { useCatalog, ensureCatalog, orgCall, cachedRulesets } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
 import {
   INDIVIDUAL, parseRulesets, search, loadProfile, loadRelated, explainMatches, possibleMissedMatches,
@@ -43,9 +43,13 @@ const rsKey = () => `dci_ruleset_${org.orgId}`
 async function loadRulesets() {
   rsError.value = ''
   if (!org.orgId || !org.version) return
-  const res = await orgCall()(`/services/data/v${org.version}/ssot/identity-resolutions`)
-  if (!res.ok) { rsError.value = res.error; return }
-  rulesets.value = parseRulesets(res.data?.identityResolutions)
+  try {
+    rulesets.value = await cachedRulesets(async () => {
+      const res = await orgCall()(`/services/data/v${org.version}/ssot/identity-resolutions`)
+      if (!res.ok) throw new Error(res.error || `HTTP ${res.status}`)
+      return parseRulesets(res.data?.identityResolutions)
+    })
+  } catch (err) { rsError.value = err.message; return }
   let saved = null
   try { saved = localStorage.getItem(rsKey()) } catch { /* private window */ }
   rulesetId.value = String(route.query.rs || '') || (rulesets.value.some((r) => r.id === saved) ? saved : rulesets.value[0]?.id || '')

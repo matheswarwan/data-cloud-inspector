@@ -19,13 +19,14 @@
 <body>
 <main>
   <h1>Data Cloud Inspector: privacy policy</h1>
-  <p class="meta">Last updated 22 October 2026</p>
+  <p class="meta">Last updated 22 October 2026 (OAuth login added)</p>
 
   <p>Data Cloud Inspector is a browser extension that reads data from the user's own Salesforce org, so that the user can inspect Salesforce Data Cloud: profiles, segments, SQL queries, the data model and its health. It only reads; it never changes data or setup in the org.</p>
 
   <h2>What it accesses</h2>
   <ul>
     <li>The Salesforce session already in the browser. The extension uses it to call the org the user is logged in to, as that user. The session is read by the extension's background worker each time it makes a call. It is not stored, and it is sent only to that org.</li>
+    <li>Optionally, an OAuth access token, when the user chooses Log in with OAuth for an org that blocks browser sessions. The login happens in the org's own Salesforce login window. The token is kept in the browser's session storage until the browser closes, and is sent only to that org.</li>
     <li>The org's Data Cloud metadata and records, which the extension shows to the user. This can include personal data held in the org, such as names, email addresses and phone numbers.</li>
   </ul>
 

@@ -4,6 +4,7 @@
 
 import { checkRequest } from './guard.js'
 import { sessionFor } from './sessions.js'
+import { forgetToken } from './oauth.js'
 
 export const CLIENT_NAME = 'DataCloudInspector'
 
@@ -55,5 +56,10 @@ export async function sfFetch({ orgId, path, method = 'GET', body }, deps = {}) 
   let data = null
   try { data = text ? JSON.parse(text) : null } catch { data = null }
   if (res.ok) return { ok: true, status: res.status, ms, data: data ?? text }
+  if (res.status === 401 && session.oauth) {
+    // An expired or revoked OAuth token: drop it so the next call can use the browser session.
+    await (deps.forgetToken || forgetToken)(orgId)
+    return { ok: false, status: 401, ms, error: 'The OAuth login has expired. Log in with OAuth again in Settings.', data }
+  }
   return { ok: false, status: res.status, ms, error: errorMessage(res.status, data, text), data }
 }

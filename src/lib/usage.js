@@ -45,12 +45,14 @@ export async function loadUsage(call, version) {
     loadSegments(call, version).catch(() => []),
     offsetPages(call, `/services/data/v${version}/ssot/activations`, 'activations').catch(() => []),
   ])
+  // Field sets become arrays so the result can be cached in chrome.storage.session.
+  const plain = (refs) => Object.fromEntries(Object.entries(refs).map(([k, v]) => [k, [...v]]))
   return {
-    insights: insights.map((ci) => ({ name: ci.apiName, label: ci.displayName || ci.apiName, refs: sqlRefs(ci.expression || '') })),
+    insights: insights.map((ci) => ({ name: ci.apiName, label: ci.displayName || ci.apiName, refs: plain(sqlRefs(ci.expression || '')) })),
     segments: segments.map((s) => {
       const refs = criteriaRefs(s.criteria)
       criteriaRefs(s.excludeCriteria, refs)
-      return { name: s.apiName, label: s.label, id: s.id, on: s.on, refs }
+      return { name: s.apiName, label: s.label, id: s.id, on: s.on, refs: plain(refs) }
     }),
     activations: activations.map((a) => ({ name: a.name, id: a.id, segmentId: a.segmentId || a.marketSegmentId, target: a.activationTargetName || a.activationTarget?.name || '', status: a.lastPublishStatus || a.status || '' })),
   }

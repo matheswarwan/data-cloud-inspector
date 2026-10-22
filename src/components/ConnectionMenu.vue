@@ -14,7 +14,8 @@ const root = ref(null)
 const status = computed(() => {
   if (org.loading) return { dot: 'bg-amber-400', text: 'Looking for orgs…' }
   if (!org.orgs.length) return { dot: 'bg-red-500', text: 'Not connected' }
-  if (org.error) return { dot: 'bg-red-500', text: currentOrg()?.host || 'Not connected' }
+  if (org.error || org.problem?.kind === 'rejected' || org.problem?.kind === 'logged-out') return { dot: 'bg-red-500', text: currentOrg()?.host || 'Not connected' }
+  if (org.problem) return { dot: 'bg-amber-400', text: currentOrg()?.host }
   if (!org.version) return { dot: 'bg-amber-400', text: currentOrg()?.host || 'Connecting…' }
   return { dot: 'bg-green-500', text: currentOrg()?.host }
 })
@@ -65,6 +66,7 @@ onUnmounted(() => { document.removeEventListener('mousedown', onDoc); document.r
         <span class="ml-auto font-mono text-xs text-muted-foreground">{{ o.orgId }}</span>
       </button>
       <p v-if="org.error" class="px-3 py-1 text-xs text-destructive">{{ org.error }}</p>
+      <p v-else-if="org.problem" class="px-3 py-1 text-xs">{{ org.problem.message }}</p>
       <div class="border-t mt-1 p-1 flex flex-col">
         <button class="px-2 py-1.5 rounded flex items-center gap-2 hover:bg-accent" @click="loadOrgs()">
           <RefreshCw :class="['w-4 h-4', { 'animate-spin': org.loading }]" /> Find orgs again

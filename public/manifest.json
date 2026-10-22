@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Data Cloud Inspector",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Read-only inspector for Salesforce Data Cloud: profiles, segments, SQL and the data model, using your existing Salesforce login.",
   "action": {
     "default_title": "Open Data Cloud Inspector",
@@ -25,7 +25,8 @@
   "permissions": [
     "cookies",
     "storage",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "identity"
   ],
   "host_permissions": [
     "https://*.salesforce.com/*",

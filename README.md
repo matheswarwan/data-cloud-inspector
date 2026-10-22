@@ -57,6 +57,19 @@ cookie on its `my.salesforce.com` domain (the session on `lightning.force.com` h
 access) and sends it as a Bearer token. The session never reaches the app page. Orgs are
 told apart by the org ID at the start of the session, so several logged-in orgs work.
 
+## When the browser session is not enough
+
+- An org without Data Cloud, or a user without access, gets one clear message instead of
+  errors on every page; so does a session Salesforce rejects.
+- Orgs with API Access Control reject API calls from browser sessions. Settings, Log in with
+  OAuth uses your own External Client App (callback URL shown there, PKCE) through Chrome's
+  login window; the token stays in session storage until the browser closes.
+
+## Caching
+
+Metadata is cached per org until Refresh. Data streams, mappings, record IDs and usage are kept
+for 30 minutes and rulesets for 5, in session storage (gone when the browser closes).
+
 ## Read only
 
 Every call goes through `src/background/guard.js`: GET on `/services/...` paths, and POST
