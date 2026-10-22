@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data Cloud Inspector: privacy policy</title>
+<style>
+  :root { color-scheme: light dark; --fg: #1a1f2b; --muted: #5b6475; --bg: #ffffff; --line: #e3e6ec; }
+  @media (prefers-color-scheme: dark) { :root { --fg: #e8eaee; --muted: #a2a9b6; --bg: #12151c; --line: #2a2f3a; } }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  main { max-width: 42rem; margin: 0 auto; padding: 2.5rem 1rem 4rem; }
+  h1 { font-size: 1.6rem; margin: 0 0 0.25rem; }
+  h2 { font-size: 1.1rem; margin: 2rem 0 0.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+  p.meta { color: var(--muted); margin: 0 0 2rem; }
+  li { margin: 0.25rem 0; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Data Cloud Inspector: privacy policy</h1>
+  <p class="meta">Last updated 22 October 2026</p>
+
+  <p>Data Cloud Inspector is a browser extension that reads data from the user's own Salesforce org, so that the user can inspect Salesforce Data Cloud: profiles, segments, SQL queries, the data model and its health. It only reads; it never changes data or setup in the org.</p>
+
+  <h2>What it accesses</h2>
+  <ul>
+    <li>The Salesforce session already in the browser. The extension uses it to call the org the user is logged in to, as that user. The session is read by the extension's background worker each time it makes a call. It is not stored, and it is sent only to that org.</li>
+    <li>The org's Data Cloud metadata and records, which the extension shows to the user. This can include personal data held in the org, such as names, email addresses and phone numbers.</li>
+  </ul>
+
+  <h2>What it stores</h2>
+  <p>Only in the user's browser:</p>
+  <ul>
+    <li>settings (for example the theme);</li>
+    <li>saved SQL queries and the history of queries run;</li>
+    <li>a cache of the org's Data Cloud metadata: object and field names, relationships and mappings.</li>
+  </ul>
+  <p>Records and query results are not stored. The user can clear everything in the extension's Settings page, or by removing the extension.</p>
+
+  <h2>What it sends</h2>
+  <ul>
+    <li>All requests go to the user's own Salesforce org, and nowhere else.</li>
+    <li>Feedback, only when the user chooses to send it from the Feedback form: the message, an optional name and email address, an optional screenshot, and optional technical details (extension version, page, the org's domain and API version, and the paths and statuses of recent API calls, never their content). Feedback is sent to the developer's feedback service, hosted on Cloudflare.</li>
+  </ul>
+  <p>There is no analytics or tracking. Nothing is collected in the background.</p>
+
+  <h2>Sharing</h2>
+  <p>Data is not sold, and is not shared with third parties. It is not used for advertising, for creditworthiness or lending, or for any purpose other than the extension's features.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this policy: use the contact email on the extension's Chrome Web Store listing, or the extension's Feedback form.</p>
+
+  <p class="meta">Data Cloud Inspector is an independent tool. It is not made by or affiliated with Salesforce.</p>
+</main>
+</body>
+</html>

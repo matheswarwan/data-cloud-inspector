@@ -9,9 +9,9 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
   its name, and the store's policy allows a product name when it describes compatibility. The
   safest wording keeps the description clear that this is an independent tool (see the last line
   of the description). If a warning comes, a fallback name is "Unified Profile Inspector".
-- **Privacy policy URL.** The store asks for one because the extension reads a session cookie and
-  shows personal data from the org. A draft is at the end of this file; it needs a public URL
-  (the repo is private), for example a Cloudflare Pages page on `mathes.dev`.
+- **Privacy policy URL:** https://data-cloud-inspector.mathes.dev/privacy (Worker
+  `data-cloud-inspector-site`, source in `site/`; deploy steps in `site/wrangler.jsonc`).
+- **Publisher:** CloudKettle's developer account (same as SFMC Query Saver).
 - **Version.** Publish from a release zip in `releases/`, not a test zip, once the version is final.
 
 ## Name
@@ -117,7 +117,7 @@ Taken on a developer org with sample data. The org domain and org ID are replace
 
 `public/images/icon128.png` (a magnifier over a cloud). The store also wants a 440x280 small promo tile (optional).
 
-## Privacy policy (draft, needs a public URL)
+## Privacy policy (published at the URL above; `site/public/privacy.html` is the source)
 
 Data Cloud Inspector privacy policy
 
