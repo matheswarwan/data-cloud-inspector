@@ -21,6 +21,10 @@ Status: early, test builds only.
   and key qualifiers; relationships; for a DMO, the objects mapped to it field by field and
   their data streams; for a DLO, its data stream and the DMOs it maps to. Row counts, Query,
   Copy SELECT and Copy as Markdown.
+- Segments: every segment with status, schedule and member count; the criteria in plain
+  words and as raw JSON; counts at the last publish, in the membership table and matching
+  the criteria now; the equivalent SQL; publish history; and "is this person in the
+  segment?" with which condition keeps them out.
 - Open in Salesforce: record IDs in profiles, related records and SQL results (segments,
   streams, DLOs, calculated insights, rulesets, activation targets, Contacts, Accounts) link
   to their page in the org; Objects has Open in Salesforce (DMOs open in the Data Model tab by API name).
@@ -38,6 +42,7 @@ Status: early, test builds only.
 ## Planned
 
 - Lineage beyond mappings: calculated insight, segment, activation.
+- Health: stream failures, identity resolution consolidation rates.
 - Segment debugger.
 - Web tab for Personalization (decoded web SDK events linked to the profile).
 

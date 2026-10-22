@@ -1,0 +1,268 @@
+<script setup>
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { RefreshCw } from 'lucide-vue-next'
+import { useOrg, currentOrg } from '../app/useOrg.js'
+import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
+import { runQuery } from '../lib/query.js'
+import { recordUrl } from '../lib/links.js'
+import { parseRulesets, search, INDIVIDUAL } from '../lib/profile.js'
+import {
+  loadSegments, describeCriteria, topConditions, segmentSql, membershipTables, membershipCount, publishHistory, checkMembers,
+} from '../lib/segments.js'
+
+const route = useRoute()
+const router = useRouter()
+const org = useOrg()
+const catalog = useCatalog()
+
+const segments = ref([])
+const loading = ref(false)
+const error = ref('')
+const filter = ref('')
+const q = async (sql) => runQuery(orgCall(), org.version, sql, { rowLimit: 2000 })
+
+const detail = ref(null) // { latest, history, latestCount, countNow, countError, versions, loading }
+const showRaw = ref(false)
+const who = ref('')
+const checking = ref(false)
+const checkResult = ref(null) // { rows: [{ name, id, member, memberSince, matchesNow, failing }], note }
+const notice = ref('')
+
+async function load() {
+  if (!org.version) return
+  loading.value = true
+  error.value = ''
+  try { segments.value = await loadSegments(orgCall(), org.version) } catch (err) { error.value = err.message }
+  loading.value = false
+}
+onMounted(() => { ensureCatalog(); load() })
+watch(() => [org.orgId, org.version], load)
+
+const list = computed(() => {
+  const t = filter.value.trim().toLowerCase()
+  return t ? segments.value.filter((s) => s.label.toLowerCase().includes(t) || s.apiName.toLowerCase().includes(t)) : segments.value
+})
+const seg = computed(() => segments.value.find((s) => s.apiName === route.params.name) || null)
+const lines = computed(() => (seg.value ? describeCriteria(seg.value.criteria) : []))
+const conditions = computed(() => (seg.value ? topConditions(seg.value.criteria) : []))
+const sql = computed(() => (seg.value && catalog.objects.length ? segmentSql(seg.value, catalog.objects) : null))
+
+let seq = 0
+watch([seg, () => catalog.objects.length], async () => {
+  const s = seg.value
+  checkResult.value = null
+  notice.value = ''
+  if (!s || !catalog.objects.length) { detail.value = null; return }
+  const my = ++seq
+  const t = membershipTables(s, catalog.objects)
+  detail.value = { ...t, latestCount: null, countNow: null, countError: '', versions: null, loading: true }
+  const [latestCount, versions] = await Promise.all([
+    membershipCount(q, t.latest, s).catch(() => null),
+    publishHistory(q, t.history, s).catch(() => []),
+  ])
+  if (my === seq) Object.assign(detail.value, { latestCount, versions, loading: false })
+}, { immediate: true })
+
+async function countNow() {
+  if (!sql.value || sql.value.error) return
+  detail.value.countNow = 'counting'
+  try {
+    const r = await q(sql.value.count)
+    detail.value.countNow = Number(r.rows[0]?.[0] ?? 0)
+  } catch (err) {
+    detail.value.countNow = null
+    detail.value.countError = err.message
+  }
+}
+
+// "Is this person in the segment?": find them like Profiles does, then check membership and
+// the criteria for the IDs of the object the segment is on.
+async function check() {
+  const s = seg.value
+  if (!who.value.trim() || !s) return
+  checking.value = true
+  checkResult.value = null
+  try {
+    const rulesets = parseRulesets((await orgCall()(`/services/data/v${org.version}/ssot/identity-resolutions`)).data?.identityResolutions)
+    const unifiedRs = rulesets.find((r) => r.unified === s.on)
+    let people = [] // [{ id, name }]
+    let note = ''
+    if (s.on === INDIVIDUAL || unifiedRs) {
+      const found = await search(q, who.value, unifiedRs || null)
+      people = found.groups.flatMap((g) => (unifiedRs
+        ? (g.unifiedId ? [{ id: g.unifiedId, name: g.sources.map((x) => x.name).join(', ') }] : [])
+        : g.sources.map((x) => ({ id: x.id, name: x.name }))))
+      if (unifiedRs && found.groups.some((g) => !g.unifiedId)) note = 'Some matches are not unified by this ruleset, so they cannot be members.'
+    } else {
+      people = [{ id: who.value.trim(), name: who.value.trim() }]
+      note = `This segment is on ${s.on}; enter that object's record ID.`
+    }
+    if (!people.length) { checkResult.value = { rows: [], note: note || 'Nobody found.' }; return }
+    const rows = await checkMembers(q, s, catalog.objects, people.map((p) => p.id).slice(0, 50), detail.value?.latest)
+    checkResult.value = { rows: rows.map((r) => ({ ...r, name: people.find((p) => p.id === r.id)?.name || r.id })), note }
+  } catch (err) {
+    checkResult.value = { rows: [], note: `Could not check: ${err.message}` }
+  } finally {
+    checking.value = false
+  }
+}
+
+function verdict(r) {
+  if (r.member && r.matchesNow === false) return 'Member, but no longer matches: leaves at the next publish'
+  if (r.member) return 'Member'
+  if (r.matchesNow) return 'Not a member yet, but matches now: joins at the next publish'
+  if (r.matchesNow === false) return 'Not a member, and does not match'
+  return 'Not a member (the criteria could not be checked)'
+}
+
+function toSql(text) { router.push({ path: '/sql', query: { sql: text } }) }
+async function copy(text, what) { await navigator.clipboard.writeText(text); notice.value = `Copied ${what}.` }
+
+const when = (iso) => (iso ? new Date(iso).toLocaleString() : '')
+const num = (n) => (typeof n === 'number' ? n.toLocaleString() : '')
+const card = 'border rounded-md bg-card'
+const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+</script>
+
+<template>
+  <section class="flex gap-4 min-h-0">
+    <aside class="w-80 shrink-0 space-y-2">
+      <div class="flex gap-2">
+        <input v-model="filter" placeholder="Search segments" class="flex-1 border rounded-md px-2 py-1 bg-background text-sm" />
+        <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the segments again" @click="load">
+          <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" />
+        </button>
+      </div>
+      <p class="text-xs text-muted-foreground">{{ list.length }} of {{ segments.length }} segments</p>
+      <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
+      <ul class="max-h-[75vh] overflow-auto text-sm">
+        <li
+          v-for="s in list" :key="s.apiName"
+          :class="['px-2 py-1.5 rounded-md cursor-pointer hover:bg-accent', { 'bg-accent': s.apiName === seg?.apiName }]"
+          @click="router.push(`/segments/${s.apiName}`)"
+        >
+          <div class="truncate">{{ s.label }}</div>
+          <div class="text-xs text-muted-foreground truncate">{{ num(s.lastCount) }} members · {{ s.publishStatus.toLowerCase() || 'not published' }} · {{ s.on.replace(/^ssot__|__dlm$/g, '') }}</div>
+        </li>
+      </ul>
+    </aside>
+
+    <div class="flex-1 min-w-0 space-y-4">
+      <p v-if="!seg" class="text-sm text-muted-foreground p-4">
+        {{ loading ? 'Loading segments…' : segments.length ? 'Pick a segment to see its criteria, counts, publish history, and check whether someone is in it.' : 'No segments in this org.' }}
+      </p>
+
+      <template v-else>
+        <div class="flex flex-wrap items-start gap-3">
+          <div class="min-w-0">
+            <h2 class="text-lg font-semibold">{{ seg.label }}</h2>
+            <div class="font-mono text-sm text-muted-foreground">{{ seg.apiName }}</div>
+          </div>
+          <div class="ml-auto flex gap-2">
+            <a v-if="seg.id" :class="btn" :href="recordUrl(currentOrg()?.host, seg.id)" target="_blank" rel="noopener">Open in Salesforce</a>
+          </div>
+        </div>
+        <p v-if="notice" class="text-sm text-muted-foreground">{{ notice }}</p>
+
+        <dl :class="[card, 'p-3 grid grid-cols-[10rem_1fr] md:grid-cols-[10rem_1fr_10rem_1fr] gap-x-3 gap-y-1 text-sm']">
+          <dt class="text-muted-foreground">Segment on</dt><dd><RouterLink :to="`/objects/${seg.on}`" class="text-link hover:underline font-mono text-xs">{{ seg.on }}</RouterLink></dd>
+          <dt class="text-muted-foreground">Status</dt><dd>{{ seg.status.toLowerCase() }}</dd>
+          <dt class="text-muted-foreground">Last published</dt><dd>{{ when(seg.lastPublished) || 'never' }} ({{ seg.publishStatus.toLowerCase() }})</dd>
+          <dt class="text-muted-foreground">Schedule</dt><dd>{{ seg.publishInterval.replace(/_/g, ' ').toLowerCase() }}</dd>
+          <dt class="text-muted-foreground">Members at publish</dt><dd>{{ num(seg.lastCount) }}</dd>
+          <dt class="text-muted-foreground">Type</dt><dd>{{ seg.type }}{{ seg.lookback ? `, lookback ${seg.lookback}` : '' }}</dd>
+          <dt class="text-muted-foreground">Created</dt><dd>{{ when(seg.created) }}</dd>
+          <dt class="text-muted-foreground">Modified</dt><dd>{{ when(seg.modified) }}</dd>
+        </dl>
+
+        <div :class="card">
+          <h3 class="p-3 border-b font-medium flex items-center">Criteria
+            <button class="ml-auto text-xs text-link hover:underline font-normal" @click="showRaw = !showRaw">{{ showRaw ? 'Hide' : 'Show' }} raw JSON</button>
+          </h3>
+          <div class="p-3 space-y-1 text-sm">
+            <div v-for="(l, i) in lines" :key="i" :style="{ paddingLeft: `${l.depth * 1.25}rem` }">
+              <span class="font-mono text-xs">{{ l.text }}</span>
+              <pre v-if="l.raw" class="text-xs text-muted-foreground whitespace-pre-wrap">{{ l.raw }}</pre>
+            </div>
+            <pre v-if="showRaw" class="mt-2 text-xs border rounded p-2 overflow-auto max-h-80">{{ JSON.stringify({ include: seg.criteria, exclude: seg.excludeCriteria }, null, 2) }}</pre>
+          </div>
+        </div>
+
+        <div :class="card">
+          <h3 class="p-3 border-b font-medium">Counts</h3>
+          <div class="p-3 space-y-3 text-sm">
+            <table class="text-sm">
+              <tr><td class="pr-6 py-0.5 text-muted-foreground">At the last publish</td><td class="text-right">{{ num(seg.lastCount) }}</td></tr>
+              <tr><td class="pr-6 py-0.5 text-muted-foreground">In the membership table now</td><td class="text-right">{{ detail?.loading ? '…' : detail?.latest ? num(detail.latestCount) : 'no table found' }}</td></tr>
+              <tr>
+                <td class="pr-6 py-0.5 text-muted-foreground">Matching the criteria now</td>
+                <td class="text-right">{{ detail?.countNow === 'counting' ? '…' : num(detail?.countNow) }}</td>
+                <td class="pl-4"><button v-if="sql && !sql.error" :class="btn" :disabled="detail?.countNow === 'counting'" @click="countNow">Count now</button></td>
+              </tr>
+            </table>
+            <p v-if="detail?.countError" class="text-xs text-destructive">{{ detail.countError }}</p>
+            <p v-if="typeof detail?.countNow === 'number' && seg.lastCount != null && detail.countNow !== seg.lastCount" class="text-xs">
+              The criteria match {{ num(Math.abs(detail.countNow - seg.lastCount)) }} {{ detail.countNow > seg.lastCount ? 'more' : 'fewer' }} records now than at the last publish: data changed since, or the SQL below differs from how Data Cloud reads a rule.
+            </p>
+            <div v-if="sql">
+              <div class="text-muted-foreground mb-1">Equivalent SQL</div>
+              <p v-if="sql.error" class="text-xs">Not available: {{ sql.error }}.</p>
+              <template v-else>
+                <pre class="text-xs font-mono border rounded p-2 whitespace-pre-wrap">{{ sql.select }}</pre>
+                <div class="flex gap-2 mt-2">
+                  <button :class="btn" @click="toSql(sql.select)">Open in SQL</button>
+                  <button :class="btn" @click="copy(sql.select, 'the SQL')">Copy SQL</button>
+                </div>
+                <p class="text-xs text-muted-foreground mt-1">Built from the criteria; text comparisons are case-insensitive here. Use it to see who matches, not as Data Cloud's own query.</p>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div :class="card">
+          <h3 class="p-3 border-b font-medium">Is this person in the segment?</h3>
+          <form class="p-3 flex gap-2" @submit.prevent="check">
+            <input v-model="who" placeholder="Email, phone, name or ID" class="flex-1 border rounded-md px-2 py-1 bg-background text-sm" />
+            <button class="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="checking || !who.trim()">{{ checking ? 'Checking…' : 'Check' }}</button>
+          </form>
+          <div v-if="checkResult" class="px-3 pb-3 space-y-2 text-sm">
+            <p v-if="checkResult.note" class="text-xs text-muted-foreground">{{ checkResult.note }}</p>
+            <div v-for="r in checkResult.rows" :key="r.id" class="border rounded-md p-2">
+              <div class="flex flex-wrap items-baseline gap-2">
+                <RouterLink :to="seg.on === 'ssot__Individual__dlm' ? `/profile/s/${r.id}` : `/profile/u/${r.id}`" class="text-link hover:underline">{{ r.name }}</RouterLink>
+                <span class="font-mono text-xs text-muted-foreground">{{ r.id }}</span>
+                <span class="ml-auto">{{ verdict(r) }}</span>
+              </div>
+              <div v-if="r.memberSince" class="text-xs text-muted-foreground">In the membership table since {{ when(r.memberSince) }}</div>
+              <ul v-if="r.failing.length" class="text-xs mt-1 list-disc pl-5">
+                <li v-for="i in r.failing" :key="i">Fails: <span class="font-mono">{{ describeCriteria(conditions[i]).map((l) => l.text).join(' ') }}</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div :class="card">
+          <h3 class="p-3 border-b font-medium">Publish history</h3>
+          <p v-if="detail?.loading" class="p-3 text-sm text-muted-foreground">Loading…</p>
+          <p v-else-if="!detail?.history" class="p-3 text-sm text-muted-foreground">No history table found for {{ seg.on }}.</p>
+          <p v-else-if="!detail.versions?.length" class="p-3 text-sm text-muted-foreground">No publishes recorded in {{ detail.history }}.</p>
+          <table v-else class="w-full text-sm">
+            <thead class="text-left text-muted-foreground border-b">
+              <tr><th class="p-2 font-normal">Published</th><th class="p-2 font-normal text-right">Rows</th><th class="p-2 font-normal">Changes</th><th class="p-2 font-normal">Version</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="v in detail.versions" :key="v.version" class="border-b last:border-0">
+                <td class="p-2">{{ when(v.at) }}</td>
+                <td class="p-2 text-right">{{ num(v.members) }}</td>
+                <td class="p-2 text-xs">{{ Object.entries(v.deltas).map(([k, n]) => `${num(n)} ${k}`).join(', ') }}</td>
+                <td class="p-2 font-mono text-xs text-muted-foreground">{{ v.version }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-if="detail?.history" class="px-3 pb-3 pt-1 text-xs text-muted-foreground">From <RouterLink :to="`/objects/${detail.history}`" class="text-link hover:underline font-mono">{{ detail.history }}</RouterLink>.</p>
+        </div>
+      </template>
+    </div>
+  </section>
+</template>

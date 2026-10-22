@@ -1,4 +1,4 @@
-# Chrome Web Store listing: Data Cloud Inspector 0.4.0
+# Chrome Web Store listing: Data Cloud Inspector
 
 Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/store/`.
 
@@ -20,7 +20,7 @@ Data Cloud Inspector
 
 ## Summary (from the manifest, at most 132 characters)
 
-Read-only inspector for Salesforce Data Cloud: profiles, SQL, metadata and lineage, using your existing Salesforce login.
+Read-only inspector for Salesforce Data Cloud: profiles, segments, SQL and the data model, using your existing Salesforce login.
 
 ## Description
 
@@ -38,6 +38,13 @@ SQL
 - Run Data Cloud SQL against data lake objects, data model objects and calculated insights.
 - Autocomplete for every object and field in your org, Format, saved queries and history.
 - Load results 1,000 rows at a time, download every row as CSV, or copy the results ready to paste into an AI assistant.
+
+SEGMENTS
+- Every segment with its status, schedule and member count.
+- The criteria in plain words, and the equivalent SQL.
+- Compare the count at the last publish, in the membership table, and matching the criteria now.
+- Publish history.
+- Check whether a person is in a segment, and which condition keeps them out.
 
 OBJECTS
 - Every DLO, DMO and calculated insight with fields, API names, types, primary keys and key qualifiers.
@@ -68,7 +75,7 @@ English
 
 ## Single purpose (Privacy practices tab)
 
-Data Cloud Inspector lets Salesforce Data Cloud users inspect their own org, read only: look up unified profiles, run Data Cloud SQL, and view the data model and how data flows into it.
+Data Cloud Inspector lets Salesforce Data Cloud users inspect their own org, read only: look up unified profiles, debug segments, run Data Cloud SQL, and view the data model and how data flows into it.
 
 ## Permission justifications (Privacy practices tab)
 
@@ -94,7 +101,8 @@ Data Cloud Inspector lets Salesforce Data Cloud users inspect their own org, rea
 2. `2-match-rules.png`: match rules with each record's values, and possible missed matches.
 3. `3-sql.png`: SQL with a join and results.
 4. `4-objects.png`: the Individual DMO and what is mapped into it.
-5. `5-explore-dark.png`: REST explore examples, dark theme.
+5. `5-segment.png`: a segment's criteria, counts, equivalent SQL and a membership check.
+6. `6-explore.png`: REST explore examples.
 
 Taken on a developer org with sample data. The org domain and org ID are replaced, and the sample people who share an email in shot 2 are renamed to fictional names.
 
