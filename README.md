@@ -22,6 +22,9 @@ Status: early, test builds only.
   their data streams; for a DLO, its data stream and the DMOs it maps to. Row counts, Query,
   Copy SELECT and Copy as Markdown.
 - REST explore and a connection check (shareable report with response shapes only).
+- Feedback (header button): problem, idea or question, an optional marked-up screenshot and
+  optional technical details shown before sending. Sent to the Marketing Cloud Toolkit's
+  feedback Worker with `app = 'data-cloud-inspector'`.
 
 ## Planned
 

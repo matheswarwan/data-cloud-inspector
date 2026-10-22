@@ -32,6 +32,15 @@ stack and conventions as `../sfmc-toolkit`. Plan and status log: `../data-cloud-
   and `linkDmoName`. Link DMOs: `SourceRecordId__c`, `UnifiedRecordId__c`, `MatchKeys__c`.
   Phones are stored as typed (`(415) 555-0100`, no country code).
 
+## Feedback
+
+`src/components/feedback/` is ported from the Toolkit. Rows land in D1
+`sfmc-query-saver-feedback` with `app = 'data-cloud-inspector'`, `screen =
+'data-cloud-inspector/<page>'` (profile IDs replaced by `:id`). Read them from
+`../sfmc-toolkit/workers/feedback`:
+`npx wrangler d1 execute sfmc-query-saver-feedback --remote --command "SELECT id, kind, message, details, metadata FROM feedback WHERE app = 'data-cloud-inspector' ORDER BY created_at DESC"`
+(with `CLOUDFLARE_ACCOUNT_ID`); screenshots with `sh show-screenshot.sh <id>`.
+
 ## Rules
 
 - Read only. Never widen `guard.js` without the user's okay.

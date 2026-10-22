@@ -1,3 +1,5 @@
+import { safePath } from './feedbackMeta.js'
+
 // The app page talks to Salesforce only through the service worker (SF_FETCH).
 
 export function send(message) {
@@ -13,8 +15,26 @@ export function send(message) {
   })
 }
 
-export function sf(orgId, path, { method = 'GET', body } = {}) {
-  return send({ type: 'SF_FETCH', orgId, path, method, body })
+// The last API calls (newest first) for feedback: method, path without query values,
+// status and time. Never bodies or results.
+const CALL_LOG_MAX = 20
+const callLog = []
+
+export function recentCalls() {
+  return callLog.slice()
+}
+
+export async function sf(orgId, path, { method = 'GET', body } = {}) {
+  const res = await send({ type: 'SF_FETCH', orgId, path, method, body })
+  callLog.unshift({
+    method,
+    path: safePath(path),
+    status: res?.status || 0,
+    ms: res?.ms ?? null,
+    error: res?.ok ? null : String(res?.error || '').slice(0, 200),
+  })
+  callLog.length = Math.min(callLog.length, CALL_LOG_MAX)
+  return res
 }
 
 /** The highest version from GET /services/data/ (`[{ version: "65.0", ... }]`). */
