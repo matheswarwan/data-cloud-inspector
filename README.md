@@ -26,6 +26,9 @@ Status: early, test builds only.
   words and as raw JSON; counts at the last publish, in the membership table and matching
   the criteria now; the equivalent SQL; publish history; and "is this person in the
   segment?" with which condition keeps them out.
+- Health: every data stream, identity resolution ruleset (source and unified profiles,
+  consolidation rate), calculated insight, segment and activation with a status (failed,
+  needs a look, running, inactive, OK) and the reason, problems first; Copy as Markdown.
 - Open in Salesforce: record IDs in profiles, related records and SQL results (segments,
   streams, DLOs, calculated insights, rulesets, activation targets, Contacts, Accounts) link
   to their page in the org; Objects has Open in Salesforce (DMOs open in the Data Model tab by API name).
@@ -43,7 +46,6 @@ Status: early, test builds only.
 ## Planned
 
 - Lineage beyond mappings: calculated insight, segment, activation.
-- Health: stream failures, identity resolution consolidation rates.
 - Segment debugger.
 - Web tab for Personalization (decoded web SDK events linked to the profile).
 

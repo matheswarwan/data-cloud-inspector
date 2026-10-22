@@ -13,11 +13,37 @@ import { sqlSchema } from '../lib/catalog.js'
 import { runQuery, fetchRows, fetchAllRows, toCsv, resultMarkdown, PAGE_SIZE } from '../lib/query.js'
 
 const DRAFT = 'dci_sqlDraft'
+const LAYOUT = 'dci_sqlLayout'
 const route = useRoute()
 const router = useRouter()
 const org = useOrg()
 const catalog = useCatalog()
 const queries = useQueries()
+
+// Editor height and side panel width can be dragged (feedback #87) and are remembered.
+const DEFAULT_LAYOUT = { editor: 224, panel: 288 }
+function readLayout() {
+  try { return { ...DEFAULT_LAYOUT, ...JSON.parse(localStorage.getItem(LAYOUT) || '{}') } } catch { return { ...DEFAULT_LAYOUT } }
+}
+const layout = ref(readLayout())
+watch(layout, (v) => { try { localStorage.setItem(LAYOUT, JSON.stringify(v)) } catch { /* private window */ } }, { deep: true })
+
+function drag(e, key, axis, min, max) {
+  e.preventDefault()
+  const start = axis === 'y' ? e.clientY : e.clientX
+  const from = layout.value[key]
+  const move = (ev) => {
+    const delta = (axis === 'y' ? ev.clientY : ev.clientX) - start
+    layout.value[key] = Math.round(Math.min(max(), Math.max(min, from + delta)))
+  }
+  const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); document.body.style.userSelect = '' }
+  document.body.style.userSelect = 'none'
+  window.addEventListener('pointermove', move)
+  window.addEventListener('pointerup', up)
+}
+const dragEditor = (e) => drag(e, 'editor', 'y', 100, () => window.innerHeight * 0.85)
+const dragPanel = (e) => drag(e, 'panel', 'x', 200, () => window.innerWidth * 0.5)
+function resetLayout(key) { layout.value[key] = DEFAULT_LAYOUT[key] }
 
 const readDraft = () => { try { return localStorage.getItem(DRAFT) } catch { return null } }
 const sqlText = ref(readDraft() || 'SELECT ssot__Id__c, ssot__FirstName__c, ssot__LastName__c\nFROM ssot__Individual__dlm\nLIMIT 100')
@@ -159,7 +185,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
 
 <template>
   <section class="flex gap-4 min-h-0">
-    <aside class="w-72 shrink-0 space-y-2">
+    <aside class="shrink-0 space-y-2" :style="{ width: `${layout.panel}px` }">
       <div class="flex gap-1 text-sm">
         <button :class="['px-2 py-1 rounded-md', panel === 'objects' ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="panel = 'objects'">Objects</button>
         <button :class="['px-2 py-1 rounded-md', panel === 'saved' ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="panel = 'saved'">Saved</button>
@@ -185,10 +211,22 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
         </li>
       </ul>
     </aside>
+    <div
+      class="w-1.5 -mx-2.5 shrink-0 cursor-col-resize rounded hover:bg-border active:bg-border"
+      role="separator" aria-orientation="vertical" title="Drag to resize; double-click to reset"
+      @pointerdown="dragPanel" @dblclick="resetLayout('panel')"
+    />
 
     <div class="flex-1 min-w-0 space-y-3">
-      <div class="h-56">
-        <SqlEditor ref="editor" v-model="sqlText" :schema="schema" @run="run" />
+      <div>
+        <div :style="{ height: `${layout.editor}px` }">
+          <SqlEditor ref="editor" v-model="sqlText" :schema="schema" @run="run" />
+        </div>
+        <div
+          class="h-2 cursor-row-resize flex items-center justify-center group"
+          role="separator" aria-orientation="horizontal" title="Drag to resize the editor; double-click to reset"
+          @pointerdown="dragEditor" @dblclick="resetLayout('editor')"
+        ><span class="w-10 h-1 rounded bg-border group-hover:bg-muted-foreground" /></div>
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <button v-if="!running" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="!org.version" title="Ctrl+Enter or Cmd+Enter; runs the selection when there is one" @click="run(editor?.selection())">

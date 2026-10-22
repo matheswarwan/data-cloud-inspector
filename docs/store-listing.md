@@ -47,6 +47,12 @@ SEGMENTS
 - Publish history.
 - Check whether a person is in a segment, and which condition keeps them out.
 
+HEALTH
+- One page for data streams, identity resolution, calculated insights, segments and activations, problems first.
+- Why each one needs a look: never ran, last run failed, no source profiles, overdue publish.
+- Consolidation rate and profile counts per identity resolution ruleset.
+- Copy the report as Markdown for a status update.
+
 OBJECTS
 - Every DLO, DMO and calculated insight with fields, API names, types, primary keys and key qualifiers.
 - Relationships between objects.

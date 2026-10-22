@@ -75,3 +75,13 @@
     font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   }
 }
+
+/* SQL editor: text just inserted from the Objects panel (feedback #87). */
+@keyframes dci-inserted {
+  from { background-color: rgb(250 204 21 / 0.55); }
+  to { background-color: rgb(250 204 21 / 0); }
+}
+.cm-dci-inserted {
+  animation: dci-inserted 2.2s ease-out;
+  border-radius: 2px;
+}

@@ -6,12 +6,14 @@ import SegmentsView from '../views/SegmentsView.vue'
 import ConnectionView from '../views/ConnectionView.vue'
 import ExploreView from '../views/ExploreView.vue'
 import SettingsView from '../views/SettingsView.vue'
+import HealthView from '../views/HealthView.vue'
 
 export const NAV = [
   { path: '/profile', label: 'Profiles' },
   { path: '/sql', label: 'SQL' },
   { path: '/objects', label: 'Objects' },
   { path: '/segments', label: 'Segments' },
+  { path: '/health', label: 'Health' },
   { path: '/explore', label: 'REST explore' },
 ]
 
@@ -27,6 +29,7 @@ export function createAppRouter() {
       { path: '/explore', component: ExploreView },
       { path: '/connection', component: ConnectionView },
       { path: '/settings', component: SettingsView },
+      { path: '/health', component: HealthView },
     ],
   })
 }

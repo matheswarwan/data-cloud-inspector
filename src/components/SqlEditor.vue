@@ -3,8 +3,8 @@
 // field autocomplete from the org's metadata, and Ctrl/Cmd+Enter to run.
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { EditorView, basicSetup } from 'codemirror'
-import { keymap } from '@codemirror/view'
-import { EditorState, Compartment, Prec } from '@codemirror/state'
+import { keymap, Decoration } from '@codemirror/view'
+import { EditorState, Compartment, Prec, StateEffect, StateField } from '@codemirror/state'
 import { sql, PostgreSQL } from '@codemirror/lang-sql'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { useSettings } from '../app/useSettings.js'
@@ -21,6 +21,24 @@ const language = new Compartment()
 const theme = new Compartment()
 const settings = useSettings()
 
+// Inserted text is highlighted for a moment so it is clear where it went (feedback #87).
+const flashEffect = StateEffect.define()
+const clearFlash = StateEffect.define()
+const flashMark = Decoration.mark({ class: 'cm-dci-inserted' })
+const flashField = StateField.define({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    deco = deco.map(tr.changes)
+    for (const e of tr.effects) {
+      if (e.is(flashEffect)) deco = Decoration.set([flashMark.range(e.value.from, e.value.to)])
+      if (e.is(clearFlash)) deco = Decoration.none
+    }
+    return deco
+  },
+  provide: (f) => EditorView.decorations.from(f),
+})
+let flashTimer = null
+
 const lang = () => sql({ dialect: PostgreSQL, schema: props.schema, upperCaseKeywords: true })
 const themeExt = () => (settings.dark ? oneDark : [])
 
@@ -34,6 +52,7 @@ onMounted(() => {
         language.of(lang()),
         theme.of(themeExt()),
         EditorView.lineWrapping,
+        flashField,
         Prec.highest(keymap.of([{ key: 'Mod-Enter', run: () => { emit('run', selection()); return true } }])),
         EditorView.updateListener.of((u) => { if (u.docChanged) emit('update:modelValue', u.state.doc.toString()) }),
         EditorView.theme({ '&': { fontSize: '13px', height: '100%' }, '.cm-scroller': { fontFamily: "'JetBrains Mono', 'Fira Code', monospace" } }),
@@ -43,6 +62,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  clearTimeout(flashTimer)
   view?.destroy()
 })
 
@@ -64,8 +84,14 @@ function selection() {
 function insert(text) {
   if (!view) return
   const { from, to } = view.state.selection.main
-  view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } })
+  view.dispatch({
+    changes: { from, to, insert: text },
+    selection: { anchor: from + text.length },
+    effects: [flashEffect.of({ from, to: from + text.length }), EditorView.scrollIntoView(from, { y: 'center' })],
+  })
   view.focus()
+  clearTimeout(flashTimer)
+  flashTimer = setTimeout(() => view?.dispatch({ effects: clearFlash.of(null) }), 2200)
 }
 
 defineExpose({ selection, insert, focus: () => view?.focus() })
