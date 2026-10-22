@@ -6,7 +6,7 @@ import { send, sf, latestVersion } from '../lib/api.js'
 
 const LAST_ORG = 'dci_lastOrg'
 
-const state = reactive({ orgs: [], orgId: null, version: null, loading: false, error: '' })
+const state = reactive({ orgs: [], orgId: null, version: null, loading: false, error: '', user: null })
 const versions = new Map()
 
 function readLast() {
@@ -27,6 +27,7 @@ export async function loadOrgs() {
 export async function selectOrg(orgId) {
   state.orgId = orgId
   state.version = null
+  state.user = null
   if (!orgId) return
   try { localStorage.setItem(LAST_ORG, orgId) } catch { /* private window */ }
   if (!versions.has(orgId)) {
@@ -35,6 +36,8 @@ export async function selectOrg(orgId) {
     versions.set(orgId, latestVersion(res.data))
   }
   if (state.orgId === orgId) state.version = versions.get(orgId)
+  const me = await sf(orgId, `/services/data/v${versions.get(orgId)}/chatter/users/me`)
+  if (state.orgId === orgId && me.ok) state.user = { id: me.data?.id, name: me.data?.name, username: me.data?.username }
 }
 
 export function currentOrg() {

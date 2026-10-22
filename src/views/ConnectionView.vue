@@ -1,6 +1,9 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { Check, X, Copy, Play } from 'lucide-vue-next'
+import { ref, computed, watch } from 'vue'
+import { Check, X, Copy, Play, ShieldCheck } from 'lucide-vue-next'
+import RecordLink from '../components/RecordLink.vue'
+import { loadUserContext } from '../lib/userContext.js'
+import { CLIENT_NAME } from '../background/fetchProxy.js'
 import { useOrg, currentOrg } from '../app/useOrg.js'
 import { sf } from '../lib/api.js'
 import { runChecks, buildReport } from '../lib/checks.js'
@@ -13,6 +16,22 @@ const open = ref(null)
 const copied = ref(false)
 
 const extensionVersion = chrome.runtime?.getManifest?.().version || 'dev'
+
+// Who the tool runs as (feedback #84), loaded when the page opens.
+const ctx = ref(null)
+const ctxError = ref('')
+const showAllSets = ref(false)
+watch(() => [org.orgId, org.version], async ([orgId, version]) => {
+  ctx.value = null
+  ctxError.value = ''
+  if (!orgId || !version) return
+  try {
+    const c = await loadUserContext((path, opts) => sf(orgId, path, opts), version)
+    if (org.orgId === orgId) ctx.value = c
+  } catch (err) {
+    ctxError.value = err.message
+  }
+}, { immediate: true })
 
 async function run() {
   if (!org.orgId) return
@@ -50,6 +69,47 @@ const pretty = (data) => {
         Checks that your browser session reaches the core API and the Data Cloud endpoints of
         <strong>{{ currentOrg()?.host || 'the selected org' }}</strong>. Every request is a read.
       </p>
+    </div>
+
+    <div class="border rounded-md bg-card">
+      <h3 class="p-3 border-b font-medium flex items-center gap-2"><ShieldCheck class="w-4 h-4 text-green-600" /> How this tool connects</h3>
+      <p v-if="ctxError" class="p-3 text-sm text-destructive">{{ ctxError }}</p>
+      <p v-else-if="!ctx" class="p-3 text-sm text-muted-foreground">Loading…</p>
+      <div v-else class="p-3 grid md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+        <dl class="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1">
+          <dt class="text-muted-foreground">Running as</dt><dd><strong>{{ ctx.name }}</strong></dd>
+          <dt class="text-muted-foreground">Username</dt><dd class="break-all">{{ ctx.username }}</dd>
+          <dt class="text-muted-foreground">User ID</dt><dd class="font-mono text-xs"><RecordLink :value="ctx.id" /></dd>
+          <dt class="text-muted-foreground">Profile</dt><dd>{{ ctx.profile || 'unknown' }}</dd>
+          <dt v-if="ctx.role" class="text-muted-foreground">Role</dt><dd v-if="ctx.role">{{ ctx.role }}</dd>
+          <dt class="text-muted-foreground">User type</dt><dd>{{ ctx.userType }}</dd>
+          <dt class="text-muted-foreground">Org</dt><dd>{{ currentOrg()?.host }}</dd>
+          <dt class="text-muted-foreground">Org ID</dt><dd class="font-mono text-xs">{{ ctx.org.id }}</dd>
+          <dt class="text-muted-foreground">Edition</dt><dd>{{ ctx.org.type }}, {{ ctx.org.sandbox ? 'sandbox' : 'production' }}{{ ctx.org.instance ? ` (${ctx.org.instance})` : '' }}</dd>
+        </dl>
+        <div class="space-y-2">
+          <ul class="list-disc pl-5 space-y-1">
+            <li>Uses the Salesforce session you already have in this browser for this org, as {{ ctx.name }}. Nothing is installed in the org and no password is asked for.</li>
+            <li>Sees exactly what this user can see: object and field access come from the user's profile and permission sets.</li>
+            <li>Only reads. The one kind of request that is not a plain read is a Data Cloud SQL query; anything that would change data or setup is refused before it is sent.</li>
+            <li>Requests go only to https://{{ currentOrg()?.host }}. The session is never stored and never sent anywhere else.</li>
+            <li>Calls are tagged <code class="text-xs">client={{ CLIENT_NAME }}</code>, so admins can see them in the org's API usage and event logs.</li>
+          </ul>
+          <div>
+            <div class="text-muted-foreground">Data Cloud related permission sets ({{ ctx.dataCloudSets.length }})</div>
+            <p v-if="!ctx.dataCloudSets.length" class="text-xs text-muted-foreground">None by name; access may come from the profile or a permission set group.</p>
+            <ul class="text-xs flex flex-wrap gap-1 mt-1">
+              <li v-for="p in ctx.dataCloudSets" :key="p" class="px-1.5 py-0.5 rounded bg-muted">{{ p }}</li>
+            </ul>
+            <button v-if="ctx.permissionSets.length" class="text-xs text-primary hover:underline mt-1" @click="showAllSets = !showAllSets">
+              {{ showAllSets ? 'Hide' : 'Show' }} all {{ ctx.permissionSets.length }} permission sets
+            </button>
+            <ul v-if="showAllSets" class="text-xs flex flex-wrap gap-1 mt-1">
+              <li v-for="p in ctx.permissionSets" :key="p" class="px-1.5 py-0.5 rounded bg-muted">{{ p }}</li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="flex gap-2">

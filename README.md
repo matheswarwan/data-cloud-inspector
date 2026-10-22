@@ -24,8 +24,10 @@ Status: early, test builds only.
 - Open in Salesforce: record IDs in profiles, related records and SQL results (segments,
   streams, DLOs, calculated insights, rulesets, activation targets, Contacts, Accounts) link
   to their page in the org; Objects has Open in Salesforce (DMOs open in the Data Model tab by API name).
-- Connection pill (top right): the org in use and its status, other logged-in orgs, and a
-  connection check with a shareable report (response shapes only).
+- Connection pill (top right): the org in use and its status, who you are signed in as,
+  other logged-in orgs, and a connection check that shows how the tool connects (the user,
+  profile, role and Data Cloud permission sets it acts as) with a shareable report
+  (response shapes only).
 - REST explore with examples that fill in the request.
 - Settings: System, Light or Dark theme; cached metadata per org (clear); export and import
   saved queries; clear history; forget the feedback contact.

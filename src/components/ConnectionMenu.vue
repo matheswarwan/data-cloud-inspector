@@ -47,6 +47,11 @@ onUnmounted(() => { document.removeEventListener('mousedown', onDoc); document.r
       <ChevronDown class="w-3.5 h-3.5 shrink-0" />
     </button>
     <div v-if="open" class="absolute right-0 mt-1 w-96 rounded-md border bg-card shadow-lg z-40 text-sm">
+      <div v-if="org.user" class="px-3 pt-3 pb-2 border-b">
+        <div class="text-xs text-muted-foreground">Signed in as</div>
+        <div class="truncate">{{ org.user.name }}</div>
+        <div class="text-xs text-muted-foreground truncate">{{ org.user.username }}</div>
+      </div>
       <div class="px-3 pt-3 pb-1 text-xs text-muted-foreground">Logged-in orgs in this browser</div>
       <p v-if="!org.orgs.length" class="px-3 pb-2 text-muted-foreground">
         None found. Log in to your org (the one with Data Cloud) in this browser, then Find orgs again.
