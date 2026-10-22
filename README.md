@@ -3,17 +3,26 @@
 A read-only Chrome extension for Salesforce Data Cloud (Data 360). It uses the Salesforce
 login you already have in the browser, so there is nothing to install in the org.
 
-Status: early. The first build is a connection check and a REST explorer, used to confirm
-which Data Cloud endpoints an org answers before the real features are built.
+Status: early, test builds only.
+
+## What it does
+
+- SQL: run Data Cloud SQL against DLOs, DMOs and calculated insights, with table and field
+  autocomplete from the org, Format, saved queries and history. Results load 1,000 rows at a
+  time; Download CSV fetches every row (up to 500,000); Copy for AI copies the SQL, column
+  types and the first 50 rows as Markdown.
+- Objects: every DLO, DMO and calculated insight with fields, API names, types, primary keys
+  and key qualifiers; relationships; for a DMO, the objects mapped to it field by field and
+  their data streams; for a DLO, its data stream and the DMOs it maps to. Row counts, Query,
+  Copy SELECT and Copy as Markdown.
+- REST explore and a connection check (shareable report with response shapes only).
 
 ## Planned
 
 - Profile inspector: look up a person and see the unified profile, the source records
   behind it and how identity resolution joined them, engagement, calculated insights and
   segment membership.
-- SQL runner over data lake objects, data model objects and calculated insights.
-- Metadata explorer: DMO fields and API names, relationships, DLO to DMO mappings.
-- Lineage: data stream, DLO, DMO, calculated insight, segment, activation.
+- Lineage beyond mappings: calculated insight, segment, activation.
 - Segment debugger.
 - Web tab for Personalization (decoded web SDK events linked to the profile).
 

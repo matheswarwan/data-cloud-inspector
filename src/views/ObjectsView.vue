@@ -1,0 +1,282 @@
+<script setup>
+import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { RefreshCw, Play, Copy, FileText, Hash, Key } from 'lucide-vue-next'
+import { useOrg } from '../app/useOrg.js'
+import { useCatalog, ensureCatalog, ensureStreams, ensureAllMappings, orgCall } from '../app/useCatalog.js'
+import { filterObjects, selectFor, objectMarkdown } from '../lib/catalog.js'
+import { loadMappings } from '../lib/lineage.js'
+import { runQuery } from '../lib/query.js'
+
+const route = useRoute()
+const router = useRouter()
+const org = useOrg()
+const catalog = useCatalog()
+
+const text = ref('')
+const kinds = ref([])
+const category = ref('')
+const tab = ref('fields')
+const fieldText = ref('')
+const notice = ref('')
+const counts = reactive({}) // object name -> number | 'counting' | error text
+const mappings = reactive({ name: '', list: null, error: '', loading: false })
+const feeds = ref(null) // DMOs a DLO maps to
+
+onMounted(() => { ensureCatalog() })
+
+const categories = computed(() => [...new Set(catalog.objects.map((o) => o.category).filter(Boolean))].sort())
+const list = computed(() => filterObjects(catalog.objects, { text: text.value, kinds: kinds.value, category: category.value }))
+const byName = computed(() => new Map(catalog.objects.map((o) => [o.name, o])))
+const selected = computed(() => byName.value.get(route.params.name) || null)
+const fields = computed(() => {
+  const t = fieldText.value.trim().toLowerCase()
+  const all = selected.value?.fields || []
+  return t ? all.filter((f) => f.name.toLowerCase().includes(t) || f.label.toLowerCase().includes(t)) : all
+})
+const streamsFor = computed(() => (catalog.streams || []).filter((s) => s.dlo === selected.value?.name))
+
+function toggleKind(k) {
+  kinds.value = kinds.value.includes(k) ? kinds.value.filter((x) => x !== k) : [...kinds.value, k]
+}
+
+function pick(name) {
+  router.push(`/objects/${encodeURIComponent(name)}`)
+}
+
+watch(() => route.params.name, () => {
+  fieldText.value = ''
+  notice.value = ''
+  feeds.value = null
+  if (tab.value !== 'fields' && tab.value !== 'relationships') tab.value = 'fields'
+})
+
+watch(tab, async (t) => {
+  const o = selected.value
+  if (!o || t !== 'sources') return
+  ensureStreams()
+  if (o.kind === 'DMO' && mappings.name !== o.name) {
+    Object.assign(mappings, { name: o.name, list: null, error: '', loading: true })
+    try {
+      const list = await loadMappings(orgCall(), org.version, o.name)
+      if (mappings.name === o.name) mappings.list = list
+    } catch (err) {
+      if (mappings.name === o.name) mappings.error = err.message
+    } finally {
+      mappings.loading = false
+    }
+  }
+})
+
+async function findFeeds() {
+  const name = selected.value.name
+  const all = await ensureAllMappings()
+  if (selected.value?.name === name) feeds.value = (all || []).filter((m) => m.source === name)
+}
+
+async function count(o) {
+  counts[o.name] = 'counting'
+  try {
+    const r = await runQuery(orgCall(), org.version, `SELECT COUNT(*) AS n FROM ${o.name}`, { rowLimit: 1 })
+    counts[o.name] = Number(r.rows[0]?.[0] ?? 0)
+  } catch (err) {
+    counts[o.name] = `Count failed: ${err.message}`
+  }
+}
+
+async function copy(textValue, what) {
+  await navigator.clipboard.writeText(textValue)
+  notice.value = `Copied ${what}.`
+}
+
+function query(o) {
+  router.push({ path: '/sql', query: { sql: selectFor(o) } })
+}
+
+// The streams API says NONE for a stream that has never run.
+const ran = (s) => (!s.lastRunStatus || s.lastRunStatus === 'NONE' ? 'never run' : s.lastRunStatus)
+const time = (iso) => (iso ? new Date(iso).toLocaleString() : '')
+const kindClass = { DMO: 'bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-100', DLO: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100', CI: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-100' }
+const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'border-primary font-medium' : 'border-transparent text-muted-foreground hover:text-foreground']
+</script>
+
+<template>
+  <section class="flex gap-4 min-h-0">
+    <aside class="w-80 shrink-0 space-y-2">
+      <div class="flex gap-2">
+        <input v-model="text" placeholder="Search objects" class="flex-1 border rounded-md px-2 py-1 bg-background text-sm" />
+        <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the metadata again" @click="ensureCatalog({ refresh: true })">
+          <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': catalog.loading }" />
+        </button>
+      </div>
+      <div class="flex flex-wrap gap-1 text-xs">
+        <button
+          v-for="k in ['DMO', 'DLO', 'CI']" :key="k"
+          :class="['px-2 py-0.5 rounded-full border', kinds.includes(k) ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-accent']"
+          @click="toggleKind(k)"
+        >{{ k }}</button>
+        <select v-model="category" class="ml-auto border rounded-md px-1 py-0.5 bg-background">
+          <option value="">All categories</option>
+          <option v-for="c in categories" :key="c" :value="c">{{ c.replace(/_/g, ' ') }}</option>
+        </select>
+      </div>
+      <div class="text-xs text-muted-foreground">
+        {{ list.length }} of {{ catalog.objects.length }} objects
+        <span v-if="catalog.loadedAt"> · metadata from {{ time(catalog.loadedAt) }}</span>
+      </div>
+      <div v-if="catalog.errors.length || catalog.error" class="text-xs text-destructive">{{ [catalog.error, ...catalog.errors].filter(Boolean).join('; ') }}</div>
+      <ul class="max-h-[72vh] overflow-auto text-sm">
+        <li
+          v-for="o in list" :key="o.name"
+          :class="['px-2 py-1 rounded-md cursor-pointer hover:bg-accent', { 'bg-accent': o.name === selected?.name }]"
+          @click="pick(o.name)"
+        >
+          <div class="flex items-center gap-2">
+            <span :class="['text-[10px] px-1.5 rounded', kindClass[o.kind]]">{{ o.kind }}</span>
+            <span class="truncate">{{ o.label }}</span>
+          </div>
+          <div class="font-mono text-[11px] text-muted-foreground truncate">{{ o.name }}</div>
+        </li>
+      </ul>
+    </aside>
+
+    <div class="flex-1 min-w-0">
+      <div v-if="!selected" class="text-sm text-muted-foreground p-4">
+        {{ catalog.loading ? 'Loading the org\'s Data Cloud metadata…' : 'Pick an object to see its fields, relationships and where its data comes from.' }}
+      </div>
+
+      <div v-else class="space-y-3">
+        <div class="flex flex-wrap items-start gap-3">
+          <div class="min-w-0">
+            <h2 class="text-lg font-semibold">{{ selected.label }}</h2>
+            <div class="font-mono text-sm text-muted-foreground break-all">{{ selected.name }}</div>
+            <div class="text-xs text-muted-foreground mt-1 space-x-2">
+              <span :class="['px-1.5 rounded', kindClass[selected.kind]]">{{ selected.kind }}</span>
+              <span v-if="selected.category">{{ selected.category.replace(/_/g, ' ') }}</span>
+              <span>{{ selected.fields.length }} fields</span>
+              <span v-if="selected.primaryKeys.length">key {{ selected.primaryKeys.join(', ') }}</span>
+              <span v-if="selected.reference">standard: {{ selected.reference }}</span>
+              <span v-if="typeof counts[selected.name] === 'number'"><strong>{{ counts[selected.name].toLocaleString() }}</strong> rows</span>
+              <span v-else-if="counts[selected.name] && counts[selected.name] !== 'counting'" class="text-destructive">{{ counts[selected.name] }}</span>
+            </div>
+          </div>
+          <div class="ml-auto flex flex-wrap gap-2">
+            <button :class="btn" @click="query(selected)"><Play class="w-4 h-4" /> Query</button>
+            <button :class="btn" :disabled="counts[selected.name] === 'counting'" @click="count(selected)"><Hash class="w-4 h-4" /> {{ counts[selected.name] === 'counting' ? 'Counting…' : 'Count rows' }}</button>
+            <button :class="btn" @click="copy(selectFor(selected), 'the SELECT')"><Copy class="w-4 h-4" /> Copy SELECT</button>
+            <button :class="btn" @click="copy(objectMarkdown(selected), 'the fields as Markdown')"><FileText class="w-4 h-4" /> Copy as Markdown</button>
+          </div>
+        </div>
+        <div v-if="notice" class="text-sm text-muted-foreground">{{ notice }}</div>
+
+        <nav class="flex border-b">
+          <button :class="tabBtn('fields')" @click="tab = 'fields'">Fields</button>
+          <button :class="tabBtn('relationships')" @click="tab = 'relationships'">Relationships ({{ selected.relationships.length }})</button>
+          <button v-if="selected.kind !== 'CI'" :class="tabBtn('sources')" @click="tab = 'sources'">{{ selected.kind === 'DMO' ? 'Mapped from' : 'Stream and mappings' }}</button>
+          <button v-else :class="tabBtn('sources')" @click="tab = 'sources'">Processing</button>
+        </nav>
+
+        <!-- Fields -->
+        <div v-if="tab === 'fields'" class="space-y-2">
+          <input v-model="fieldText" placeholder="Filter fields" class="border rounded-md px-2 py-1 bg-background text-sm w-72" />
+          <table class="w-full text-sm border rounded-md bg-card">
+            <thead class="text-left text-muted-foreground border-b">
+              <tr>
+                <th class="p-2">API name</th><th class="p-2">Label</th><th class="p-2">Type</th>
+                <th v-if="selected.kind === 'CI'" class="p-2">Role</th><th class="p-2">Key qualifier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="f in fields" :key="f.name" class="border-b last:border-0 hover:bg-accent">
+                <td class="p-2 font-mono text-xs">
+                  <button class="inline-flex items-center gap-1 hover:underline" title="Copy the API name" @click="copy(f.name, f.name)">
+                    <Key v-if="f.primaryKey" class="w-3.5 h-3.5 text-amber-500" />{{ f.name }}
+                  </button>
+                </td>
+                <td class="p-2">{{ f.label }}</td>
+                <td class="p-2 text-xs">{{ f.businessType || f.type }}</td>
+                <td v-if="selected.kind === 'CI'" class="p-2 text-xs">{{ f.role }}</td>
+                <td class="p-2 font-mono text-xs text-muted-foreground">{{ f.keyQualifier }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Relationships -->
+        <div v-else-if="tab === 'relationships'">
+          <p v-if="!selected.relationships.length" class="text-sm text-muted-foreground">No relationships in the metadata.</p>
+          <table v-else class="w-full text-sm border rounded-md bg-card">
+            <thead class="text-left text-muted-foreground border-b">
+              <tr><th class="p-2">From</th><th class="p-2">To</th><th class="p-2">Cardinality</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="(r, i) in selected.relationships" :key="i" class="border-b last:border-0">
+                <td v-for="side in [{ obj: r.from, field: r.fromField }, { obj: r.to, field: r.toField }]" :key="side.obj + side.field" class="p-2 font-mono text-xs">
+                  <button v-if="side.obj !== selected.name && byName.has(side.obj)" class="text-primary hover:underline" @click="pick(side.obj)">{{ side.obj }}</button>
+                  <span v-else>{{ side.obj }}</span><span v-if="side.field" class="text-muted-foreground">.{{ side.field }}</span>
+                </td>
+                <td class="p-2 text-xs">{{ r.cardinality }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- DMO: mapped from -->
+        <div v-else-if="selected.kind === 'DMO'" class="space-y-3">
+          <p v-if="mappings.loading" class="text-sm text-muted-foreground">Loading mappings…</p>
+          <p v-else-if="mappings.error" class="text-sm text-destructive">{{ mappings.error }}</p>
+          <p v-else-if="mappings.list && !mappings.list.length" class="text-sm text-muted-foreground">Nothing is mapped to this DMO.</p>
+          <div v-for="m in mappings.list || []" :key="m.name" class="border rounded-md bg-card">
+            <div class="p-2 border-b flex flex-wrap items-center gap-2 text-sm">
+              <button v-if="byName.has(m.source)" class="font-mono text-primary hover:underline" @click="pick(m.source)">{{ m.source }}</button>
+              <span v-else class="font-mono">{{ m.source }}</span>
+              <span class="text-muted-foreground">{{ m.fields.length }} fields · {{ m.status }}</span>
+              <template v-for="s in (catalog.streams || []).filter((s) => s.dlo === m.source)" :key="s.name">
+                <span class="text-xs px-1.5 rounded bg-muted">stream {{ s.label }}: {{ ran(s) }}{{ s.lastRefreshDate ? `, ${time(s.lastRefreshDate)}` : '' }}</span>
+              </template>
+            </div>
+            <table class="w-full text-xs font-mono">
+              <tr class="border-b text-muted-foreground font-sans"><th class="px-2 py-1 text-left font-normal">Source field</th><th class="px-2 py-1 text-left font-normal">DMO field</th></tr>
+              <tr v-for="f in m.fields" :key="f.source + f.target" class="border-b last:border-0">
+                <td class="px-2 py-1 w-1/2">{{ f.source }}</td><td class="px-2 py-1">{{ f.target }}</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- DLO: stream and the DMOs it feeds -->
+        <div v-else-if="selected.kind === 'DLO'" class="space-y-3">
+          <p v-if="!catalog.streams" class="text-sm text-muted-foreground">Loading data streams…</p>
+          <p v-else-if="!streamsFor.length" class="text-sm text-muted-foreground">No data stream writes to this DLO (it may be filled by a transform or a system process).</p>
+          <div v-for="s in streamsFor" :key="s.name" class="border rounded-md bg-card p-3 text-sm grid grid-cols-[10rem_1fr] gap-x-3 gap-y-1">
+            <span class="text-muted-foreground">Stream</span><span>{{ s.label }} <span class="font-mono text-xs text-muted-foreground">{{ s.name }}</span></span>
+            <span class="text-muted-foreground">Source</span><span>{{ s.connector }}{{ s.sourceObject ? `: ${s.sourceObject}` : '' }}{{ s.dataSource ? ` (${s.dataSource})` : '' }}</span>
+            <span class="text-muted-foreground">Status</span><span>{{ s.status }}, last run {{ ran(s) }}{{ s.lastRefreshDate ? ` at ${time(s.lastRefreshDate)}` : '' }}</span>
+            <span class="text-muted-foreground">Records</span><span>{{ s.totalRecords ?? 'none yet' }}{{ s.lastProcessedRecords != null ? ` (last run processed ${s.lastProcessedRecords})` : '' }}</span>
+            <span class="text-muted-foreground">Refresh</span><span>{{ s.frequency }}</span>
+          </div>
+          <div>
+            <button v-if="!feeds" :class="btn" :disabled="!!catalog.mappingsProgress" @click="findFeeds">
+              {{ catalog.mappingsProgress ? `Reading mappings: ${catalog.mappingsProgress}` : 'Find the DMOs this DLO maps to' }}
+            </button>
+            <p v-else-if="!feeds.length" class="text-sm text-muted-foreground">Not mapped to any DMO.</p>
+            <ul v-else class="text-sm space-y-1">
+              <li v-for="m in feeds" :key="m.name">
+                Maps to <button class="font-mono text-primary hover:underline" @click="pick(m.target)">{{ m.target }}</button>
+                <span class="text-muted-foreground"> ({{ m.fields.length }} fields)</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- CI: processing -->
+        <div v-else class="border rounded-md bg-card p-3 text-sm grid grid-cols-[12rem_1fr] gap-x-3 gap-y-1">
+          <span class="text-muted-foreground">Partitioned by</span><span class="font-mono text-xs">{{ selected.partitionBy || 'none' }}</span>
+          <span class="text-muted-foreground">Last processed</span><span>{{ time(selected.latestProcessTime) || 'unknown' }}</span>
+          <span class="text-muted-foreground">Last successful run</span><span>{{ time(selected.latestSuccessfulProcessTime) || 'unknown' }}</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</template>
