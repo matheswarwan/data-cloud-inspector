@@ -8,6 +8,7 @@ import ExploreView from '../views/ExploreView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import HealthView from '../views/HealthView.vue'
 import PersonalizationView from '../views/PersonalizationView.vue'
+import CompareView from '../views/CompareView.vue'
 
 export const NAV = [
   { path: '/profile', label: 'Profiles' },
@@ -16,6 +17,7 @@ export const NAV = [
   { path: '/segments', label: 'Segments' },
   { path: '/personalization', label: 'Personalization' },
   { path: '/health', label: 'Health' },
+  { path: '/compare', label: 'Compare' },
   { path: '/explore', label: 'REST explore' },
 ]
 
@@ -33,6 +35,7 @@ export function createAppRouter() {
       { path: '/settings', component: SettingsView },
       { path: '/health', component: HealthView },
       { path: '/personalization', component: PersonalizationView },
+      { path: '/compare', component: CompareView },
     ],
   })
 }
