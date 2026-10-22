@@ -90,6 +90,14 @@ async function runSearch() {
   }
 }
 
+// A unified ID belongs to one ruleset, so a profile is re-opened through its first source
+// record, which every ruleset shares.
+function switchRuleset() {
+  const first = profile.value?.sources[0]?.ssot__Id__c
+  if (first) go(`/profile/s/${first}`)
+  else if (route.query.q) go('/profile', { q: route.query.q })
+}
+
 let loadSeq = 0
 async function openProfile(kind, id) {
   const seq = ++loadSeq
@@ -106,6 +114,12 @@ async function openProfile(kind, id) {
     const p = await loadProfile(q, kind === 'u' ? { unifiedId: id, ruleset: ruleset.value } : { sourceId: id, ruleset: ruleset.value })
     if (seq !== loadSeq) return
     profile.value = p
+    if (kind === 'u' && !p.unified && !p.links.length) {
+      profile.value = null
+      error.value = `${id} is not a unified profile of the ${ruleset.value?.label || 'selected'} ruleset.`
+      loading.value = ''
+      return
+    }
     if (!p.sources.length && !p.unified) { error.value = 'Nothing found for that ID.'; loading.value = ''; return }
     loading.value = 'Loading related records…'
     const skip = (r) => r.object.startsWith('UnifiedLink')
@@ -174,7 +188,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
     <form class="flex flex-wrap gap-2 items-center" @submit.prevent="go('/profile', { q: text })">
       <input v-model="text" placeholder="Email, phone, name or ID (use * as a wildcard)" class="flex-1 min-w-72 border rounded-md px-3 py-1.5 bg-background text-sm" />
       <label class="text-sm text-muted-foreground" for="rs">Ruleset</label>
-      <select id="rs" v-model="rulesetId" class="border rounded-md px-2 py-1.5 bg-background text-sm" @change="profile && route.params.id && go(route.path)">
+      <select id="rs" v-model="rulesetId" class="border rounded-md px-2 py-1.5 bg-background text-sm" @change="switchRuleset">
         <option v-if="!rulesets.length" value="">No identity resolution rulesets</option>
         <option v-for="r in rulesets" :key="r.id" :value="r.id">{{ r.label }} ({{ r.id }}), last run {{ r.lastJobStatus.toLowerCase() || 'unknown' }}</option>
       </select>
