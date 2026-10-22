@@ -6,6 +6,7 @@ import { useOrg, currentOrg } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
 import { recordUrl } from '../lib/links.js'
+import { inSpace } from '../lib/dataSpace.js'
 import { parseRulesets, search, INDIVIDUAL } from '../lib/profile.js'
 import {
   loadSegments, describeCriteria, topConditions, segmentSql, membershipTables, membershipCount, publishHistory, checkMembers,
@@ -37,7 +38,7 @@ async function load() {
   loading.value = false
 }
 onMounted(() => { ensureCatalog(); load() })
-watch(() => [org.orgId, org.version], load)
+watch(() => [org.orgId, org.version, org.dataSpace], load)
 
 const list = computed(() => {
   const t = filter.value.trim().toLowerCase()
@@ -84,7 +85,7 @@ async function check() {
   checking.value = true
   checkResult.value = null
   try {
-    const rulesets = parseRulesets((await orgCall()(`/services/data/v${org.version}/ssot/identity-resolutions`)).data?.identityResolutions)
+    const rulesets = parseRulesets(inSpace((await orgCall()(`/services/data/v${org.version}/ssot/identity-resolutions`)).data?.identityResolutions, org.dataSpace))
     const unifiedRs = rulesets.find((r) => r.unified === s.on)
     let people = [] // [{ id, name }]
     let note = ''

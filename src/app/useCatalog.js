@@ -8,32 +8,43 @@ import { loadStreams, loadAllMappings } from '../lib/lineage.js'
 import { loadRecordIds } from '../lib/links.js'
 import { loadUsage } from '../lib/usage.js'
 import { fetchAllPages } from '../lib/pages.js'
+import { withDataSpace } from '../lib/dataSpace.js'
 import { storeGet, storeSet, storeRemove, sessionCached, sessionForget } from '../lib/store.js'
-import { useOrg } from './useOrg.js'
+import { useOrg, currentDataSpaceId } from './useOrg.js'
 
 const org = useOrg()
 const state = reactive({
+  key: null,
   orgId: null, objects: [], errors: [], loadedAt: '', loading: false, error: '',
   streams: null, mappings: null, mappingsProgress: '', recordIds: null, usage: null,
 })
 
+/**
+ * The call function for the selected org and data space: endpoints that honour `dataspace`
+ * get it added; `call.dataSpace` lets the libraries filter lists that ignore it.
+ */
 export function orgCall() {
-  const orgId = org.orgId
-  return (path, opts) => sf(orgId, path, opts)
+  const { orgId, dataSpace } = org
+  const call = (path, opts) => sf(orgId, withDataSpace(path, dataSpace), opts)
+  call.dataSpace = dataSpace
+  call.dataSpaceId = currentDataSpaceId()
+  return call
 }
 
-const cacheKey = (orgId) => `dci_catalog_${orgId}`
+const cacheKey = (orgId) => `dci_catalog_${orgId}${org.dataSpace && org.dataSpace !== 'default' ? `_${org.dataSpace}` : ''}`
 // Streams, mappings, record IDs and usage change more often than metadata: kept for 30 minutes
 // in session storage (gone when the browser closes); Refresh on the Objects page reloads them.
 const SESSION_TTL = 30 * 60 * 1000
-const sessionKey = (orgId, what) => `dci_s_${orgId}_${what}`
+const sessionKey = (orgId, what) => `dci_s_${orgId}_${org.dataSpace || 'default'}_${what}`
 
 export async function ensureCatalog({ refresh = false } = {}) {
   const { orgId, version } = org
   if (!orgId || !version) return
-  if (!refresh && state.orgId === orgId && (state.objects.length || state.loading)) return
-  if (state.orgId !== orgId) Object.assign(state, { objects: [], errors: [], loadedAt: '', streams: null, mappings: null, recordIds: null, usage: null })
+  const key = `${orgId}|${org.dataSpace}`
+  if (!refresh && state.key === key && (state.objects.length || state.loading)) return
+  if (state.key !== key) Object.assign(state, { objects: [], errors: [], loadedAt: '', streams: null, mappings: null, recordIds: null, usage: null })
   state.orgId = orgId
+  state.key = key
   state.error = ''
   if (refresh) await sessionForget(`dci_s_${orgId}_`)
   if (!refresh) {
@@ -46,7 +57,7 @@ export async function ensureCatalog({ refresh = false } = {}) {
   state.loading = true
   try {
     const catalog = await loadCatalog(orgCall(), version)
-    if (state.orgId !== orgId) return
+    if (state.key !== key) return
     Object.assign(state, catalog, { streams: null, mappings: null, recordIds: null, usage: null })
     if (catalog.objects.length) await storeSet(cacheKey(orgId), catalog)
   } catch (err) {
@@ -99,10 +110,10 @@ export function ensureUsage({ refresh = false } = {}) {
 export async function forgetCatalog(orgId) {
   await storeRemove(cacheKey(orgId))
   await sessionForget(`dci_s_${orgId}_`)
-  if (state.orgId === orgId) Object.assign(state, { orgId: null, objects: [], errors: [], loadedAt: '', streams: null, mappings: null, recordIds: null })
+  if (state.orgId === orgId) Object.assign(state, { key: null, orgId: null, objects: [], errors: [], loadedAt: '', streams: null, mappings: null, recordIds: null })
 }
 
-watch(() => [org.orgId, org.version], () => { ensureCatalog() })
+watch(() => [org.orgId, org.version, org.dataSpace], () => { ensureCatalog() })
 
 export function useCatalog() {
   return state

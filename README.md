@@ -70,6 +70,13 @@ told apart by the org ID at the start of the session, so several logged-in orgs 
   OAuth uses your own External Client App (callback URL shown there, PKCE) through Chrome's
   login window; the token stays in session storage until the browser closes.
 
+## Data spaces
+
+Pick the data space in the connection menu (shown on the pill when an org has more than one).
+Endpoints that take `dataspace` get it (SQL, metadata, calculated insights, segments, data
+graphs, mappings); lists that ignore it (streams, rulesets, activations, Personalization setup)
+are filtered by the space each item names. Caches are kept per org and data space.
+
 ## Caching
 
 Metadata is cached per org until Refresh. Data streams, mappings, record IDs and usage are kept

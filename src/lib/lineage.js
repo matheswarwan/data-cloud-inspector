@@ -1,9 +1,10 @@
 // Where an object's data comes from: data streams feed DLOs, DLOs map to DMOs.
 
 import { fetchAllPages } from './pages.js'
+import { inSpace } from './dataSpace.js'
 
 export async function loadStreams(call, version) {
-  const raw = await fetchAllPages(call, `/services/data/v${version}/ssot/data-streams?limit=50`, 'dataStreams')
+  const raw = inSpace(await fetchAllPages(call, `/services/data/v${version}/ssot/data-streams?limit=50`, 'dataStreams'), call.dataSpace)
   return raw.map((s) => ({
     name: s.name,
     label: s.label || s.name,
@@ -22,7 +23,7 @@ export async function loadStreams(call, version) {
 }
 
 /** The DLO (or CRM object) to DMO mappings of one DMO. */
-export async function loadMappings(call, version, dmoName, dataspace = 'default') {
+export async function loadMappings(call, version, dmoName, dataspace = call.dataSpace || 'default') {
   const res = await call(`/services/data/v${version}/ssot/data-model-object-mappings?dataspace=${encodeURIComponent(dataspace)}&dmoDeveloperName=${encodeURIComponent(dmoName)}`)
   if (!res.ok) throw new Error(res.error || `HTTP ${res.status}`)
   return (res.data?.objectSourceTargetMaps || []).map((m) => ({

@@ -29,7 +29,7 @@ async function load() {
   loading.value = false
 }
 onMounted(load)
-watch(() => [org.orgId, org.version], load)
+watch(() => [org.orgId, org.version, org.dataSpace], load)
 watch(days, async () => { activity.value = await loadActivity(q, { days: days.value }) })
 
 const points = computed(() => (setup.value ? pointTree(setup.value) : []))

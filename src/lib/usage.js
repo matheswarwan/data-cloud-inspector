@@ -5,6 +5,7 @@
 
 import { insightPages, offsetPages } from './health.js'
 import { loadSegments, decodeHtml } from './segments.js'
+import { inSpace } from './dataSpace.js'
 
 const OBJ = String.raw`\w+__(?:dlm|dll|cio)`
 const KEYWORDS = new Set(['on', 'where', 'join', 'left', 'right', 'inner', 'outer', 'full', 'cross', 'group', 'order', 'limit', 'union', 'having', 'using', 'as', 'and', 'or'])
@@ -43,7 +44,7 @@ export async function loadUsage(call, version) {
   const [insights, segments, activations] = await Promise.all([
     insightPages(call, version).catch(() => []),
     loadSegments(call, version).catch(() => []),
-    offsetPages(call, `/services/data/v${version}/ssot/activations`, 'activations').catch(() => []),
+    offsetPages(call, `/services/data/v${version}/ssot/activations`, 'activations').then((a) => inSpace(a, call.dataSpace)).catch(() => []),
   ])
   // Field sets become arrays so the result can be cached in chrome.storage.session.
   const plain = (refs) => Object.fromEntries(Object.entries(refs).map(([k, v]) => [k, [...v]]))

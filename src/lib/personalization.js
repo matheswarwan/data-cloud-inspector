@@ -8,13 +8,13 @@ import { toObjects } from './profile.js'
 export const LOG = 'ssot__PersonalizationLog__dlm'
 
 export const SETUP_QUERIES = {
-  points: 'SELECT Id, Name, DeveloperName, Status, Source, MaxItemsCount, IsAuthenticationRequired, PersonalizationSchemaId, PersonalizationSchemaEnum, AbnExperimentId, Description, LastModifiedDate FROM PersonalizationPoint ORDER BY Name',
-  decisions: 'SELECT Id, Name, DeveloperName, PersonalizationPointId, PersonalizerId, State, Priority, ActiveAbnExperimentId, Description FROM PersonalizationDecision ORDER BY Priority',
-  recommenders: 'SELECT Id, Name, Status, State, LatestRefreshedStatus, LastRefresh, LastSuccessfulRefresh, Goal, ObjectiveId, ScheduleFrequencyInMinutes, PersonalizationSchemaId, PersonalizationSchemaEnum, IsRemote, Description FROM PersonalizationRecommender ORDER BY Name',
-  experiments: 'SELECT Id, Name, DeveloperName, Status, State, StartedDate, StoppedDate, WinnerSelectionMode, WinnerSelectionOutcome, LastAnalyzed, MinimumDurationInMinutes, MaximumDurationInMinutes, Description FROM AbnExperiment ORDER BY Name',
+  points: 'SELECT Id, Name, DeveloperName, Status, Source, MaxItemsCount, IsAuthenticationRequired, PersonalizationSchemaId, PersonalizationSchemaEnum, AbnExperimentId, Description, LastModifiedDate, DataSpaceId FROM PersonalizationPoint ORDER BY Name',
+  decisions: 'SELECT Id, Name, DeveloperName, PersonalizationPointId, PersonalizerId, State, Priority, ActiveAbnExperimentId, Description, DataSpaceId FROM PersonalizationDecision ORDER BY Priority',
+  recommenders: 'SELECT Id, Name, Status, State, LatestRefreshedStatus, LastRefresh, LastSuccessfulRefresh, Goal, ObjectiveId, ScheduleFrequencyInMinutes, PersonalizationSchemaId, PersonalizationSchemaEnum, IsRemote, Description, DataSpaceId FROM PersonalizationRecommender ORDER BY Name',
+  experiments: 'SELECT Id, Name, DeveloperName, Status, State, StartedDate, StoppedDate, WinnerSelectionMode, WinnerSelectionOutcome, LastAnalyzed, MinimumDurationInMinutes, MaximumDurationInMinutes, Description, DataSpaceId FROM AbnExperiment ORDER BY Name',
   experimentDecisions: 'SELECT AbnExperimentId, PersonalizationDecisionId, ExperimentStatus, ExperimentState FROM AbnExperimentPersnlDcsn',
-  schemas: 'SELECT Id, Name, DeveloperName, PersonalizationType, Description FROM PersonalizationSchema ORDER BY Name',
-  objectives: 'SELECT Id, Name, DeveloperName, Description FROM PersonalizationObjective ORDER BY Name',
+  schemas: 'SELECT Id, Name, DeveloperName, PersonalizationType, Description, DataSpaceId FROM PersonalizationSchema ORDER BY Name',
+  objectives: 'SELECT Id, Name, DeveloperName, Description, DataSpaceId FROM PersonalizationObjective ORDER BY Name',
 }
 
 async function soqlAll(call, version, query) {
@@ -34,8 +34,11 @@ export async function loadSetup(call, version) {
   const keys = Object.keys(SETUP_QUERIES)
   const results = await Promise.all(keys.map((k) => soqlAll(call, version, SETUP_QUERIES[k]).then((r) => ({ r }), (e) => ({ e: e.message }))))
   const out = { errors: {} }
+  // Records name their data space by record ID; keep the selected one (and those with none).
+  const id15 = String(call.dataSpaceId || '').slice(0, 15)
+  const keep = (r) => !id15 || !r.DataSpaceId || r.DataSpaceId.slice(0, 15) === id15
   keys.forEach((k, i) => {
-    out[k] = results[i].r || []
+    out[k] = (results[i].r || []).filter(keep)
     if (results[i].e) out.errors[k] = results[i].e
   })
   return out

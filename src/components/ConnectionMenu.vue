@@ -4,7 +4,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ChevronDown, Check, RefreshCw } from 'lucide-vue-next'
-import { useOrg, loadOrgs, selectOrg, currentOrg } from '../app/useOrg.js'
+import { useOrg, loadOrgs, selectOrg, currentOrg, selectDataSpace } from '../app/useOrg.js'
 
 const org = useOrg()
 const router = useRouter()
@@ -44,6 +44,7 @@ onUnmounted(() => { document.removeEventListener('mousedown', onDoc); document.r
     >
       <span :class="['w-2 h-2 rounded-full shrink-0', status.dot]" />
       <span class="truncate">{{ status.text }}</span>
+      <span v-if="org.dataSpaces.length > 1" class="text-xs shrink-0 border rounded px-1">{{ org.dataSpace }}</span>
       <span v-if="org.version" class="text-muted-foreground text-xs shrink-0">v{{ org.version }}</span>
       <ChevronDown class="w-3.5 h-3.5 shrink-0" />
     </button>
@@ -65,6 +66,17 @@ onUnmounted(() => { document.removeEventListener('mousedown', onDoc); document.r
         <span class="truncate">{{ o.host }}</span>
         <span class="ml-auto font-mono text-xs text-muted-foreground">{{ o.orgId }}</span>
       </button>
+      <template v-if="org.dataSpaces.length">
+        <div class="px-3 pt-3 pb-1 text-xs text-muted-foreground border-t mt-1">Data space</div>
+        <button
+          v-for="d in org.dataSpaces" :key="d.name"
+          class="w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-accent" @click="selectDataSpace(d.name); open = false"
+        >
+          <Check :class="['w-4 h-4 shrink-0', d.name === org.dataSpace ? '' : 'invisible']" />
+          <span class="truncate">{{ d.label }}</span>
+          <span v-if="d.label !== d.name" class="font-mono text-xs text-muted-foreground">{{ d.name }}</span>
+        </button>
+      </template>
       <p v-if="org.error" class="px-3 py-1 text-xs text-destructive">{{ org.error }}</p>
       <p v-else-if="org.problem" class="px-3 py-1 text-xs">{{ org.problem.message }}</p>
       <div class="border-t mt-1 p-1 flex flex-col">

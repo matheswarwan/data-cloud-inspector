@@ -14,6 +14,7 @@ import { loadStreams } from './lineage.js'
 import { loadSegments } from './segments.js'
 import { parseRulesets } from './profile.js'
 import { SETUP_QUERIES } from './personalization.js'
+import { inSpace } from './dataSpace.js'
 
 export const LEVELS = ['fail', 'warn', 'running', 'idle', 'ok']
 export const LEVEL_TEXT = { fail: 'Failed', warn: 'Needs a look', running: 'Running', idle: 'Inactive', ok: 'OK' }
@@ -144,7 +145,7 @@ export async function loadHealth(call, version, { now = Date.now() } = {}) {
     section('Identity resolution', async () => {
       const res = await call(`${v}/identity-resolutions`)
       if (!res.ok) throw new Error(res.error || `HTTP ${res.status}`)
-      const rulesets = parseRulesets(res.data?.identityResolutions)
+      const rulesets = parseRulesets(inSpace(res.data?.identityResolutions, call.dataSpace))
       return Promise.all(rulesets.map(async (r) => {
         const one = r.recordId ? await call(`${v}/identity-resolutions/${r.recordId}`) : null
         return rulesetHealth(r, one?.ok ? one.data : {})
@@ -152,11 +153,11 @@ export async function loadHealth(call, version, { now = Date.now() } = {}) {
     }),
     section('Calculated insights', async () => (await insightPages(call, version)).map(insightHealth)),
     section('Segments', async () => (await loadSegments(call, version)).map((s) => segmentHealth(s, now))),
-    section('Activations', async () => (await offsetPages(call, `${v}/activations`, 'activations')).map(activationHealth)),
+    section('Activations', async () => inSpace(await offsetPages(call, `${v}/activations`, 'activations'), call.dataSpace).map(activationHealth)),
     section('Personalization recommenders', async () => {
       const res = await call(`/services/data/v${version}/query?q=${encodeURIComponent(SETUP_QUERIES.recommenders)}`)
       if (!res.ok) throw new Error(res.error || `HTTP ${res.status}`)
-      return (res.data?.records || []).map(recommenderHealth)
+      return (res.data?.records || []).filter((r) => !call.dataSpaceId || !r.DataSpaceId || r.DataSpaceId.slice(0, 15) === call.dataSpaceId.slice(0, 15)).map(recommenderHealth)
     }),
   ])
 }

@@ -25,7 +25,7 @@ async function load() {
   loading.value = false
 }
 onMounted(load)
-watch(() => [org.orgId, org.version], load)
+watch(() => [org.orgId, org.version, org.dataSpace], load)
 
 const all = computed(() => sections.value.flatMap((s) => s.items))
 const totals = computed(() => countLevels(all.value))

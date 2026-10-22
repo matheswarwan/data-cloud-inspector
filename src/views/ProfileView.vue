@@ -9,6 +9,7 @@ import { currentOrg } from '../app/useOrg.js'
 import { useOrg } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall, cachedRulesets } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
+import { inSpace } from '../lib/dataSpace.js'
 import {
   INDIVIDUAL, parseRulesets, search, loadProfile, loadRelated, explainMatches, possibleMissedMatches,
   displayName, eventTimeField, profileMarkdown, FUZZY_THRESHOLD,
@@ -47,7 +48,7 @@ async function loadRulesets() {
     rulesets.value = await cachedRulesets(async () => {
       const res = await orgCall()(`/services/data/v${org.version}/ssot/identity-resolutions`)
       if (!res.ok) throw new Error(res.error || `HTTP ${res.status}`)
-      return parseRulesets(res.data?.identityResolutions)
+      return parseRulesets(inSpace(res.data?.identityResolutions, org.dataSpace))
     })
   } catch (err) { rsError.value = err.message; return }
   let saved = null
@@ -60,7 +61,7 @@ onMounted(async () => {
   await loadRulesets()
   fromRoute()
 })
-watch(() => [org.orgId, org.version], async () => { await loadRulesets(); fromRoute() })
+watch(() => [org.orgId, org.version, org.dataSpace], async () => { await loadRulesets(); fromRoute() })
 watch(rulesetId, (id) => { try { localStorage.setItem(rsKey(), id) } catch { /* ignore */ } })
 watch(() => route.fullPath, fromRoute)
 
