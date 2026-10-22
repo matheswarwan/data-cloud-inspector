@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Data Cloud Inspector",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Read-only inspector for Salesforce Data Cloud: profiles, SQL, metadata and lineage, using your existing Salesforce login.",
   "action": {
     "default_title": "Open Data Cloud Inspector",
