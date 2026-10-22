@@ -13,7 +13,8 @@ Status: early, test builds only.
   pairs that satisfy them, people who share an email but are not in the profile, contact
   points, an engagement timeline, segment membership and every other related record (found
   through the metadata's relationships). Copy as Markdown exports the whole profile.
-- SQL: run Data Cloud SQL against DLOs, DMOs and calculated insights, with table and field
+- SQL: run Data Cloud SQL against DLOs, DMOs and calculated insights, with an Objects panel
+  (search, expand, insert an object, a field or a SELECT of ticked fields), table and field
   autocomplete from the org, Format, saved queries and history. Results load 1,000 rows at a
   time; Download CSV fetches every row (up to 500,000); Copy for AI copies the SQL, column
   types and the first 50 rows as Markdown.

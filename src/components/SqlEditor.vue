@@ -60,7 +60,15 @@ function selection() {
   return from === to ? '' : view.state.sliceDoc(from, to)
 }
 
-defineExpose({ selection, focus: () => view?.focus() })
+/** Puts text at the cursor (replacing any selection) and keeps the editor focused. */
+function insert(text) {
+  if (!view) return
+  const { from, to } = view.state.selection.main
+  view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } })
+  view.focus()
+}
+
+defineExpose({ selection, insert, focus: () => view?.focus() })
 </script>
 
 <template>

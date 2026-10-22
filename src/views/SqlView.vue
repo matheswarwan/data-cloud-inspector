@@ -5,6 +5,7 @@ import { formatDialect, postgresql } from 'sql-formatter'
 import { Save, Copy, Download, Trash2 } from 'lucide-vue-next'
 import SqlEditor from '../components/SqlEditor.vue'
 import ResultTable from '../components/ResultTable.vue'
+import SchemaPanel from '../components/SchemaPanel.vue'
 import { useOrg, currentOrg } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
 import { useQueries, loadQueries, saveQuery, deleteQuery, addHistory } from '../app/useQueries.js'
@@ -31,7 +32,7 @@ const result = shallowRef(null) // { sql, queryId, columns, rows, total, ms }
 const busy = ref('') // progress text for load more / download
 const notice = ref('')
 const savedId = ref(null)
-const panel = ref('saved')
+const panel = ref('objects')
 let cancelled = false
 
 onMounted(() => {
@@ -158,12 +159,14 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
 
 <template>
   <section class="flex gap-4 min-h-0">
-    <aside class="w-64 shrink-0 space-y-2">
+    <aside class="w-72 shrink-0 space-y-2">
       <div class="flex gap-1 text-sm">
+        <button :class="['px-2 py-1 rounded-md', panel === 'objects' ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="panel = 'objects'">Objects</button>
         <button :class="['px-2 py-1 rounded-md', panel === 'saved' ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="panel = 'saved'">Saved</button>
         <button :class="['px-2 py-1 rounded-md', panel === 'history' ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="panel = 'history'">History</button>
       </div>
-      <ul v-if="panel === 'saved'" class="text-sm space-y-0.5 max-h-[75vh] overflow-auto">
+      <SchemaPanel v-if="panel === 'objects'" @insert="(t) => editor?.insert(t)" />
+      <ul v-else-if="panel === 'saved'" class="text-sm space-y-0.5 max-h-[75vh] overflow-auto">
         <li v-if="!queries.saved.length" class="text-muted-foreground text-xs p-2">No saved queries yet.</li>
         <li
           v-for="q in queries.saved" :key="q.id"

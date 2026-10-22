@@ -36,6 +36,7 @@ PROFILES
 
 SQL
 - Run Data Cloud SQL against data lake objects, data model objects and calculated insights.
+- Search your objects beside the editor and insert an object, a field, or a SELECT of the fields you tick.
 - Autocomplete for every object and field in your org, Format, saved queries and history.
 - Load results 1,000 rows at a time, download every row as CSV, or copy the results ready to paste into an AI assistant.
 
