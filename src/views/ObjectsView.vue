@@ -1,9 +1,10 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { RefreshCw, Play, Copy, FileText, Hash, Key } from 'lucide-vue-next'
-import { useOrg } from '../app/useOrg.js'
-import { useCatalog, ensureCatalog, ensureStreams, ensureAllMappings, orgCall } from '../app/useCatalog.js'
+import { RefreshCw, Play, Copy, FileText, Hash, Key, ExternalLink } from 'lucide-vue-next'
+import { useOrg, currentOrg } from '../app/useOrg.js'
+import { recordUrl, dmoTabUrl } from '../lib/links.js'
+import { useCatalog, ensureCatalog, ensureStreams, ensureAllMappings, ensureRecordIds, orgCall } from '../app/useCatalog.js'
 import { filterObjects, selectFor, objectMarkdown } from '../lib/catalog.js'
 import { loadMappings } from '../lib/lineage.js'
 import { runQuery } from '../lib/query.js'
@@ -24,6 +25,16 @@ const mappings = reactive({ name: '', list: null, error: '', loading: false })
 const feeds = ref(null) // DMOs a DLO maps to
 
 onMounted(() => { ensureCatalog() })
+watch(() => route.params.name, (n) => { if (n) ensureRecordIds() }, { immediate: true })
+
+// DLOs and CIs open their record page; DMO record pages have no URL we can build, so
+// DMOs open the Data Model Objects tab.
+function sfUrl(o) {
+  const host = currentOrg()?.host
+  if (o.kind === 'DMO') return dmoTabUrl(host)
+  const id = catalog.recordIds?.[o.name]
+  return id ? recordUrl(host, id) : null
+}
 
 const categories = computed(() => [...new Set(catalog.objects.map((o) => o.category).filter(Boolean))].sort())
 const list = computed(() => filterObjects(catalog.objects, { text: text.value, kinds: kinds.value, category: category.value }))
@@ -162,6 +173,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
             </div>
           </div>
           <div class="ml-auto flex flex-wrap gap-2">
+            <a v-if="sfUrl(selected)" :class="btn" :href="sfUrl(selected)" target="_blank" rel="noopener" :title="selected.kind === 'DMO' ? 'Opens the Data Model Objects tab (a DMO page has no direct link)' : 'Open this object in Data Cloud'"><ExternalLink class="w-4 h-4" /> Open in Salesforce</a>
             <button :class="btn" @click="query(selected)"><Play class="w-4 h-4" /> Query</button>
             <button :class="btn" :disabled="counts[selected.name] === 'counting'" @click="count(selected)"><Hash class="w-4 h-4" /> {{ counts[selected.name] === 'counting' ? 'Counting…' : 'Count rows' }}</button>
             <button :class="btn" @click="copy(selectFor(selected), 'the SELECT')"><Copy class="w-4 h-4" /> Copy SELECT</button>
@@ -231,9 +243,10 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
             <div class="p-2 border-b flex flex-wrap items-center gap-2 text-sm">
               <button v-if="byName.has(m.source)" class="font-mono text-primary hover:underline" @click="pick(m.source)">{{ m.source }}</button>
               <span v-else class="font-mono">{{ m.source }}</span>
+              <a v-if="catalog.recordIds?.[m.source]" :href="recordUrl(currentOrg()?.host, catalog.recordIds[m.source])" target="_blank" rel="noopener" title="Open in Salesforce" class="text-primary"><ExternalLink class="w-3.5 h-3.5" /></a>
               <span class="text-muted-foreground">{{ m.fields.length }} fields · {{ m.status }}</span>
               <template v-for="s in (catalog.streams || []).filter((s) => s.dlo === m.source)" :key="s.name">
-                <span class="text-xs px-1.5 rounded bg-muted">stream {{ s.label }}: {{ ran(s) }}{{ s.lastRefreshDate ? `, ${time(s.lastRefreshDate)}` : '' }}</span>
+                <a :href="recordUrl(currentOrg()?.host, s.recordId)" target="_blank" rel="noopener" class="text-xs px-1.5 rounded bg-muted hover:underline">stream {{ s.label }}: {{ ran(s) }}{{ s.lastRefreshDate ? `, ${time(s.lastRefreshDate)}` : '' }}</a>
               </template>
             </div>
             <table class="w-full text-xs font-mono">
@@ -250,7 +263,8 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
           <p v-if="!catalog.streams" class="text-sm text-muted-foreground">Loading data streams…</p>
           <p v-else-if="!streamsFor.length" class="text-sm text-muted-foreground">No data stream writes to this DLO (it may be filled by a transform or a system process).</p>
           <div v-for="s in streamsFor" :key="s.name" class="border rounded-md bg-card p-3 text-sm grid grid-cols-[10rem_1fr] gap-x-3 gap-y-1">
-            <span class="text-muted-foreground">Stream</span><span>{{ s.label }} <span class="font-mono text-xs text-muted-foreground">{{ s.name }}</span></span>
+            <span class="text-muted-foreground">Stream</span><span>{{ s.label }} <span class="font-mono text-xs text-muted-foreground">{{ s.name }}</span>
+              <a v-if="s.recordId" :href="recordUrl(currentOrg()?.host, s.recordId)" target="_blank" rel="noopener" class="ml-2 text-xs text-primary hover:underline inline-flex items-center gap-1"><ExternalLink class="w-3 h-3" /> Open stream</a></span>
             <span class="text-muted-foreground">Source</span><span>{{ s.connector }}{{ s.sourceObject ? `: ${s.sourceObject}` : '' }}{{ s.dataSource ? ` (${s.dataSource})` : '' }}</span>
             <span class="text-muted-foreground">Status</span><span>{{ s.status }}, last run {{ ran(s) }}{{ s.lastRefreshDate ? ` at ${time(s.lastRefreshDate)}` : '' }}</span>
             <span class="text-muted-foreground">Records</span><span>{{ s.totalRecords ?? 'none yet' }}{{ s.lastProcessedRecords != null ? ` (last run processed ${s.lastProcessedRecords})` : '' }}</span>

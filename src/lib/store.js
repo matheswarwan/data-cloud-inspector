@@ -11,3 +11,16 @@ export function storeSet(key, value) {
     try { chrome.storage.local.set({ [key]: value }, () => resolve()) } catch { resolve() }
   })
 }
+
+export function storeRemove(keys) {
+  return new Promise((resolve) => {
+    try { chrome.storage.local.remove(keys, () => resolve()) } catch { resolve() }
+  })
+}
+
+/** Every stored key and value (Settings lists the caches). */
+export function storeAll() {
+  return new Promise((resolve) => {
+    try { chrome.storage.local.get(null, (r) => resolve(r || {})) } catch { resolve({}) }
+  })
+}

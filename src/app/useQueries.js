@@ -37,6 +37,11 @@ export async function addHistory({ sql, host, rows, error }) {
   await storeSet(HISTORY, JSON.parse(JSON.stringify(state.history)))
 }
 
+export async function clearHistory() {
+  state.history = []
+  await storeSet(HISTORY, [])
+}
+
 export function useQueries() {
   return state
 }

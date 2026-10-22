@@ -5,6 +5,7 @@ import { useOrg } from '../app/useOrg.js'
 import { sf } from '../lib/api.js'
 import { describeShape } from '../lib/shape.js'
 import { PROBE_SQL } from '../lib/checks.js'
+import { EXAMPLES, examplePath } from '../lib/exploreExamples.js'
 
 const org = useOrg()
 const method = ref('GET')
@@ -13,6 +14,21 @@ const body = ref(JSON.stringify({ sql: PROBE_SQL }, null, 2))
 const result = ref(null)
 const busy = ref(false)
 const showShape = ref(false)
+const pathInput = ref(null)
+
+// Fill the form from an example; a NAME placeholder is selected for typing over.
+function useExample(item) {
+  if (!org.version) return
+  method.value = item.method || 'GET'
+  path.value = examplePath(item, org.version)
+  if (item.body) body.value = JSON.stringify(item.body, null, 2)
+  const at = path.value.indexOf('NAME')
+  requestAnimationFrame(() => {
+    pathInput.value?.focus()
+    if (at >= 0) pathInput.value?.setSelectionRange(at, at + 4)
+    else sendRequest()
+  })
+}
 
 watch(() => org.version, (v) => {
   if (v && !path.value) path.value = `/services/data/v${v}/ssot/`
@@ -20,7 +36,7 @@ watch(() => org.version, (v) => {
 
 watch(method, (m) => {
   if (m === 'POST' && org.version && !/\/ssot\/query/.test(path.value)) path.value = `/services/data/v${org.version}/ssot/query-sql`
-})
+}, { flush: 'sync' })
 
 async function sendRequest() {
   if (!org.orgId || !path.value) return
@@ -59,7 +75,7 @@ const text = computed(() => {
         <option>GET</option>
         <option>POST</option>
       </select>
-      <input v-model="path" class="flex-1 border rounded-md px-2 py-1 bg-background font-mono text-sm" spellcheck="false" />
+      <input ref="pathInput" v-model="path" class="flex-1 border rounded-md px-2 py-1 bg-background font-mono text-sm" spellcheck="false" />
       <button class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="busy || !org.orgId">
         <Send class="w-4 h-4" /> {{ busy ? 'Sending…' : 'Send' }}
       </button>
@@ -68,6 +84,22 @@ const text = computed(() => {
       v-if="method === 'POST'" v-model="body" rows="5" spellcheck="false"
       class="w-full border rounded-md p-2 bg-background font-mono text-xs"
     />
+    <details class="border rounded-md bg-card" :open="!result">
+      <summary class="px-3 py-2 cursor-pointer text-sm font-medium">Examples</summary>
+      <div class="px-3 pb-3 grid md:grid-cols-2 gap-x-6 gap-y-3">
+        <div v-for="g in EXAMPLES" :key="g.group">
+          <div class="text-xs uppercase tracking-wide text-muted-foreground mb-1">{{ g.group }}</div>
+          <ul class="space-y-0.5">
+            <li v-for="item in g.items" :key="item.label">
+              <button class="text-left text-sm hover:underline" :title="item.path" @click="useExample(item)">
+                <span class="text-xs font-mono text-muted-foreground mr-1">{{ item.method || 'GET' }}</span>{{ item.label }}
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <p class="px-3 pb-3 text-xs text-muted-foreground">Click one to send it. Examples with NAME in the path select that word for you to replace first, then press Send.</p>
+    </details>
     <div v-if="result" class="space-y-2">
       <div class="flex items-center gap-3 text-sm">
         <span :class="result.ok ? 'text-green-600' : 'text-destructive'">{{ result.status || 'no response' }}</span>

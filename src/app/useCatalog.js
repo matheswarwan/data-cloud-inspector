@@ -5,13 +5,15 @@ import { reactive, watch } from 'vue'
 import { sf } from '../lib/api.js'
 import { loadCatalog } from '../lib/catalog.js'
 import { loadStreams, loadAllMappings } from '../lib/lineage.js'
-import { storeGet, storeSet } from '../lib/store.js'
+import { loadRecordIds } from '../lib/links.js'
+import { fetchAllPages } from '../lib/pages.js'
+import { storeGet, storeSet, storeRemove } from '../lib/store.js'
 import { useOrg } from './useOrg.js'
 
 const org = useOrg()
 const state = reactive({
   orgId: null, objects: [], errors: [], loadedAt: '', loading: false, error: '',
-  streams: null, mappings: null, mappingsProgress: '',
+  streams: null, mappings: null, mappingsProgress: '', recordIds: null,
 })
 
 export function orgCall() {
@@ -25,7 +27,7 @@ export async function ensureCatalog({ refresh = false } = {}) {
   const { orgId, version } = org
   if (!orgId || !version) return
   if (!refresh && state.orgId === orgId && (state.objects.length || state.loading)) return
-  if (state.orgId !== orgId) Object.assign(state, { objects: [], errors: [], loadedAt: '', streams: null, mappings: null })
+  if (state.orgId !== orgId) Object.assign(state, { objects: [], errors: [], loadedAt: '', streams: null, mappings: null, recordIds: null })
   state.orgId = orgId
   state.error = ''
   if (!refresh) {
@@ -39,7 +41,7 @@ export async function ensureCatalog({ refresh = false } = {}) {
   try {
     const catalog = await loadCatalog(orgCall(), version)
     if (state.orgId !== orgId) return
-    Object.assign(state, catalog, { streams: null, mappings: null })
+    Object.assign(state, catalog, { streams: null, mappings: null, recordIds: null })
     if (catalog.objects.length) await storeSet(cacheKey(orgId), catalog)
   } catch (err) {
     state.error = err.message
@@ -62,6 +64,22 @@ export async function ensureAllMappings() {
   })
   state.mappingsProgress = ''
   return state.mappings
+}
+
+let recordIdsLoading = null
+/** Record IDs of DLOs, DMOs and CIs by API name, for links into the org (memory only). */
+export function ensureRecordIds() {
+  if (state.recordIds || !org.version) return Promise.resolve(state.recordIds)
+  recordIdsLoading ||= loadRecordIds(orgCall(), org.version, fetchAllPages)
+    .then((ids) => { state.recordIds = ids; return ids })
+    .finally(() => { recordIdsLoading = null })
+  return recordIdsLoading
+}
+
+/** Forget the cached metadata of an org (Settings). */
+export async function forgetCatalog(orgId) {
+  await storeRemove(cacheKey(orgId))
+  if (state.orgId === orgId) Object.assign(state, { orgId: null, objects: [], errors: [], loadedAt: '', streams: null, mappings: null, recordIds: null })
 }
 
 watch(() => [org.orgId, org.version], () => { ensureCatalog() })

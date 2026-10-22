@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { RefreshCw, MessageSquare } from 'lucide-vue-next'
+import { RefreshCw, MessageSquare, Settings } from 'lucide-vue-next'
 import FeedbackModal from '../components/feedback/FeedbackModal.vue'
 import { NAV } from './router.js'
 import { useOrg, loadOrgs, selectOrg } from './useOrg.js'
@@ -37,6 +37,7 @@ onMounted(loadOrgs)
         <button class="p-1.5 rounded-md hover:bg-accent" title="Find logged-in orgs again" @click="loadOrgs">
           <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': org.loading }" />
         </button>
+        <RouterLink to="/settings" class="p-1.5 rounded-md hover:bg-accent" active-class="bg-accent" title="Settings"><Settings class="w-4 h-4" /></RouterLink>
         <button class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border hover:bg-accent" title="Report a problem or send an idea" @click="feedback = true">
           <MessageSquare class="w-4 h-4" /> Feedback
         </button>

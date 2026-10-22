@@ -5,10 +5,6 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import { createAppRouter } from './router.js'
 
-// Follow the system theme.
-const dark = window.matchMedia?.('(prefers-color-scheme: dark)')
-const applyTheme = () => document.documentElement.classList.toggle('dark', !!dark?.matches)
-applyTheme()
-dark?.addEventListener?.('change', applyTheme)
+import './useSettings.js' // applies the theme
 
 createApp(App).use(createAppRouter()).mount('#app')

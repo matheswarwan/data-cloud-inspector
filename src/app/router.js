@@ -4,6 +4,7 @@ import SqlView from '../views/SqlView.vue'
 import ObjectsView from '../views/ObjectsView.vue'
 import ConnectionView from '../views/ConnectionView.vue'
 import ExploreView from '../views/ExploreView.vue'
+import SettingsView from '../views/SettingsView.vue'
 
 export const NAV = [
   { path: '/profile', label: 'Profiles' },
@@ -23,6 +24,7 @@ export function createAppRouter() {
       { path: '/objects/:name?', component: ObjectsView },
       { path: '/explore', component: ExploreView },
       { path: '/connection', component: ConnectionView },
+      { path: '/settings', component: SettingsView },
     ],
   })
 }

@@ -7,6 +7,7 @@ import { keymap } from '@codemirror/view'
 import { EditorState, Compartment, Prec } from '@codemirror/state'
 import { sql, PostgreSQL } from '@codemirror/lang-sql'
 import { oneDark } from '@codemirror/theme-one-dark'
+import { useSettings } from '../app/useSettings.js'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -18,11 +19,10 @@ const host = ref(null)
 let view = null
 const language = new Compartment()
 const theme = new Compartment()
-const dark = window.matchMedia?.('(prefers-color-scheme: dark)')
+const settings = useSettings()
 
 const lang = () => sql({ dialect: PostgreSQL, schema: props.schema, upperCaseKeywords: true })
-const themeExt = () => (dark?.matches ? oneDark : [])
-const onTheme = () => view?.dispatch({ effects: theme.reconfigure(themeExt()) })
+const themeExt = () => (settings.dark ? oneDark : [])
 
 onMounted(() => {
   view = new EditorView({
@@ -40,11 +40,9 @@ onMounted(() => {
       ],
     }),
   })
-  dark?.addEventListener?.('change', onTheme)
 })
 
 onBeforeUnmount(() => {
-  dark?.removeEventListener?.('change', onTheme)
   view?.destroy()
 })
 
@@ -54,6 +52,7 @@ watch(() => props.modelValue, (v) => {
   }
 })
 watch(() => props.schema, () => view?.dispatch({ effects: language.reconfigure(lang()) }))
+watch(() => settings.dark, () => view?.dispatch({ effects: theme.reconfigure(themeExt()) }))
 
 /** The selected text, or '' when nothing is selected. */
 function selection() {

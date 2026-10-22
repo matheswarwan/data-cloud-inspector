@@ -21,7 +21,13 @@ Status: early, test builds only.
   and key qualifiers; relationships; for a DMO, the objects mapped to it field by field and
   their data streams; for a DLO, its data stream and the DMOs it maps to. Row counts, Query,
   Copy SELECT and Copy as Markdown.
-- REST explore and a connection check (shareable report with response shapes only).
+- Open in Salesforce: record IDs in profiles, related records and SQL results (segments,
+  streams, DLOs, calculated insights, rulesets, activation targets, Contacts, Accounts) link
+  to their page in the org; Objects has Open in Salesforce (DMOs open the Data Model tab).
+- REST explore with clickable examples, and a connection check (shareable report with
+  response shapes only).
+- Settings: System, Light or Dark theme; cached metadata per org (clear); export and import
+  saved queries; clear history; forget the feedback contact.
 - Feedback (header button): problem, idea or question, an optional marked-up screenshot and
   optional technical details shown before sending. Sent to the Marketing Cloud Toolkit's
   feedback Worker with `app = 'data-cloud-inspector'`.

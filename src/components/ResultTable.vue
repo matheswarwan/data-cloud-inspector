@@ -2,6 +2,7 @@
 // Query results. Shows at most `limit` rows (rendering more makes the page slow);
 // the full set is still available through Download CSV.
 import { computed } from 'vue'
+import RecordLink from './RecordLink.vue'
 
 const props = defineProps({
   columns: { type: Array, default: () => [] },
@@ -32,7 +33,7 @@ const text = (v) => (v == null ? '' : typeof v === 'object' ? JSON.stringify(v) 
             v-for="(v, j) in r" :key="j"
             class="px-2 py-0.5 whitespace-nowrap max-w-md overflow-hidden text-ellipsis"
             :class="{ 'text-muted-foreground italic': v == null }" :title="text(v)"
-          >{{ v == null ? 'null' : text(v) }}</td>
+          ><template v-if="v == null">null</template><RecordLink v-else :value="v" /></td>
         </tr>
       </tbody>
     </table>

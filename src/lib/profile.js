@@ -42,6 +42,7 @@ export function parseRulesets(list) {
       }
       return {
         id: r.rulesetId,
+        recordId: r.id || '',
         label: r.label || r.rulesetId,
         status: r.rulesetStatus || '',
         lastJobStatus: r.lastJobStatus || '',

@@ -1,6 +1,7 @@
 <script setup>
 // Rows of one related object, showing only the columns that have a value somewhere.
 import { ref, computed } from 'vue'
+import RecordLink from './RecordLink.vue'
 
 const props = defineProps({
   rows: { type: Array, default: () => [] },
@@ -24,7 +25,7 @@ const text = (v) => (v == null ? '' : typeof v === 'object' ? JSON.stringify(v) 
       </thead>
       <tbody>
         <tr v-for="(r, i) in shown" :key="i" class="border-t">
-          <td v-for="c in columns" :key="c" class="px-2 py-0.5 whitespace-nowrap max-w-xs overflow-hidden text-ellipsis" :title="text(r[c])">{{ text(r[c]) }}</td>
+          <td v-for="c in columns" :key="c" class="px-2 py-0.5 whitespace-nowrap max-w-xs overflow-hidden text-ellipsis" :title="text(r[c])"><RecordLink :value="r[c]" /></td>
         </tr>
       </tbody>
     </table>

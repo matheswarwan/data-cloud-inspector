@@ -1,8 +1,11 @@
 <script setup>
 import { ref, shallowRef, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Search, Copy, Play, ChevronRight, ChevronDown, AlertTriangle } from 'lucide-vue-next'
+import { Search, Copy, Play, ChevronRight, ChevronDown, AlertTriangle, ExternalLink } from 'lucide-vue-next'
 import RelatedTable from '../components/RelatedTable.vue'
+import RecordLink from '../components/RecordLink.vue'
+import { recordUrl, recordKind } from '../lib/links.js'
+import { currentOrg } from '../app/useOrg.js'
 import { useOrg } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
@@ -236,6 +239,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
           </div>
         </div>
         <div class="ml-auto flex gap-2">
+          <a v-if="ruleset?.recordId" :class="btn" :href="recordUrl(currentOrg()?.host, ruleset.recordId)" target="_blank" rel="noopener"><ExternalLink class="w-4 h-4" /> Open ruleset</a>
           <button :class="btn" :disabled="!!loading" @click="copyMarkdown"><Copy class="w-4 h-4" /> Copy as Markdown</button>
         </div>
       </div>
@@ -247,7 +251,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
           <h3 class="p-3 border-b font-medium">Unified record</h3>
           <dl class="p-3 grid grid-cols-[minmax(10rem,auto)_1fr] gap-x-3 gap-y-1 text-sm">
             <template v-for="[k, v] in filled(profile.unified)" :key="k">
-              <dt class="font-mono text-xs text-muted-foreground">{{ k }}</dt><dd class="break-all">{{ v }}</dd>
+              <dt class="font-mono text-xs text-muted-foreground">{{ k }}</dt><dd class="break-all"><RecordLink :value="v" /></dd>
             </template>
           </dl>
         </div>
@@ -259,7 +263,12 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
             <button class="w-full text-left p-3 flex items-start gap-2 hover:bg-accent" @click="open[s.ssot__Id__c] = !open[s.ssot__Id__c]">
               <component :is="open[s.ssot__Id__c] ? ChevronDown : ChevronRight" class="w-4 h-4 mt-0.5 shrink-0" />
               <div class="min-w-0">
-                <div class="font-medium">{{ displayName(s) }}</div>
+                <div class="font-medium flex items-center gap-2">
+                  {{ displayName(s) }}
+                  <a v-if="recordKind(s.ssot__Id__c)" :href="recordUrl(currentOrg()?.host, s.ssot__Id__c)" target="_blank" rel="noopener" class="text-xs text-primary hover:underline inline-flex items-center gap-1" @click.stop>
+                    <ExternalLink class="w-3 h-3" /> {{ recordKind(s.ssot__Id__c) }}
+                  </a>
+                </div>
                 <div class="text-xs text-muted-foreground font-mono break-all">
                   {{ s.ssot__Id__c }} · {{ s.ssot__DataSourceId__c }} / {{ s.ssot__DataSourceObjectId__c }}
                 </div>
@@ -270,10 +279,10 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
             </button>
             <dl v-if="open[s.ssot__Id__c]" class="px-9 pb-3 grid grid-cols-[minmax(10rem,auto)_1fr] gap-x-3 gap-y-1 text-sm">
               <template v-for="[k, v] in filled(s)" :key="k">
-                <dt class="font-mono text-xs text-muted-foreground">{{ k }}</dt><dd class="break-all">{{ v }}</dd>
+                <dt class="font-mono text-xs text-muted-foreground">{{ k }}</dt><dd class="break-all"><RecordLink :value="v" /></dd>
               </template>
               <template v-for="[k, v] in filled(linkFor(s.ssot__Id__c))" :key="`link-${k}`">
-                <dt class="font-mono text-xs text-muted-foreground">link: {{ k }}</dt><dd class="break-all">{{ v }}</dd>
+                <dt class="font-mono text-xs text-muted-foreground">link: {{ k }}</dt><dd class="break-all"><RecordLink :value="v" /></dd>
               </template>
             </dl>
           </div>
@@ -359,7 +368,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
               <span class="truncate text-muted-foreground">{{ eventSummary(ev.row) }}</span>
             </button>
             <dl v-if="open[`ev${i}`]" class="px-3 pb-2 grid grid-cols-[minmax(10rem,auto)_1fr] gap-x-3 text-xs">
-              <template v-for="[k, v] in filled(ev.row)" :key="k"><dt class="font-mono text-muted-foreground">{{ k }}</dt><dd class="break-all">{{ v }}</dd></template>
+              <template v-for="[k, v] in filled(ev.row)" :key="k"><dt class="font-mono text-muted-foreground">{{ k }}</dt><dd class="break-all"><RecordLink :value="v" /></dd></template>
             </dl>
           </li>
         </ul>
