@@ -3,7 +3,7 @@ import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { RefreshCw, Play, Copy, FileText, Hash, Key, ExternalLink } from 'lucide-vue-next'
 import { useOrg, currentOrg } from '../app/useOrg.js'
-import { recordUrl, dmoTabUrl } from '../lib/links.js'
+import { recordUrl, dmoUrl } from '../lib/links.js'
 import { useCatalog, ensureCatalog, ensureStreams, ensureAllMappings, ensureRecordIds, orgCall } from '../app/useCatalog.js'
 import { filterObjects, selectFor, objectMarkdown } from '../lib/catalog.js'
 import { loadMappings } from '../lib/lineage.js'
@@ -27,11 +27,10 @@ const feeds = ref(null) // DMOs a DLO maps to
 onMounted(() => { ensureCatalog() })
 watch(() => route.params.name, (n) => { if (n) ensureRecordIds() }, { immediate: true })
 
-// DLOs and CIs open their record page; DMO record pages have no URL we can build, so
-// DMOs open the Data Model Objects tab.
+// DLOs and CIs open their record page; DMOs open in the Data Model tab by API name.
 function sfUrl(o) {
   const host = currentOrg()?.host
-  if (o.kind === 'DMO') return dmoTabUrl(host)
+  if (o.kind === 'DMO') return dmoUrl(host, o.name)
   const id = catalog.recordIds?.[o.name]
   return id ? recordUrl(host, id) : null
 }
@@ -173,7 +172,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
             </div>
           </div>
           <div class="ml-auto flex flex-wrap gap-2">
-            <a v-if="sfUrl(selected)" :class="btn" :href="sfUrl(selected)" target="_blank" rel="noopener" :title="selected.kind === 'DMO' ? 'Opens the Data Model Objects tab (a DMO page has no direct link)' : 'Open this object in Data Cloud'"><ExternalLink class="w-4 h-4" /> Open in Salesforce</a>
+            <a v-if="sfUrl(selected)" :class="btn" :href="sfUrl(selected)" target="_blank" rel="noopener"  title="Open this object in Data Cloud"><ExternalLink class="w-4 h-4" /> Open in Salesforce</a>
             <button :class="btn" @click="query(selected)"><Play class="w-4 h-4" /> Query</button>
             <button :class="btn" :disabled="counts[selected.name] === 'counting'" @click="count(selected)"><Hash class="w-4 h-4" /> {{ counts[selected.name] === 'counting' ? 'Counting…' : 'Count rows' }}</button>
             <button :class="btn" @click="copy(selectFor(selected), 'the SELECT')"><Copy class="w-4 h-4" /> Copy SELECT</button>

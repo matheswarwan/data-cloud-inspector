@@ -16,7 +16,9 @@ const busy = ref(false)
 const showShape = ref(false)
 const pathInput = ref(null)
 
-// Fill the form from an example; a NAME placeholder is selected for typing over.
+// Fill the form from an example without sending it (feedback #82); a NAME placeholder is
+// selected for typing over.
+const examplesOpen = ref(false)
 function useExample(item) {
   if (!org.version) return
   method.value = item.method || 'GET'
@@ -26,7 +28,6 @@ function useExample(item) {
   requestAnimationFrame(() => {
     pathInput.value?.focus()
     if (at >= 0) pathInput.value?.setSelectionRange(at, at + 4)
-    else sendRequest()
   })
 }
 
@@ -49,6 +50,7 @@ async function sendRequest() {
   }
   busy.value = true
   result.value = await sf(org.orgId, path.value.trim(), { method: method.value, body: parsed })
+  examplesOpen.value = false
   busy.value = false
 }
 
@@ -84,7 +86,7 @@ const text = computed(() => {
       v-if="method === 'POST'" v-model="body" rows="5" spellcheck="false"
       class="w-full border rounded-md p-2 bg-background font-mono text-xs"
     />
-    <details class="border rounded-md bg-card" :open="!result">
+    <details class="border rounded-md bg-card" :open="examplesOpen" @toggle="examplesOpen = $event.target.open">
       <summary class="px-3 py-2 cursor-pointer text-sm font-medium">Examples</summary>
       <div class="px-3 pb-3 grid md:grid-cols-2 gap-x-6 gap-y-3">
         <div v-for="g in EXAMPLES" :key="g.group">
@@ -98,7 +100,7 @@ const text = computed(() => {
           </ul>
         </div>
       </div>
-      <p class="px-3 pb-3 text-xs text-muted-foreground">Click one to send it. Examples with NAME in the path select that word for you to replace first, then press Send.</p>
+      <p class="px-3 pb-3 text-xs text-muted-foreground">Click one to fill in the request, then press Send. Where the path has NAME, that word is selected for you to replace.</p>
     </details>
     <div v-if="result" class="space-y-2">
       <div class="flex items-center gap-3 text-sm">

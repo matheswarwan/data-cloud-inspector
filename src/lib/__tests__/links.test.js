@@ -1,4 +1,4 @@
-import { recordKind, recordUrl, dmoTabUrl, loadRecordIds } from '../links.js'
+import { recordKind, recordUrl, dmoUrl, loadRecordIds } from '../links.js'
 import { fetchAllPages } from '../pages.js'
 import { EXAMPLES, examplePath } from '../exploreExamples.js'
 
@@ -14,7 +14,7 @@ describe('links', () => {
   it('builds org URLs', () => {
     expect(recordUrl('acme.my.salesforce.com', '1ds000000000001AAA')).toBe('https://acme.my.salesforce.com/1ds000000000001AAA')
     expect(recordUrl(null, 'x')).toBeNull()
-    expect(dmoTabUrl('acme--uat.sandbox.my.salesforce.com')).toBe('https://acme--uat.sandbox.lightning.force.com/lightning/o/MktDataModelObject/home')
+    expect(dmoUrl('acme--uat.sandbox.my.salesforce.com', 'ssot__AccountContact__dlm')).toBe('https://acme--uat.sandbox.lightning.force.com/lightning/n/standard-DataModel?c__objectApiName=ssot__AccountContact__dlm')
   })
   it('collects DLO, DMO and CI record IDs by API name', async () => {
     const call = async (path) => {

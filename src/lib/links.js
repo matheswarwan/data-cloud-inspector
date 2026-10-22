@@ -1,8 +1,8 @@
 // Links into the org's own UI. https://<my domain>/<record id> redirects to the record's
 // Lightning page; checked on a live org (2026-10-22) for data streams (1ds), DLOs (1dl),
 // calculated insights (0kX), segments (1sg), identity resolution rulesets (1ir),
-// activation targets (85U) and CRM records. DMO IDs (0gj) only reach the home page, so DMOs
-// open the Data Model Objects tab.
+// activation targets (85U) and CRM records. DMO IDs (0gj) only reach the home page; a DMO
+// opens in the Data Model tab by API name (URL from the user, feedback #81).
 
 const PREFIXES = {
   '1ds': 'Data stream',
@@ -31,8 +31,12 @@ export function recordUrl(host, id) {
   return host && id ? `https://${host}/${id}` : null
 }
 
-export function dmoTabUrl(host) {
-  return host ? `https://${host.replace(/\.my\.salesforce\.com$/, '.lightning.force.com')}/lightning/o/MktDataModelObject/home` : null
+export function lightningHost(host) {
+  return String(host || '').replace(/\.my\.salesforce\.com$/, '.lightning.force.com')
+}
+
+export function dmoUrl(host, apiName) {
+  return host && apiName ? `https://${lightningHost(host)}/lightning/n/standard-DataModel?c__objectApiName=${encodeURIComponent(apiName)}` : null
 }
 
 /** Record IDs of DLOs, DMOs and calculated insights by API name (the metadata has none). */

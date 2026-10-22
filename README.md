@@ -23,9 +23,10 @@ Status: early, test builds only.
   Copy SELECT and Copy as Markdown.
 - Open in Salesforce: record IDs in profiles, related records and SQL results (segments,
   streams, DLOs, calculated insights, rulesets, activation targets, Contacts, Accounts) link
-  to their page in the org; Objects has Open in Salesforce (DMOs open the Data Model tab).
-- REST explore with clickable examples, and a connection check (shareable report with
-  response shapes only).
+  to their page in the org; Objects has Open in Salesforce (DMOs open in the Data Model tab by API name).
+- Connection pill (top right): the org in use and its status, other logged-in orgs, and a
+  connection check with a shareable report (response shapes only).
+- REST explore with examples that fill in the request.
 - Settings: System, Light or Dark theme; cached metadata per org (clear); export and import
   saved queries; clear history; forget the feedback contact.
 - Feedback (header button): problem, idea or question, an optional marked-up screenshot and

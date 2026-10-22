@@ -11,7 +11,6 @@ export const NAV = [
   { path: '/sql', label: 'SQL' },
   { path: '/objects', label: 'Objects' },
   { path: '/explore', label: 'REST explore' },
-  { path: '/connection', label: 'Connection check' },
 ]
 
 export function createAppRouter() {
