@@ -79,7 +79,7 @@ const text = computed(() => {
       </select>
       <input ref="pathInput" v-model="path" class="flex-1 border rounded-md px-2 py-1 bg-background font-mono text-sm" spellcheck="false" />
       <button class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="busy || !org.orgId">
-        <Send class="w-4 h-4" /> {{ busy ? 'Sending…' : 'Send' }}
+        {{ busy ? 'Sending…' : 'Send' }}
       </button>
     </form>
     <textarea

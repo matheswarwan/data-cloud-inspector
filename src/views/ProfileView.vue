@@ -1,7 +1,7 @@
 <script setup>
 import { ref, shallowRef, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Search, Copy, Play, ChevronRight, ChevronDown, AlertTriangle, ExternalLink } from 'lucide-vue-next'
+import { Search, Copy, ChevronRight, ChevronDown } from 'lucide-vue-next'
 import RelatedTable from '../components/RelatedTable.vue'
 import RecordLink from '../components/RecordLink.vue'
 import { recordUrl, recordKind } from '../lib/links.js'
@@ -196,7 +196,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
         <option v-for="r in rulesets" :key="r.id" :value="r.id">{{ r.label }} ({{ r.id }}), last run {{ r.lastJobStatus.toLowerCase() || 'unknown' }}</option>
       </select>
       <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="searching || !org.version">
-        <Search class="w-4 h-4" /> {{ searching ? 'Searching…' : 'Search' }}
+        {{ searching ? 'Searching…' : 'Search' }}
       </button>
     </form>
     <div v-if="rsError" class="text-sm text-destructive">Could not read the rulesets: {{ rsError }}</div>
@@ -239,8 +239,8 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
           </div>
         </div>
         <div class="ml-auto flex gap-2">
-          <a v-if="ruleset?.recordId" :class="btn" :href="recordUrl(currentOrg()?.host, ruleset.recordId)" target="_blank" rel="noopener"><ExternalLink class="w-4 h-4" /> Open ruleset</a>
-          <button :class="btn" :disabled="!!loading" @click="copyMarkdown"><Copy class="w-4 h-4" /> Copy as Markdown</button>
+          <a v-if="ruleset?.recordId" :class="btn" :href="recordUrl(currentOrg()?.host, ruleset.recordId)" target="_blank" rel="noopener">Open ruleset</a>
+          <button :class="btn" :disabled="!!loading" @click="copyMarkdown">Copy as Markdown</button>
         </div>
       </div>
       <div v-if="notice" class="text-sm text-muted-foreground">{{ notice }}</div>
@@ -265,8 +265,8 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
               <div class="min-w-0">
                 <div class="font-medium flex items-center gap-2">
                   {{ displayName(s) }}
-                  <a v-if="recordKind(s.ssot__Id__c)" :href="recordUrl(currentOrg()?.host, s.ssot__Id__c)" target="_blank" rel="noopener" class="text-xs text-primary hover:underline inline-flex items-center gap-1" @click.stop>
-                    <ExternalLink class="w-3 h-3" /> {{ recordKind(s.ssot__Id__c) }}
+                  <a v-if="recordKind(s.ssot__Id__c)" :href="recordUrl(currentOrg()?.host, s.ssot__Id__c)" target="_blank" rel="noopener" class="text-xs text-link hover:underline inline-flex items-center gap-1" @click.stop>
+                    {{ recordKind(s.ssot__Id__c) }}
                   </a>
                 </div>
                 <div class="text-xs text-muted-foreground font-mono break-all">
@@ -332,11 +332,11 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
 
       <!-- Possible missed matches -->
       <div v-if="missed.length" :class="card">
-        <h3 class="p-3 border-b font-medium flex items-center gap-2"><AlertTriangle class="w-4 h-4 text-amber-500" /> Possible missed matches ({{ missed.length }})</h3>
+        <h3 class="p-3 border-b font-medium flex items-center gap-2">Possible missed matches ({{ missed.length }})</h3>
         <p class="px-3 pt-3 text-xs text-muted-foreground">Other people with the same email who are not in this profile. That is expected when the other criteria differ (for example the names); check the match rules above.</p>
         <ul class="p-3 text-sm space-y-1">
           <li v-for="m in missed" :key="m.id">
-            <button class="text-primary hover:underline" @click="go(`/profile/s/${m.id}`)">{{ m.name }}</button>
+            <button class="text-link hover:underline" @click="go(`/profile/s/${m.id}`)">{{ m.name }}</button>
             <span class="text-muted-foreground ml-1.5">also has {{ m.shared }}</span>
           </li>
         </ul>
@@ -347,9 +347,9 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
         <h3 class="p-3 border-b font-medium">Contact points</h3>
         <div v-for="r in contactPoints" :key="r.object + r.otherField" class="border-b last:border-0 p-3 space-y-1">
           <div class="text-sm flex items-center gap-2">
-            <RouterLink :to="`/objects/${r.object}`" class="font-mono text-primary hover:underline">{{ r.object }}</RouterLink>
+            <RouterLink :to="`/objects/${r.object}`" class="font-mono text-link hover:underline">{{ r.object }}</RouterLink>
             <span class="text-muted-foreground">{{ r.rows.length }}{{ r.more ? '+' : '' }} rows</span>
-            <button v-if="r.sql" class="ml-auto text-xs inline-flex items-center gap-1 hover:underline" @click="toSql(r.sql)"><Play class="w-3 h-3" /> SQL</button>
+            <button v-if="r.sql" class="ml-auto text-xs inline-flex items-center gap-1 hover:underline" @click="toSql(r.sql)">SQL</button>
           </div>
           <p v-if="r.error" class="text-xs text-destructive">{{ r.error }}</p>
           <RelatedTable :rows="r.rows" />
@@ -381,10 +381,10 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
           <h3 class="p-3 border-b font-medium">{{ group.title }}</h3>
           <div v-for="r in group.list" :key="r.object + r.otherField" class="border-b last:border-0 p-3 space-y-1">
             <div class="text-sm flex items-center gap-2">
-              <RouterLink :to="`/objects/${r.object}`" class="text-primary hover:underline">{{ byName.get(r.object)?.label || r.object }}</RouterLink>
+              <RouterLink :to="`/objects/${r.object}`" class="text-link hover:underline">{{ byName.get(r.object)?.label || r.object }}</RouterLink>
               <span class="font-mono text-xs text-muted-foreground">{{ r.object }} by {{ r.otherField }}</span>
               <span class="text-muted-foreground text-xs">{{ r.rows.length }}{{ r.more ? '+' : '' }} rows</span>
-              <button v-if="r.sql" class="ml-auto text-xs inline-flex items-center gap-1 hover:underline" @click="toSql(r.sql)"><Play class="w-3 h-3" /> SQL</button>
+              <button v-if="r.sql" class="ml-auto text-xs inline-flex items-center gap-1 hover:underline" @click="toSql(r.sql)">SQL</button>
             </div>
             <p v-if="r.error" class="text-xs text-destructive">{{ r.error }}</p>
             <RelatedTable :rows="r.rows" />

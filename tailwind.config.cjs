@@ -6,6 +6,7 @@ module.exports = {
     extend: {
       colors: {
         border: 'hsl(var(--border))',
+        link: 'hsl(var(--link))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
@@ -45,8 +46,8 @@ module.exports = {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', "'Segoe UI'", 'Roboto', 'sans-serif'],
-        mono: ["'JetBrains Mono'", "'Fira Code'", "'Courier New'", 'monospace'],
+        sans: ['system-ui', '-apple-system', "'Segoe UI'", 'Roboto', "'Helvetica Neue'", 'Arial', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', "'Liberation Mono'", 'monospace'],
       },
     },
   },

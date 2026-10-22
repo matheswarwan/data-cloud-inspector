@@ -3,7 +3,7 @@
 // use with a status dot, the other logged-in orgs, Find orgs again, and the connection check.
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ChevronDown, Check, RefreshCw, Stethoscope } from 'lucide-vue-next'
+import { ChevronDown, Check, RefreshCw } from 'lucide-vue-next'
 import { useOrg, loadOrgs, selectOrg, currentOrg } from '../app/useOrg.js'
 
 const org = useOrg()
@@ -38,7 +38,7 @@ onUnmounted(() => { document.removeEventListener('mousedown', onDoc); document.r
 <template>
   <div ref="root" class="relative">
     <button
-      class="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-sm hover:bg-accent max-w-80"
+      class="inline-flex items-center gap-2 px-3 py-1 rounded-md border text-sm hover:bg-accent max-w-80"
       :aria-expanded="open" title="Connection" @click="open = !open"
     >
       <span :class="['w-2 h-2 rounded-full shrink-0', status.dot]" />
@@ -70,7 +70,7 @@ onUnmounted(() => { document.removeEventListener('mousedown', onDoc); document.r
           <RefreshCw :class="['w-4 h-4', { 'animate-spin': org.loading }]" /> Find orgs again
         </button>
         <button class="px-2 py-1.5 rounded flex items-center gap-2 hover:bg-accent" @click="check">
-          <Stethoscope class="w-4 h-4" /> Run the connection check
+          Run the connection check
         </button>
       </div>
     </div>

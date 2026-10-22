@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { RefreshCw, Play, Copy, FileText, Hash, Key, ExternalLink } from 'lucide-vue-next'
+import { RefreshCw, Copy, Key, ExternalLink } from 'lucide-vue-next'
 import { useOrg, currentOrg } from '../app/useOrg.js'
 import { recordUrl, dmoUrl } from '../lib/links.js'
 import { useCatalog, ensureCatalog, ensureStreams, ensureAllMappings, ensureRecordIds, orgCall } from '../app/useCatalog.js'
@@ -106,7 +106,7 @@ function query(o) {
 // The streams API says NONE for a stream that has never run.
 const ran = (s) => (!s.lastRunStatus || s.lastRunStatus === 'NONE' ? 'never run' : s.lastRunStatus)
 const time = (iso) => (iso ? new Date(iso).toLocaleString() : '')
-const kindClass = { DMO: 'bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-100', DLO: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100', CI: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-100' }
+const kindClass = { DMO: 'border text-muted-foreground', DLO: 'border text-muted-foreground', CI: 'border text-muted-foreground' }
 const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
 const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'border-primary font-medium' : 'border-transparent text-muted-foreground hover:text-foreground']
 </script>
@@ -123,7 +123,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
       <div class="flex flex-wrap gap-1 text-xs">
         <button
           v-for="k in ['DMO', 'DLO', 'CI']" :key="k"
-          :class="['px-2 py-0.5 rounded-full border', kinds.includes(k) ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-accent']"
+          :class="['px-2 py-0.5 rounded-md border', kinds.includes(k) ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-accent']"
           @click="toggleKind(k)"
         >{{ k }}</button>
         <select v-model="category" class="ml-auto border rounded-md px-1 py-0.5 bg-background">
@@ -172,11 +172,11 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
             </div>
           </div>
           <div class="ml-auto flex flex-wrap gap-2">
-            <a v-if="sfUrl(selected)" :class="btn" :href="sfUrl(selected)" target="_blank" rel="noopener"  title="Open this object in Data Cloud"><ExternalLink class="w-4 h-4" /> Open in Salesforce</a>
-            <button :class="btn" @click="query(selected)"><Play class="w-4 h-4" /> Query</button>
-            <button :class="btn" :disabled="counts[selected.name] === 'counting'" @click="count(selected)"><Hash class="w-4 h-4" /> {{ counts[selected.name] === 'counting' ? 'Counting…' : 'Count rows' }}</button>
-            <button :class="btn" @click="copy(selectFor(selected), 'the SELECT')"><Copy class="w-4 h-4" /> Copy SELECT</button>
-            <button :class="btn" @click="copy(objectMarkdown(selected), 'the fields as Markdown')"><FileText class="w-4 h-4" /> Copy as Markdown</button>
+            <a v-if="sfUrl(selected)" :class="btn" :href="sfUrl(selected)" target="_blank" rel="noopener"  title="Open this object in Data Cloud">Open in Salesforce</a>
+            <button :class="btn" @click="query(selected)">Query</button>
+            <button :class="btn" :disabled="counts[selected.name] === 'counting'" @click="count(selected)">{{ counts[selected.name] === 'counting' ? 'Counting…' : 'Count rows' }}</button>
+            <button :class="btn" @click="copy(selectFor(selected), 'the SELECT')">Copy SELECT</button>
+            <button :class="btn" @click="copy(objectMarkdown(selected), 'the fields as Markdown')">Copy as Markdown</button>
           </div>
         </div>
         <div v-if="notice" class="text-sm text-muted-foreground">{{ notice }}</div>
@@ -202,7 +202,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
               <tr v-for="f in fields" :key="f.name" class="border-b last:border-0 hover:bg-accent">
                 <td class="p-2 font-mono text-xs">
                   <button class="inline-flex items-center gap-1 hover:underline" title="Copy the API name" @click="copy(f.name, f.name)">
-                    <Key v-if="f.primaryKey" class="w-3.5 h-3.5 text-amber-500" />{{ f.name }}
+                    <Key v-if="f.primaryKey" class="w-3.5 h-3.5 text-muted-foreground" />{{ f.name }}
                   </button>
                 </td>
                 <td class="p-2">{{ f.label }}</td>
@@ -224,7 +224,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
             <tbody>
               <tr v-for="(r, i) in selected.relationships" :key="i" class="border-b last:border-0">
                 <td v-for="side in [{ obj: r.from, field: r.fromField }, { obj: r.to, field: r.toField }]" :key="side.obj + side.field" class="p-2 font-mono text-xs">
-                  <button v-if="side.obj !== selected.name && byName.has(side.obj)" class="text-primary hover:underline" @click="pick(side.obj)">{{ side.obj }}</button>
+                  <button v-if="side.obj !== selected.name && byName.has(side.obj)" class="text-link hover:underline" @click="pick(side.obj)">{{ side.obj }}</button>
                   <span v-else>{{ side.obj }}</span><span v-if="side.field" class="text-muted-foreground">.{{ side.field }}</span>
                 </td>
                 <td class="p-2 text-xs">{{ r.cardinality }}</td>
@@ -240,9 +240,9 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
           <p v-else-if="mappings.list && !mappings.list.length" class="text-sm text-muted-foreground">Nothing is mapped to this DMO.</p>
           <div v-for="m in mappings.list || []" :key="m.name" class="border rounded-md bg-card">
             <div class="p-2 border-b flex flex-wrap items-center gap-2 text-sm">
-              <button v-if="byName.has(m.source)" class="font-mono text-primary hover:underline" @click="pick(m.source)">{{ m.source }}</button>
+              <button v-if="byName.has(m.source)" class="font-mono text-link hover:underline" @click="pick(m.source)">{{ m.source }}</button>
               <span v-else class="font-mono">{{ m.source }}</span>
-              <a v-if="catalog.recordIds?.[m.source]" :href="recordUrl(currentOrg()?.host, catalog.recordIds[m.source])" target="_blank" rel="noopener" title="Open in Salesforce" class="text-primary"><ExternalLink class="w-3.5 h-3.5" /></a>
+              <a v-if="catalog.recordIds?.[m.source]" :href="recordUrl(currentOrg()?.host, catalog.recordIds[m.source])" target="_blank" rel="noopener" title="Open in Salesforce" class="text-link"><ExternalLink class="w-3.5 h-3.5" /></a>
               <span class="text-muted-foreground">{{ m.fields.length }} fields · {{ m.status }}</span>
               <template v-for="s in (catalog.streams || []).filter((s) => s.dlo === m.source)" :key="s.name">
                 <a :href="recordUrl(currentOrg()?.host, s.recordId)" target="_blank" rel="noopener" class="text-xs px-1.5 rounded bg-muted hover:underline">stream {{ s.label }}: {{ ran(s) }}{{ s.lastRefreshDate ? `, ${time(s.lastRefreshDate)}` : '' }}</a>
@@ -263,7 +263,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
           <p v-else-if="!streamsFor.length" class="text-sm text-muted-foreground">No data stream writes to this DLO (it may be filled by a transform or a system process).</p>
           <div v-for="s in streamsFor" :key="s.name" class="border rounded-md bg-card p-3 text-sm grid grid-cols-[10rem_1fr] gap-x-3 gap-y-1">
             <span class="text-muted-foreground">Stream</span><span>{{ s.label }} <span class="font-mono text-xs text-muted-foreground">{{ s.name }}</span>
-              <a v-if="s.recordId" :href="recordUrl(currentOrg()?.host, s.recordId)" target="_blank" rel="noopener" class="ml-2 text-xs text-primary hover:underline inline-flex items-center gap-1"><ExternalLink class="w-3 h-3" /> Open stream</a></span>
+              <a v-if="s.recordId" :href="recordUrl(currentOrg()?.host, s.recordId)" target="_blank" rel="noopener" class="ml-2 text-xs text-link hover:underline inline-flex items-center gap-1">Open stream</a></span>
             <span class="text-muted-foreground">Source</span><span>{{ s.connector }}{{ s.sourceObject ? `: ${s.sourceObject}` : '' }}{{ s.dataSource ? ` (${s.dataSource})` : '' }}</span>
             <span class="text-muted-foreground">Status</span><span>{{ s.status }}, last run {{ ran(s) }}{{ s.lastRefreshDate ? ` at ${time(s.lastRefreshDate)}` : '' }}</span>
             <span class="text-muted-foreground">Records</span><span>{{ s.totalRecords ?? 'none yet' }}{{ s.lastProcessedRecords != null ? ` (last run processed ${s.lastProcessedRecords})` : '' }}</span>
@@ -276,7 +276,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
             <p v-else-if="!feeds.length" class="text-sm text-muted-foreground">Not mapped to any DMO.</p>
             <ul v-else class="text-sm space-y-1">
               <li v-for="m in feeds" :key="m.name">
-                Maps to <button class="font-mono text-primary hover:underline" @click="pick(m.target)">{{ m.target }}</button>
+                Maps to <button class="font-mono text-link hover:underline" @click="pick(m.target)">{{ m.target }}</button>
                 <span class="text-muted-foreground"> ({{ m.fields.length }} fields)</span>
               </li>
             </ul>

@@ -2,7 +2,7 @@
 import { ref, shallowRef, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { formatDialect, postgresql } from 'sql-formatter'
-import { Play, Square, WandSparkles, Save, Copy, Download, Trash2, ChevronsDown } from 'lucide-vue-next'
+import { Save, Copy, Download, Trash2 } from 'lucide-vue-next'
 import SqlEditor from '../components/SqlEditor.vue'
 import ResultTable from '../components/ResultTable.vue'
 import { useOrg, currentOrg } from '../app/useOrg.js'
@@ -189,11 +189,11 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <button v-if="!running" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="!org.version" title="Ctrl+Enter or Cmd+Enter; runs the selection when there is one" @click="run(editor?.selection())">
-          <Play class="w-4 h-4" /> Run
+          Run
         </button>
-        <button v-else :class="btn" @click="cancel"><Square class="w-4 h-4" /> Stop waiting</button>
-        <button :class="btn" @click="formatSql"><WandSparkles class="w-4 h-4" /> Format</button>
-        <button :class="btn" @click="save"><Save class="w-4 h-4" /> {{ savedId ? 'Save' : 'Save as' }}</button>
+        <button v-else :class="btn" @click="cancel">Stop waiting</button>
+        <button :class="btn" @click="formatSql">Format</button>
+        <button :class="btn" @click="save">{{ savedId ? 'Save' : 'Save as' }}</button>
         <span class="text-xs text-muted-foreground ml-2">
           {{ catalog.loading ? 'Loading table names for autocomplete…' : catalog.objects.length ? `${catalog.objects.length} objects in autocomplete` : '' }}
         </span>
@@ -209,9 +209,9 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
             <strong>{{ result.rows.length.toLocaleString() }}</strong> of {{ result.total.toLocaleString() }} rows
             <span class="text-muted-foreground">· {{ (result.ms / 1000).toFixed(1) }} s</span>
           </span>
-          <button v-if="more" :class="btn" :disabled="!!busy" @click="loadMore"><ChevronsDown class="w-4 h-4" /> Load {{ Math.min(1000, result.total - result.rows.length).toLocaleString() }} more</button>
-          <button :class="btn" :disabled="!!busy || !result.columns.length" @click="downloadCsv"><Download class="w-4 h-4" /> Download CSV</button>
-          <button :class="btn" :disabled="!result.columns.length" @click="copyMarkdown"><Copy class="w-4 h-4" /> Copy for AI</button>
+          <button v-if="more" :class="btn" :disabled="!!busy" @click="loadMore">Load {{ Math.min(1000, result.total - result.rows.length).toLocaleString() }} more</button>
+          <button :class="btn" :disabled="!!busy || !result.columns.length" @click="downloadCsv">Download CSV</button>
+          <button :class="btn" :disabled="!result.columns.length" @click="copyMarkdown">Copy for AI</button>
           <span v-if="busy" class="text-muted-foreground">{{ busy }} <button class="underline" @click="cancel">stop</button></span>
         </div>
         <ResultTable :columns="result.columns" :rows="result.rows" />

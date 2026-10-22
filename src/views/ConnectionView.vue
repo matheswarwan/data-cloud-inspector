@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { Check, X, Copy, Play, ShieldCheck } from 'lucide-vue-next'
+import { Check, X, Copy } from 'lucide-vue-next'
 import RecordLink from '../components/RecordLink.vue'
 import { loadUserContext } from '../lib/userContext.js'
 import { CLIENT_NAME } from '../background/fetchProxy.js'
@@ -72,7 +72,7 @@ const pretty = (data) => {
     </div>
 
     <div class="border rounded-md bg-card">
-      <h3 class="p-3 border-b font-medium flex items-center gap-2"><ShieldCheck class="w-4 h-4 text-green-600" /> How this tool connects</h3>
+      <h3 class="p-3 border-b font-medium flex items-center gap-2">How this tool connects</h3>
       <p v-if="ctxError" class="p-3 text-sm text-destructive">{{ ctxError }}</p>
       <p v-else-if="!ctx" class="p-3 text-sm text-muted-foreground">Loading…</p>
       <div v-else class="p-3 grid md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
@@ -101,7 +101,7 @@ const pretty = (data) => {
             <ul class="text-xs flex flex-wrap gap-1 mt-1">
               <li v-for="p in ctx.dataCloudSets" :key="p" class="px-1.5 py-0.5 rounded bg-muted">{{ p }}</li>
             </ul>
-            <button v-if="ctx.permissionSets.length" class="text-xs text-primary hover:underline mt-1" @click="showAllSets = !showAllSets">
+            <button v-if="ctx.permissionSets.length" class="text-xs text-link hover:underline mt-1" @click="showAllSets = !showAllSets">
               {{ showAllSets ? 'Hide' : 'Show' }} all {{ ctx.permissionSets.length }} permission sets
             </button>
             <ul v-if="showAllSets" class="text-xs flex flex-wrap gap-1 mt-1">
@@ -117,7 +117,7 @@ const pretty = (data) => {
         class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50"
         :disabled="!org.orgId || running" @click="run"
       >
-        <Play class="w-4 h-4" /> {{ running ? 'Checking…' : 'Run checks' }}
+        {{ running ? 'Checking…' : 'Run checks' }}
       </button>
       <button
         v-if="results.length && !running"
@@ -125,7 +125,7 @@ const pretty = (data) => {
         title="Statuses, errors and response shapes (key names and types). No record values."
         @click="copyReport"
       >
-        <Copy class="w-4 h-4" /> {{ copied ? 'Copied' : 'Copy report (no data values)' }}
+        {{ copied ? 'Copied' : 'Copy report (no data values)' }}
       </button>
     </div>
 

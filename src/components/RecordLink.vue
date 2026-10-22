@@ -12,6 +12,6 @@ const url = computed(() => (kind.value ? recordUrl(currentOrg()?.host, text.valu
 </script>
 
 <template>
-  <a v-if="url" :href="url" target="_blank" rel="noopener" class="text-primary hover:underline" :title="`Open this ${kind.toLowerCase()} in Salesforce`">{{ text }}</a>
+  <a v-if="url" :href="url" target="_blank" rel="noopener" class="text-link hover:underline" :title="`Open this ${kind.toLowerCase()} in Salesforce`">{{ text }}</a>
   <template v-else>{{ text }}</template>
 </template>

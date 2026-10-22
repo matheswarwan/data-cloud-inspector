@@ -29,6 +29,6 @@ const text = (v) => (v == null ? '' : typeof v === 'object' ? JSON.stringify(v) 
         </tr>
       </tbody>
     </table>
-    <button v-if="rows.length > max && !all" class="text-xs text-primary hover:underline px-2 py-1" @click="all = true">Show all {{ rows.length }}</button>
+    <button v-if="rows.length > max && !all" class="text-xs text-link hover:underline px-2 py-1" @click="all = true">Show all {{ rows.length }}</button>
   </div>
 </template>

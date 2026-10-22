@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { Monitor, Sun, Moon, Trash2, Download, Upload } from 'lucide-vue-next'
+import { Monitor, Sun, Moon } from 'lucide-vue-next'
 import { useSettings } from '../app/useSettings.js'
 import { useOrg } from '../app/useOrg.js'
 import { forgetCatalog } from '../app/useCatalog.js'
@@ -120,7 +120,7 @@ const savedCount = computed(() => queries.saved.length)
             <div class="truncate">{{ c.host }}</div>
             <div class="text-xs text-muted-foreground">{{ c.objects }} objects, {{ c.kb }} KB, loaded {{ when(c.loadedAt) }}</div>
           </div>
-          <button :class="btn" @click="clearCache(c)"><Trash2 class="w-4 h-4" /> Clear</button>
+          <button :class="btn" @click="clearCache(c)">Clear</button>
         </li>
       </ul>
     </div>
@@ -129,10 +129,10 @@ const savedCount = computed(() => queries.saved.length)
       <h3 class="font-medium">Saved queries and history</h3>
       <p class="text-sm text-muted-foreground">{{ savedCount }} saved {{ savedCount === 1 ? 'query' : 'queries' }}, {{ queries.history.length }} in the run history. Both stay in this browser.</p>
       <div class="flex flex-wrap gap-2">
-        <button :class="btn" :disabled="!savedCount" @click="exportQueries"><Download class="w-4 h-4" /> Export saved queries</button>
-        <button :class="btn" @click="fileInput?.click()"><Upload class="w-4 h-4" /> Import saved queries</button>
+        <button :class="btn" :disabled="!savedCount" @click="exportQueries">Export saved queries</button>
+        <button :class="btn" @click="fileInput?.click()">Import saved queries</button>
         <input ref="fileInput" type="file" accept="application/json,.json" class="hidden" @change="importQueries" />
-        <button :class="btn" :disabled="!queries.history.length" @click="wipeHistory"><Trash2 class="w-4 h-4" /> Clear run history</button>
+        <button :class="btn" :disabled="!queries.history.length" @click="wipeHistory">Clear run history</button>
       </div>
     </div>
 
@@ -142,7 +142,7 @@ const savedCount = computed(() => queries.saved.length)
         <template v-if="contact">The feedback form fills in {{ [contact.name, contact.email].filter(Boolean).join(', ') }}.</template>
         <template v-else>No name or email remembered for feedback.</template>
       </p>
-      <button v-if="contact" :class="btn" @click="forgetContact"><Trash2 class="w-4 h-4" /> Forget name and email</button>
+      <button v-if="contact" :class="btn" @click="forgetContact">Forget name and email</button>
     </div>
 
     <div :class="card">

@@ -151,7 +151,7 @@ const KINDS = [
       <form v-else class="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4 text-sm" @submit.prevent="submit">
         <div class="flex gap-2" role="radiogroup" aria-label="Kind of feedback">
           <button v-for="k in KINDS" :key="k.id" type="button" role="radio" :aria-checked="kind === k.id"
-            class="h-8 px-3 rounded-full border text-xs" :class="kind === k.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-accent'"
+            class="h-8 px-3 rounded-md border text-xs" :class="kind === k.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-accent'"
             @click="kind = k.id">{{ k.label }}</button>
         </div>
 
@@ -197,7 +197,7 @@ const KINDS = [
             <span><span class="font-medium">Include technical details</span><br />
               <span class="text-xs text-muted-foreground">Version, browser, the page you are on, the org's domain and API version, and the last API calls (paths and statuses only: no SQL or data).</span></span>
           </label>
-          <button v-if="includeMeta" type="button" class="mt-1 ml-6 flex items-center gap-1 text-xs text-primary hover:underline" :aria-expanded="showMeta" @click="showMeta = !showMeta">
+          <button v-if="includeMeta" type="button" class="mt-1 ml-6 flex items-center gap-1 text-xs text-link hover:underline" :aria-expanded="showMeta" @click="showMeta = !showMeta">
             <ChevronDown v-if="showMeta" class="h-3 w-3" /><ChevronRight v-else class="h-3 w-3" /> See exactly what is sent
           </button>
           <dl v-if="includeMeta && showMeta" class="mt-1 ml-6 grid grid-cols-[9rem_1fr] gap-x-3 gap-y-0.5 text-xs rounded-md border border-border bg-muted/30 p-2">

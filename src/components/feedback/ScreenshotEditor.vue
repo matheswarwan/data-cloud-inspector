@@ -75,8 +75,8 @@ defineExpose({ getResult: () => canvas.value, hasMarks: () => marks.value.length
 <template>
   <div>
     <div class="flex items-center gap-1 mb-1.5 text-xs" role="toolbar" aria-label="Mark up">
-      <button type="button" class="flex items-center gap-1 h-7 px-2 rounded-md border" :class="tool === 'box' ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-accent'" :aria-pressed="tool === 'box'" @click="tool = 'box'"><Square class="h-3.5 w-3.5" /> Box</button>
-      <button type="button" class="flex items-center gap-1 h-7 px-2 rounded-md border" :class="tool === 'pen' ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-accent'" :aria-pressed="tool === 'pen'" @click="tool = 'pen'"><Pencil class="h-3.5 w-3.5" /> Pen</button>
+      <button type="button" class="flex items-center gap-1 h-7 px-2 rounded-md border" :class="tool === 'box' ? 'border-primary bg-primary/10 text-link' : 'border-border hover:bg-accent'" :aria-pressed="tool === 'box'" @click="tool = 'box'"><Square class="h-3.5 w-3.5" /> Box</button>
+      <button type="button" class="flex items-center gap-1 h-7 px-2 rounded-md border" :class="tool === 'pen' ? 'border-primary bg-primary/10 text-link' : 'border-border hover:bg-accent'" :aria-pressed="tool === 'pen'" @click="tool = 'pen'"><Pencil class="h-3.5 w-3.5" /> Pen</button>
       <button type="button" class="flex items-center gap-1 h-7 px-2 rounded-md border border-border hover:bg-accent disabled:opacity-40" :disabled="!marks.length" @click="undo"><Undo2 class="h-3.5 w-3.5" /> Undo</button>
       <button type="button" class="flex items-center gap-1 h-7 px-2 rounded-md border border-border hover:bg-accent disabled:opacity-40" :disabled="!marks.length" @click="clear"><Eraser class="h-3.5 w-3.5" /> Clear marks</button>
       <span class="ml-auto text-muted-foreground">Draw on the picture to point at the problem, or to cover something private.</span>

@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { MessageSquare, Settings } from 'lucide-vue-next'
+import { Settings } from 'lucide-vue-next'
 import ConnectionMenu from '../components/ConnectionMenu.vue'
 import FeedbackModal from '../components/feedback/FeedbackModal.vue'
 import { NAV } from './router.js'
@@ -28,7 +28,7 @@ onMounted(loadOrgs)
         <ConnectionMenu />
         <RouterLink to="/settings" class="p-1.5 rounded-md hover:bg-accent" active-class="bg-accent" title="Settings"><Settings class="w-4 h-4" /></RouterLink>
         <button class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border hover:bg-accent" title="Report a problem or send an idea" @click="feedback = true">
-          <MessageSquare class="w-4 h-4" /> Feedback
+          Feedback
         </button>
       </div>
     </header>
