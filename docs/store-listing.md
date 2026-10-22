@@ -12,7 +12,28 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 - **Privacy policy URL:** https://data-cloud-inspector.mathes.dev/privacy (Worker
   `data-cloud-inspector-site`, source in `site/`; deploy steps in `site/wrangler.jsonc`).
 - **Publisher:** CloudKettle's developer account (same as SFMC Query Saver).
-- **Version.** Publish from a release zip in `releases/`, not a test zip, once the version is final.
+- **Version:** 1.0.0, `releases/data-cloud-inspector-1.0.0.zip` (GitHub release `v1.0.0`).
+
+## Submitting 1.0.0 (CloudKettle developer account)
+
+1. Chrome Web Store Developer Dashboard, signed in to the CloudKettle publisher, then New item.
+2. Upload `releases/data-cloud-inspector-1.0.0.zip`.
+3. Store listing tab: name, summary (from the manifest), description, category Developer Tools,
+   language English, the six screenshots from `docs/store/`, and the 128 px icon
+   (`public/images/icon128.png`). Optional: a 440x280 promo tile.
+4. Privacy practices tab: single purpose, the permission justifications, data usage and the
+   certifications below; privacy policy URL https://data-cloud-inspector.mathes.dev/privacy.
+5. Distribution: Visibility **Unlisted** first (only people with the link can install), all
+   regions. Switch to Public after it has been tried on a few real orgs.
+6. Submit for review. Tell Claude when it is published, so the release can be recorded.
+
+## What's new
+
+1.0.0: first release. Profiles (unified profile, source records, match rules, missed matches,
+contact points, engagement, segments), Segments (criteria, counts, equivalent SQL, publish
+history, is this person in the segment), Personalization (setup and activity), Health, SQL with
+an objects panel, Objects with mappings and Used by, REST explore, data spaces, Log in with
+OAuth for orgs that block browser sessions, light and dark themes, feedback.
 
 ## Name
 
