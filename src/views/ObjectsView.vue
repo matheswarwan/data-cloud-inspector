@@ -7,6 +7,7 @@ import { recordUrl, dmoUrl } from '../lib/links.js'
 import { useCatalog, ensureCatalog, ensureStreams, ensureAllMappings, ensureRecordIds, ensureUsage, orgCall } from '../app/useCatalog.js'
 import { usageOf, fieldUsage } from '../lib/usage.js'
 import { problemCounts, latestProblemsSql } from '../lib/problems.js'
+import { buildModel, modelMarkdown, modelHtml } from '../lib/modelDoc.js'
 import { filterObjects, selectFor, objectMarkdown } from '../lib/catalog.js'
 import { loadMappings } from '../lib/lineage.js'
 import { runQuery } from '../lib/query.js'
@@ -50,6 +51,34 @@ const fields = computed(() => {
 const used = computed(() => (selected.value ? usageOf(selected.value.name, catalog.usage) : null))
 const usedCount = computed(() => (used.value ? used.value.insights.length + used.value.segments.length : null))
 const fieldUses = computed(() => (selected.value ? fieldUsage(selected.value.name, catalog.usage) : new Map()))
+// Export the data model as one document.
+const exporting = ref(false)
+const exportOpen = ref(false)
+const exportOpts = reactive({ kinds: ['DMO'], mappings: true, format: 'html' })
+async function exportModel() {
+  exporting.value = true
+  try {
+    const [mappings, streams, usage] = await Promise.all([
+      exportOpts.mappings ? ensureAllMappings() : Promise.resolve([]),
+      exportOpts.mappings ? ensureStreams() : Promise.resolve([]),
+      ensureUsage(),
+    ])
+    const model = buildModel({ objects: catalog.objects, kinds: exportOpts.kinds, mappings: mappings || [], streams: streams || [], usage, host: currentOrg()?.host, dataSpace: org.dataSpace })
+    const html = exportOpts.format === 'html'
+    const body = html ? modelHtml(model) : modelMarkdown(model)
+    const url = URL.createObjectURL(new Blob([body], { type: html ? 'text/html' : 'text/markdown' }))
+    const name = `data-model-${(currentOrg()?.host || 'org').split('.')[0]}-${new Date().toISOString().slice(0, 10)}.${html ? 'html' : 'md'}`
+    Object.assign(document.createElement('a'), { href: url, download: name }).click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    notice.value = `Downloaded ${name}.`
+    exportOpen.value = false
+  } catch (err) {
+    notice.value = `Could not export: ${err.message}`
+  } finally {
+    exporting.value = false
+  }
+}
+
 const problems = reactive({}) // problem record DLO -> { count, latest, error }
 watch(() => (catalog.streams || []).filter((s) => s.dlo === selected.value?.name && s.problemDlo).map((s) => s.problemDlo).join(','), async (list) => {
   const dlos = list ? list.split(',').filter((d) => !(d in problems)) : []
@@ -144,6 +173,22 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
           <option v-for="c in categories" :key="c" :value="c">{{ c.replace(/_/g, ' ') }}</option>
         </select>
       </div>
+      <div>
+        <button class="text-xs text-link hover:underline" @click="exportOpen = !exportOpen">Export data model</button>
+        <div v-if="exportOpen" class="mt-1 p-2 border rounded-md bg-card text-xs space-y-1.5">
+          <div class="flex gap-3">
+            <label v-for="k in ['DMO', 'DLO', 'CI']" :key="k" class="flex items-center gap-1"><input v-model="exportOpts.kinds" type="checkbox" :value="k" /> {{ k }}s</label>
+          </div>
+          <label class="flex items-center gap-1"><input v-model="exportOpts.mappings" type="checkbox" /> Field mappings and streams (reads every DMO's mappings)</label>
+          <div class="flex gap-3">
+            <label class="flex items-center gap-1"><input v-model="exportOpts.format" type="radio" value="html" /> HTML (opens in Word, prints to PDF)</label>
+            <label class="flex items-center gap-1"><input v-model="exportOpts.format" type="radio" value="md" /> Markdown</label>
+          </div>
+          <button class="px-2 py-1 rounded-md bg-primary text-primary-foreground disabled:opacity-50" :disabled="exporting || !exportOpts.kinds.length || !catalog.objects.length" @click="exportModel">
+            {{ exporting ? (catalog.mappingsProgress ? `Reading mappings: ${catalog.mappingsProgress}` : 'Building…') : 'Download' }}
+          </button>
+        </div>
+      </div>
       <div class="text-xs text-muted-foreground">
         {{ list.length }} of {{ catalog.objects.length }} objects
         <span v-if="catalog.loadedAt"> · metadata from {{ time(catalog.loadedAt) }}</span>
@@ -164,7 +209,8 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
       </ul>
     </aside>
 
-    <div class="flex-1 min-w-0">
+    <div class="flex-1 min-w-0 space-y-3">
+      <div v-if="notice" class="text-sm text-muted-foreground">{{ notice }}</div>
       <div v-if="!selected" class="text-sm text-muted-foreground p-4">
         {{ catalog.loading ? 'Loading the org\'s Data Cloud metadata…' : 'Pick an object to see its fields, relationships and where its data comes from.' }}
       </div>
@@ -192,7 +238,6 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
             <button :class="btn" @click="copy(objectMarkdown(selected), 'the fields as Markdown')">Copy as Markdown</button>
           </div>
         </div>
-        <div v-if="notice" class="text-sm text-muted-foreground">{{ notice }}</div>
 
         <nav class="flex border-b">
           <button :class="tabBtn('fields')" @click="tab = 'fields'">Fields</button>
