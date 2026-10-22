@@ -19,6 +19,7 @@ export async function loadStreams(call, version) {
     sourceObject: s.connectorInfo?.connectorDetails?.sourceObject || '',
     frequency: s.refreshConfig?.frequency?.frequencyType || '',
     recordId: s.recordId || '',
+    problemDlo: s.problemRecordDataLakeObjectName || '',
   }))
 }
 

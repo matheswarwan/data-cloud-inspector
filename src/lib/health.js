@@ -15,6 +15,7 @@ import { loadSegments } from './segments.js'
 import { parseRulesets } from './profile.js'
 import { SETUP_QUERIES } from './personalization.js'
 import { inSpace } from './dataSpace.js'
+import { problemCounts, withProblems } from './problems.js'
 
 export const LEVELS = ['fail', 'warn', 'running', 'idle', 'ok']
 export const LEVEL_TEXT = { fail: 'Failed', warn: 'Needs a look', running: 'Running', idle: 'Inactive', ok: 'OK' }
@@ -41,7 +42,7 @@ export function intervalHours(interval) {
 }
 
 export function streamHealth(s) {
-  const base = { kind: 'Data stream', name: s.name, label: s.label, recordId: s.recordId, lastRun: s.lastRefreshDate || null, dlo: s.dlo }
+  const base = { kind: 'Data stream', name: s.name, label: s.label, recordId: s.recordId, lastRun: s.lastRefreshDate || null, dlo: s.dlo, problemDlo: s.problemDlo || '' }
   const details = [`${s.connector || 'stream'}${s.sourceObject ? `: ${s.sourceObject}` : ''}`, s.totalRecords != null ? `${s.totalRecords.toLocaleString()} records` : null, s.lastProcessedRecords != null ? `last run processed ${s.lastProcessedRecords.toLocaleString()}` : null].filter(Boolean).join(', ')
   if (s.status && s.status !== 'ACTIVE') return { ...base, level: 'idle', reason: `Stream is ${s.status.toLowerCase()}`, details }
   const level = runLevel(s.lastRunStatus)
@@ -141,7 +142,11 @@ export async function loadHealth(call, version, { now = Date.now() } = {}) {
     try { return { title, items: sortItems(await fn()), error: '' } } catch (err) { return { title, items: [], error: err.message } }
   }
   return Promise.all([
-    section('Data streams', async () => (await loadStreams(call, version)).map(streamHealth)),
+    section('Data streams', async () => {
+      const items = (await loadStreams(call, version)).map(streamHealth)
+      const counts = await problemCounts(call, version, items.map((i) => i.problemDlo))
+      return items.map((i) => withProblems(i, counts.get(i.problemDlo)))
+    }),
     section('Identity resolution', async () => {
       const res = await call(`${v}/identity-resolutions`)
       if (!res.ok) throw new Error(res.error || `HTTP ${res.status}`)

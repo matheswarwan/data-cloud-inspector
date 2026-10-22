@@ -5,8 +5,11 @@ import { useOrg, currentOrg } from '../app/useOrg.js'
 import { orgCall } from '../app/useCatalog.js'
 import { recordUrl } from '../lib/links.js'
 import { loadHealth, countLevels, healthMarkdown, LEVELS, LEVEL_TEXT } from '../lib/health.js'
+import { latestProblemsSql } from '../lib/problems.js'
+import { useRouter } from 'vue-router'
 
 const org = useOrg()
+const router = useRouter()
 const sections = ref([])
 const loading = ref(false)
 const checkedAt = ref(null)
@@ -113,6 +116,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
               <span v-else>{{ i.label }}</span>
               <a v-if="i.recordId" :href="recordUrl(currentOrg()?.host, i.recordId)" target="_blank" rel="noopener" class="ml-2 text-xs text-link hover:underline">Open in Salesforce</a>
               <div class="text-xs text-muted-foreground">{{ i.details }}</div>
+              <button v-if="i.problems?.count" class="text-xs text-link hover:underline" @click="router.push({ path: '/sql', query: { sql: latestProblemsSql(i.problemDlo) } })">See the problem records in SQL</button>
             </td>
             <td class="p-2">{{ i.reason }}</td>
             <td class="p-2 w-32 whitespace-nowrap text-right" :title="i.lastRun ? new Date(i.lastRun).toLocaleString() : ''">{{ ago(i.lastRun) }}</td>

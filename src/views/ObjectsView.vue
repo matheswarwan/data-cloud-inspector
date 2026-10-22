@@ -6,6 +6,7 @@ import { useOrg, currentOrg } from '../app/useOrg.js'
 import { recordUrl, dmoUrl } from '../lib/links.js'
 import { useCatalog, ensureCatalog, ensureStreams, ensureAllMappings, ensureRecordIds, ensureUsage, orgCall } from '../app/useCatalog.js'
 import { usageOf, fieldUsage } from '../lib/usage.js'
+import { problemCounts, latestProblemsSql } from '../lib/problems.js'
 import { filterObjects, selectFor, objectMarkdown } from '../lib/catalog.js'
 import { loadMappings } from '../lib/lineage.js'
 import { runQuery } from '../lib/query.js'
@@ -49,6 +50,13 @@ const fields = computed(() => {
 const used = computed(() => (selected.value ? usageOf(selected.value.name, catalog.usage) : null))
 const usedCount = computed(() => (used.value ? used.value.insights.length + used.value.segments.length : null))
 const fieldUses = computed(() => (selected.value ? fieldUsage(selected.value.name, catalog.usage) : new Map()))
+const problems = reactive({}) // problem record DLO -> { count, latest, error }
+watch(() => (catalog.streams || []).filter((s) => s.dlo === selected.value?.name && s.problemDlo).map((s) => s.problemDlo).join(','), async (list) => {
+  const dlos = list ? list.split(',').filter((d) => !(d in problems)) : []
+  if (!dlos.length) return
+  const counts = await problemCounts(orgCall(), org.version, dlos)
+  for (const [d, info] of counts) problems[d] = info
+})
 const streamsFor = computed(() => (catalog.streams || []).filter((s) => s.dlo === selected.value?.name))
 
 function toggleKind(k) {
@@ -305,6 +313,15 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
             <span class="text-muted-foreground">Status</span><span>{{ s.status }}, last run {{ ran(s) }}{{ s.lastRefreshDate ? ` at ${time(s.lastRefreshDate)}` : '' }}</span>
             <span class="text-muted-foreground">Records</span><span>{{ s.totalRecords ?? 'none yet' }}{{ s.lastProcessedRecords != null ? ` (last run processed ${s.lastProcessedRecords})` : '' }}</span>
             <span class="text-muted-foreground">Refresh</span><span>{{ s.frequency }}</span>
+            <template v-if="s.problemDlo">
+              <span class="text-muted-foreground">Problem records</span>
+              <span>
+                <template v-if="!problems[s.problemDlo]">…</template>
+                <template v-else-if="problems[s.problemDlo].error">could not count ({{ problems[s.problemDlo].error }})</template>
+                <template v-else>{{ problems[s.problemDlo].count.toLocaleString() }}{{ problems[s.problemDlo].latest ? `, latest ${time(problems[s.problemDlo].latest)}` : '' }}</template>
+                <button class="ml-2 text-xs text-link hover:underline" @click="router.push({ path: '/sql', query: { sql: latestProblemsSql(s.problemDlo) } })">Open in SQL</button>
+              </span>
+            </template>
           </div>
           <div>
             <button v-if="!feeds" :class="btn" :disabled="!!catalog.mappingsProgress" @click="findFeeds">
