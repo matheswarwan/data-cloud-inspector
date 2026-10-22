@@ -12,7 +12,9 @@ stack and conventions as `../sfmc-toolkit`. Plan and status log: `../data-cloud-
   values), `checks.js` (connection check and its shareable report), `catalog.js` (GET
   `/ssot/metadata?entityType=` DataLakeObject, DataModelObject, CalculatedInsight),
   `lineage.js` (data streams, `data-model-object-mappings?dmoDeveloperName=`), `pages.js`
-  (follow `nextPageUrl` as given), `query.js` (query-sql run, poll, rows paging, CSV, Markdown).
+  (follow `nextPageUrl` as given), `query.js` (query-sql run, poll, rows paging, CSV, Markdown),
+  `profile.js` (rulesets, search, profile, related objects through relationships, match
+  explanation with an approximate fuzzy check, missed matches, Markdown).
 - `src/app/useCatalog.js`: metadata cached per org in chrome.storage.local until Refresh.
 - `src/views/`: pages. `src/app/useOrg.js`: selected org and API version.
 
@@ -26,6 +28,9 @@ stack and conventions as `../sfmc-toolkit`. Plan and status log: `../data-cloud-
 - The SQL dialect is PostgreSQL-like (`generate_series` works, `UNNEST(SEQUENCE())` does not).
 - Mappings need `dmoDeveloperName` (a DLO name alone is a 400).
 - Data streams report `lastRunStatus: 'NONE'` for a stream that never ran.
+- Identity resolution: `identity-resolutions` gives match rules and, per entity, `unifiedDmoName`
+  and `linkDmoName`. Link DMOs: `SourceRecordId__c`, `UnifiedRecordId__c`, `MatchKeys__c`.
+  Phones are stored as typed (`(415) 555-0100`, no country code).
 
 ## Rules
 

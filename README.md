@@ -7,6 +7,12 @@ Status: early, test builds only.
 
 ## What it does
 
+- Profiles: look up a person by email, phone, name or ID (`*` as a wildcard) and pick an
+  identity resolution ruleset. The page shows the unified record, the source records behind
+  it with the link's match keys, the ruleset's match rules with each record's values and the
+  pairs that satisfy them, people who share an email but are not in the profile, contact
+  points, an engagement timeline, segment membership and every other related record (found
+  through the metadata's relationships). Copy as Markdown exports the whole profile.
 - SQL: run Data Cloud SQL against DLOs, DMOs and calculated insights, with table and field
   autocomplete from the org, Format, saved queries and history. Results load 1,000 rows at a
   time; Download CSV fetches every row (up to 500,000); Copy for AI copies the SQL, column
@@ -19,9 +25,6 @@ Status: early, test builds only.
 
 ## Planned
 
-- Profile inspector: look up a person and see the unified profile, the source records
-  behind it and how identity resolution joined them, engagement, calculated insights and
-  segment membership.
 - Lineage beyond mappings: calculated insight, segment, activation.
 - Segment debugger.
 - Web tab for Personalization (decoded web SDK events linked to the profile).
