@@ -96,7 +96,7 @@ export function activationHealth(a) {
   return { ...base, level, reason: level === 'ok' ? 'Last publish succeeded' : `Last publish: ${String(a.lastPublishStatus).toLowerCase()}`, details }
 }
 
-async function offsetPages(call, path, key) {
+export async function offsetPages(call, path, key) {
   const out = []
   for (let offset = 0; offset < 5000; offset += 100) {
     const res = await call(`${path}${path.includes('?') ? '&' : '?'}limit=100&offset=${offset}`)
@@ -108,7 +108,7 @@ async function offsetPages(call, path, key) {
   return out
 }
 
-async function insightPages(call, version) {
+export async function insightPages(call, version) {
   const out = []
   let path = `/services/data/v${version}/ssot/calculated-insights`
   for (let i = 0; path && i < 50; i++) {

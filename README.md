@@ -20,7 +20,9 @@ Status: early, test builds only.
   types and the first 50 rows as Markdown.
 - Objects: every DLO, DMO and calculated insight with fields, API names, types, primary keys
   and key qualifiers; relationships; for a DMO, the objects mapped to it field by field and
-  their data streams; for a DLO, its data stream and the DMOs it maps to. Row counts, Query,
+  their data streams; for a DLO, its data stream and the DMOs it maps to; Used by: the
+  calculated insights (from their SQL) and segments (from their criteria) that use the object
+  and which fields, with the segments' activations, also shown per field. Row counts, Query,
   Copy SELECT and Copy as Markdown.
 - Segments: every segment with status, schedule and member count; the criteria in plain
   words and as raw JSON; counts at the last publish, in the membership table and matching
@@ -45,7 +47,6 @@ Status: early, test builds only.
 
 ## Planned
 
-- Lineage beyond mappings: calculated insight, segment, activation.
 - Segment debugger.
 - Web tab for Personalization (decoded web SDK events linked to the profile).
 

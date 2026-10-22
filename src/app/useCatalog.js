@@ -6,6 +6,7 @@ import { sf } from '../lib/api.js'
 import { loadCatalog } from '../lib/catalog.js'
 import { loadStreams, loadAllMappings } from '../lib/lineage.js'
 import { loadRecordIds } from '../lib/links.js'
+import { loadUsage } from '../lib/usage.js'
 import { fetchAllPages } from '../lib/pages.js'
 import { storeGet, storeSet, storeRemove } from '../lib/store.js'
 import { useOrg } from './useOrg.js'
@@ -13,7 +14,7 @@ import { useOrg } from './useOrg.js'
 const org = useOrg()
 const state = reactive({
   orgId: null, objects: [], errors: [], loadedAt: '', loading: false, error: '',
-  streams: null, mappings: null, mappingsProgress: '', recordIds: null,
+  streams: null, mappings: null, mappingsProgress: '', recordIds: null, usage: null,
 })
 
 export function orgCall() {
@@ -27,7 +28,7 @@ export async function ensureCatalog({ refresh = false } = {}) {
   const { orgId, version } = org
   if (!orgId || !version) return
   if (!refresh && state.orgId === orgId && (state.objects.length || state.loading)) return
-  if (state.orgId !== orgId) Object.assign(state, { objects: [], errors: [], loadedAt: '', streams: null, mappings: null, recordIds: null })
+  if (state.orgId !== orgId) Object.assign(state, { objects: [], errors: [], loadedAt: '', streams: null, mappings: null, recordIds: null, usage: null })
   state.orgId = orgId
   state.error = ''
   if (!refresh) {
@@ -41,7 +42,7 @@ export async function ensureCatalog({ refresh = false } = {}) {
   try {
     const catalog = await loadCatalog(orgCall(), version)
     if (state.orgId !== orgId) return
-    Object.assign(state, catalog, { streams: null, mappings: null, recordIds: null })
+    Object.assign(state, catalog, { streams: null, mappings: null, recordIds: null, usage: null })
     if (catalog.objects.length) await storeSet(cacheKey(orgId), catalog)
   } catch (err) {
     state.error = err.message
@@ -74,6 +75,17 @@ export function ensureRecordIds() {
     .then((ids) => { state.recordIds = ids; return ids })
     .finally(() => { recordIdsLoading = null })
   return recordIdsLoading
+}
+
+let usageLoading = null
+/** Calculated insights, segments and activations, for "Used by" (memory only; Refresh reloads). */
+export function ensureUsage({ refresh = false } = {}) {
+  if (refresh) state.usage = null
+  if (state.usage || !org.version) return Promise.resolve(state.usage)
+  usageLoading ||= loadUsage(orgCall(), org.version)
+    .then((u) => { state.usage = u; return u })
+    .finally(() => { usageLoading = null })
+  return usageLoading
 }
 
 /** Forget the cached metadata of an org (Settings). */

@@ -4,7 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { RefreshCw, Copy, Key, ExternalLink } from 'lucide-vue-next'
 import { useOrg, currentOrg } from '../app/useOrg.js'
 import { recordUrl, dmoUrl } from '../lib/links.js'
-import { useCatalog, ensureCatalog, ensureStreams, ensureAllMappings, ensureRecordIds, orgCall } from '../app/useCatalog.js'
+import { useCatalog, ensureCatalog, ensureStreams, ensureAllMappings, ensureRecordIds, ensureUsage, orgCall } from '../app/useCatalog.js'
+import { usageOf, fieldUsage } from '../lib/usage.js'
 import { filterObjects, selectFor, objectMarkdown } from '../lib/catalog.js'
 import { loadMappings } from '../lib/lineage.js'
 import { runQuery } from '../lib/query.js'
@@ -25,7 +26,8 @@ const mappings = reactive({ name: '', list: null, error: '', loading: false })
 const feeds = ref(null) // DMOs a DLO maps to
 
 onMounted(() => { ensureCatalog() })
-watch(() => route.params.name, (n) => { if (n) ensureRecordIds() }, { immediate: true })
+// Wait for the API version: on a fresh page load the route is known before the org is.
+watch(() => [route.params.name, org.version], ([n, v]) => { if (n && v) { ensureRecordIds(); ensureUsage() } }, { immediate: true })
 
 // DLOs and CIs open their record page; DMOs open in the Data Model tab by API name.
 function sfUrl(o) {
@@ -44,6 +46,9 @@ const fields = computed(() => {
   const all = selected.value?.fields || []
   return t ? all.filter((f) => f.name.toLowerCase().includes(t) || f.label.toLowerCase().includes(t)) : all
 })
+const used = computed(() => (selected.value ? usageOf(selected.value.name, catalog.usage) : null))
+const usedCount = computed(() => (used.value ? used.value.insights.length + used.value.segments.length : null))
+const fieldUses = computed(() => (selected.value ? fieldUsage(selected.value.name, catalog.usage) : new Map()))
 const streamsFor = computed(() => (catalog.streams || []).filter((s) => s.dlo === selected.value?.name))
 
 function toggleKind(k) {
@@ -58,7 +63,7 @@ watch(() => route.params.name, () => {
   fieldText.value = ''
   notice.value = ''
   feeds.value = null
-  if (tab.value !== 'fields' && tab.value !== 'relationships') tab.value = 'fields'
+  if (!['fields', 'relationships', 'usedby'].includes(tab.value)) tab.value = 'fields'
 })
 
 watch(tab, async (t) => {
@@ -116,7 +121,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
     <aside class="w-80 shrink-0 space-y-2">
       <div class="flex gap-2">
         <input v-model="text" placeholder="Search objects" class="flex-1 border rounded-md px-2 py-1 bg-background text-sm" />
-        <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the metadata again" @click="ensureCatalog({ refresh: true })">
+        <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the metadata again" @click="ensureCatalog({ refresh: true }).then(() => ensureUsage({ refresh: true }))">
           <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': catalog.loading }" />
         </button>
       </div>
@@ -184,6 +189,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
         <nav class="flex border-b">
           <button :class="tabBtn('fields')" @click="tab = 'fields'">Fields</button>
           <button :class="tabBtn('relationships')" @click="tab = 'relationships'">Relationships ({{ selected.relationships.length }})</button>
+          <button :class="tabBtn('usedby')" @click="tab = 'usedby'">Used by{{ usedCount != null ? ` (${usedCount})` : '' }}</button>
           <button v-if="selected.kind !== 'CI'" :class="tabBtn('sources')" @click="tab = 'sources'">{{ selected.kind === 'DMO' ? 'Mapped from' : 'Stream and mappings' }}</button>
           <button v-else :class="tabBtn('sources')" @click="tab = 'sources'">Processing</button>
         </nav>
@@ -195,7 +201,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
             <thead class="text-left text-muted-foreground border-b">
               <tr>
                 <th class="p-2">API name</th><th class="p-2">Label</th><th class="p-2">Type</th>
-                <th v-if="selected.kind === 'CI'" class="p-2">Role</th><th class="p-2">Key qualifier</th>
+                <th v-if="selected.kind === 'CI'" class="p-2">Role</th><th class="p-2">Key qualifier</th><th class="p-2">Used by</th>
               </tr>
             </thead>
             <tbody>
@@ -209,6 +215,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
                 <td class="p-2 text-xs">{{ f.businessType || f.type }}</td>
                 <td v-if="selected.kind === 'CI'" class="p-2 text-xs">{{ f.role }}</td>
                 <td class="p-2 font-mono text-xs text-muted-foreground">{{ f.keyQualifier }}</td>
+                <td class="p-2 text-xs text-muted-foreground">{{ (fieldUses.get(f.name) || []).join(', ') }}</td>
               </tr>
             </tbody>
           </table>
@@ -231,6 +238,36 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Used by: insights, segments, activations -->
+        <div v-else-if="tab === 'usedby'" class="space-y-3 text-sm">
+          <p v-if="!catalog.usage" class="text-muted-foreground">Reading calculated insights, segments and activations…</p>
+          <template v-else>
+            <p v-if="!usedCount" class="text-muted-foreground">No calculated insight or segment uses this object.</p>
+            <div v-if="used.insights.length" class="border rounded-md bg-card">
+              <h4 class="p-2 border-b font-medium">Calculated insights ({{ used.insights.length }})</h4>
+              <div v-for="ci in used.insights" :key="ci.name" class="p-2 border-b last:border-0">
+                <button v-if="byName.has(ci.name)" class="text-link hover:underline" @click="pick(ci.name)">{{ ci.label }}</button>
+                <span v-else>{{ ci.label }}</span>
+                <span class="font-mono text-xs text-muted-foreground ml-2">{{ ci.name }}</span>
+                <div class="text-xs text-muted-foreground mt-0.5">{{ ci.fields.length ? `Uses ${ci.fields.join(', ')}` : 'Uses the object' }}</div>
+              </div>
+            </div>
+            <div v-if="used.segments.length" class="border rounded-md bg-card">
+              <h4 class="p-2 border-b font-medium">Segments ({{ used.segments.length }})</h4>
+              <div v-for="sg in used.segments" :key="sg.name" class="p-2 border-b last:border-0">
+                <RouterLink :to="`/segments/${sg.name}`" class="text-link hover:underline">{{ sg.label }}</RouterLink>
+                <div class="text-xs text-muted-foreground mt-0.5">
+                  {{ [sg.isOn ? 'Built on this object' : '', sg.fields.length ? `criteria use ${sg.fields.join(', ')}` : ''].filter(Boolean).join('; ') }}
+                </div>
+                <ul v-if="sg.activations.length" class="text-xs mt-1 pl-4 list-disc">
+                  <li v-for="a in sg.activations" :key="a.id">Activated as {{ a.name }} to {{ a.target }} ({{ a.status.toLowerCase() }})</li>
+                </ul>
+              </div>
+            </div>
+            <p class="text-xs text-muted-foreground">Read from calculated insight SQL and segment criteria. Data actions and data graphs are not included yet.</p>
+          </template>
         </div>
 
         <!-- DMO: mapped from -->

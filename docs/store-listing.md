@@ -58,6 +58,7 @@ OBJECTS
 - Relationships between objects.
 - For a DMO: what is mapped into it, field by field, and the state of each data stream.
 - For a DLO: its data stream and the DMOs it maps to.
+- Used by: the calculated insights, segments and activations that depend on an object, field by field, so you can see what a change would affect.
 - Row counts, a ready-made SELECT, and Copy as Markdown.
 
 ALSO
