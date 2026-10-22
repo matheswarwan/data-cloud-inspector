@@ -31,6 +31,10 @@ Status: early, test builds only.
 - Health: every data stream, identity resolution ruleset (source and unified profiles,
   consolidation rate), calculated insight, segment and activation with a status (failed,
   needs a look, running, inactive, OK) and the reason, problems first; Copy as Markdown.
+- Personalization: points with their decisions by priority, recommenders (status, last
+  refresh), experiments with their decisions, content schemas and objectives (SOQL); activity
+  from the personalization log (requests per day, by point, decision and recommender, by
+  status code, latest requests linked to profiles). Recommenders also show on Health.
 - Open in Salesforce: record IDs in profiles, related records and SQL results (segments,
   streams, DLOs, calculated insights, rulesets, activation targets, Contacts, Accounts) link
   to their page in the org; Objects has Open in Salesforce (DMOs open in the Data Model tab by API name).
@@ -48,7 +52,8 @@ Status: early, test builds only.
 ## Planned
 
 - Segment debugger.
-- Web tab for Personalization (decoded web SDK events linked to the profile).
+- Web events: decode a site's web SDK beacons and link them to profiles (needs optional site
+  permissions).
 
 ## How it signs in
 

@@ -53,6 +53,10 @@ HEALTH
 - Consolidation rate and profile counts per identity resolution ruleset.
 - Copy the report as Markdown for a status update.
 
+PERSONALIZATION
+- Personalization points with their decisions in priority order, recommenders, experiments, content schemas and objectives.
+- Activity from the personalization log: requests per day, by point, decision and recommender, status codes, and the latest requests linked to the person's profile.
+
 OBJECTS
 - Every DLO, DMO and calculated insight with fields, API names, types, primary keys and key qualifiers.
 - Relationships between objects.
@@ -83,7 +87,7 @@ English
 
 ## Single purpose (Privacy practices tab)
 
-Data Cloud Inspector lets Salesforce Data Cloud users inspect their own org, read only: look up unified profiles, debug segments, run Data Cloud SQL, and view the data model and how data flows into it.
+Data Cloud Inspector lets Salesforce Data Cloud users inspect their own org, read only: look up unified profiles, debug segments, inspect Personalization, run Data Cloud SQL, and view the data model, its health and how data flows into it.
 
 ## Permission justifications (Privacy practices tab)
 

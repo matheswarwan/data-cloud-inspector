@@ -50,7 +50,7 @@ describe('report', () => {
   it('keeps the other sections when one fails', async () => {
     const call = async (path) => (path.includes('activations') ? { ok: false, error: 'nope' } : { ok: true, data: {} })
     const sections = await loadHealth(call, '68.0')
-    expect(sections.map((s) => s.title)).toEqual(['Data streams', 'Identity resolution', 'Calculated insights', 'Segments', 'Activations'])
+    expect(sections.map((s) => s.title)).toEqual(['Data streams', 'Identity resolution', 'Calculated insights', 'Segments', 'Activations', 'Personalization recommenders'])
     expect(sections[4].error).toBe('nope')
     expect(sections[0].error).toBe('')
   })
