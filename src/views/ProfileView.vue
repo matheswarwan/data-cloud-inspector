@@ -184,7 +184,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
 </script>
 
 <template>
-  <section class="space-y-4 max-w-7xl">
+  <section class="space-y-4 max-w-7xl mx-auto">
     <form class="flex flex-wrap gap-2 items-center" @submit.prevent="go('/profile', { q: text })">
       <input v-model="text" placeholder="Email, phone, name or ID (use * as a wildcard)" class="flex-1 min-w-72 border rounded-md px-3 py-1.5 bg-background text-sm" />
       <label class="text-sm text-muted-foreground" for="rs">Ruleset</label>

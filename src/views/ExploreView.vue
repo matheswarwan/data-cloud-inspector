@@ -46,7 +46,7 @@ const text = computed(() => {
 </script>
 
 <template>
-  <section class="max-w-6xl space-y-3">
+  <section class="max-w-6xl mx-auto space-y-3">
     <div class="space-y-1">
       <h2 class="text-lg font-semibold">REST explore</h2>
       <p class="text-sm text-muted-foreground">
