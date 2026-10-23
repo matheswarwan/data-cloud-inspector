@@ -4,12 +4,14 @@ import { useRoute } from 'vue-router'
 import { Settings } from 'lucide-vue-next'
 import ConnectionMenu from '../components/ConnectionMenu.vue'
 import FeedbackModal from '../components/feedback/FeedbackModal.vue'
+import CommandPalette from '../components/CommandPalette.vue'
 import { NAV } from './router.js'
 import { useOrg, loadOrgs } from './useOrg.js'
 
 const org = useOrg()
 const route = useRoute()
 const feedback = ref(false)
+const palette = ref(null)
 onMounted(loadOrgs)
 </script>
 
@@ -25,6 +27,7 @@ onMounted(loadOrgs)
         >{{ item.label }}</RouterLink>
       </nav>
       <div class="ml-auto flex items-center gap-2 text-sm">
+        <button class="px-2 py-1 rounded-md border text-xs text-muted-foreground hover:bg-accent" title="Search everything (Ctrl+K or Cmd+K)" @click="palette?.show()">Search <kbd class="font-mono">Ctrl K</kbd></button>
         <ConnectionMenu />
         <RouterLink to="/settings" class="p-1.5 rounded-md hover:bg-accent" active-class="bg-accent" title="Settings"><Settings class="w-4 h-4" /></RouterLink>
         <button class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border hover:bg-accent" title="Report a problem or send an idea" @click="feedback = true">
@@ -48,6 +51,7 @@ onMounted(loadOrgs)
     <main class="flex-1 p-4">
       <RouterView />
     </main>
+    <CommandPalette ref="palette" />
     <FeedbackModal v-if="feedback" :screen="route.path" @close="feedback = false" />
   </div>
 </template>

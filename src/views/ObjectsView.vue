@@ -22,12 +22,13 @@ const kinds = ref([])
 const category = ref('')
 const tab = ref('fields')
 const fieldText = ref('')
+watch(() => route.query.field, (f) => { if (typeof f === 'string') { fieldText.value = f; tab.value = 'fields' } })
 const notice = ref('')
 const counts = reactive({}) // object name -> number | 'counting' | error text
 const mappings = reactive({ name: '', list: null, error: '', loading: false })
 const feeds = ref(null) // DMOs a DLO maps to
 
-onMounted(() => { ensureCatalog() })
+onMounted(() => { ensureCatalog(); if (typeof route.query.field === 'string') fieldText.value = route.query.field })
 // Wait for the API version: on a fresh page load the route is known before the org is.
 watch(() => [route.params.name, org.version], ([n, v]) => { if (n && v) { ensureRecordIds(); ensureUsage() } }, { immediate: true })
 
@@ -97,7 +98,7 @@ function pick(name) {
 }
 
 watch(() => route.params.name, () => {
-  fieldText.value = ''
+  fieldText.value = typeof route.query.field === 'string' ? route.query.field : ''
   notice.value = ''
   feeds.value = null
   if (!['fields', 'relationships', 'usedby'].includes(tab.value)) tab.value = 'fields'
