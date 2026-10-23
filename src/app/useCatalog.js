@@ -123,3 +123,8 @@ export function useCatalog() {
 export function cachedRulesets(load, { refresh = false } = {}) {
   return sessionCached(sessionKey(org.orgId, 'rulesets'), 5 * 60 * 1000, load, { refresh })
 }
+
+/** Drop what is in memory (after Settings deleted caches); it loads again when needed. */
+export function resetCatalog() {
+  Object.assign(state, { key: null, objects: [], errors: [], loadedAt: '', streams: null, mappings: null, recordIds: null, usage: null })
+}

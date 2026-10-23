@@ -42,6 +42,12 @@ export async function clearHistory() {
   await storeSet(HISTORY, [])
 }
 
+/** Read saved queries and history again (after Settings deleted them). */
+export async function reloadQueries() {
+  state.loaded = false
+  await loadQueries()
+}
+
 export function useQueries() {
   return state
 }

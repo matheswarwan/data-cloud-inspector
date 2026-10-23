@@ -4,15 +4,15 @@ import { Monitor, Sun, Moon } from 'lucide-vue-next'
 import { useSettings } from '../app/useSettings.js'
 import { useOrg, currentOrg, recheckOrg } from '../app/useOrg.js'
 import { send } from '../lib/api.js'
-import { forgetCatalog } from '../app/useCatalog.js'
-import { useQueries, loadQueries, saveQuery, clearHistory } from '../app/useQueries.js'
+import { resetCatalog, ensureCatalog } from '../app/useCatalog.js'
+import { readStorage, deleteKeys, formatBytes } from '../lib/storageUsage.js'
+import { useQueries, loadQueries, saveQuery, clearHistory, reloadQueries } from '../app/useQueries.js'
 import { storeAll, storeRemove } from '../lib/store.js'
 import { FEEDBACK_CONTACT_KEY } from '../lib/feedbackContact.js'
 
 const settings = useSettings()
 const org = useOrg()
 const queries = useQueries()
-const caches = ref([]) // [{ orgId, host, objects, loadedAt, kb }]
 const contact = ref(null)
 const notice = ref('')
 const fileInput = ref(null)
@@ -45,26 +45,42 @@ async function oauthLogout() {
   recheckOrg()
 }
 
+// Storage: everything kept in the browser, by section, with sizes and Delete.
+const storage = ref(null) // { groups, total }
 async function refresh() {
+  storage.value = await readStorage()
   const all = await storeAll()
-  caches.value = Object.entries(all)
-    .filter(([k]) => k.startsWith('dci_catalog_'))
-    .map(([k, v]) => {
-      const orgId = k.slice('dci_catalog_'.length)
-      return { orgId, host: org.orgs.find((o) => o.orgId === orgId)?.host || orgId, objects: v?.objects?.length || 0, loadedAt: v?.loadedAt, kb: Math.round(JSON.stringify(v).length / 1024) }
-    })
   contact.value = all[FEEDBACK_CONTACT_KEY] || null
+}
+const hostOf = (orgId) => org.orgs.find((o) => o.orgId === orgId)?.host || (orgId === 'other' ? 'other' : orgId)
+
+async function afterDelete(groupId) {
+  if (groupId === 'metadata' || groupId === 'session' || groupId === 'all') { resetCatalog(); ensureCatalog() }
+  if (groupId === 'saved' || groupId === 'history' || groupId === 'all') await reloadQueries()
+  if (groupId === 'oauthTokens' || groupId === 'all') { await loadOauth(); recheckOrg() }
+  await refresh()
+}
+
+async function removeGroup(g, part = null) {
+  const keys = part ? part.keys : g.keys
+  const what = part ? `${g.label.toLowerCase()} of ${hostOf(part.orgId)}` : g.label.toLowerCase()
+  if ((g.id === 'saved' || g.id === 'history') && !confirm(`Delete ${what}? This cannot be undone.`)) return
+  await deleteKeys(g.area, keys)
+  notice.value = `Deleted ${what} (${formatBytes(part ? part.bytes : g.bytes)}).`
+  await afterDelete(g.id)
+}
+
+async function removeAll() {
+  if (!confirm('Delete everything Data Cloud Inspector keeps in this browser: caches, saved queries, history, OAuth logins and settings? This cannot be undone.')) return
+  for (const g of storage.value?.groups || []) await deleteKeys(g.area, g.keys)
+  notice.value = 'Deleted everything the extension kept in this browser.'
+  await afterDelete('all')
 }
 
 onMounted(() => { loadQueries(); refresh(); loadOauth() })
 watch(() => org.orgs, refresh) // the org list may arrive after this page opens
 watch(() => org.orgId, () => { clientId.value = ''; oauthMsg.value = ''; loadOauth() })
 
-async function clearCache(c) {
-  await forgetCatalog(c.orgId)
-  notice.value = `Cleared the metadata of ${c.host}. It loads again the next time you open Objects, SQL or Profiles.`
-  refresh()
-}
 
 async function forgetContact() {
   await storeRemove(FEEDBACK_CONTACT_KEY)
@@ -135,22 +151,35 @@ const savedCount = computed(() => queries.saved.length)
     </div>
 
     <div :class="card">
-      <h3 class="font-medium">Cached metadata</h3>
+      <div class="flex items-baseline gap-3">
+        <h3 class="font-medium">Storage</h3>
+        <span v-if="storage" class="text-sm text-muted-foreground">{{ formatBytes(storage.total) }} in this browser</span>
+        <button v-if="storage?.groups.length" :class="[btn, 'ml-auto']" @click="removeAll">Delete everything</button>
+      </div>
       <p class="text-sm text-muted-foreground">
-        The list of DLOs, DMOs and calculated insights with their fields is kept per org so Objects, SQL autocomplete
-        and Profiles start fast. No records or query results are stored. Clear it if objects changed in the org
-        (Refresh on the Objects page does the same for the current org).
+        Everything Data Cloud Inspector keeps, only in this browser. No records or query results are stored.
+        Session items are also deleted when the browser closes.
       </p>
-      <p v-if="!caches.length" class="text-sm text-muted-foreground">Nothing cached yet.</p>
-      <ul class="text-sm divide-y">
-        <li v-for="c in caches" :key="c.orgId" class="py-2 flex items-center gap-3">
-          <div class="flex-1 min-w-0">
-            <div class="truncate">{{ c.host }}</div>
-            <div class="text-xs text-muted-foreground">{{ c.objects }} objects, {{ c.kb }} KB, loaded {{ when(c.loadedAt) }}</div>
-          </div>
-          <button :class="btn" @click="clearCache(c)">Clear</button>
-        </li>
-      </ul>
+      <p v-if="storage && !storage.groups.length" class="text-sm text-muted-foreground">Nothing stored.</p>
+      <table v-if="storage?.groups.length" class="w-full text-sm">
+        <tbody>
+          <template v-for="g in storage.groups" :key="g.id">
+            <tr class="border-t align-top">
+              <td class="py-2 pr-3">
+                <div>{{ g.label }} <span class="text-xs text-muted-foreground">({{ g.area === 'local' ? 'kept' : g.area === 'session' ? 'session' : 'page settings' }})</span></div>
+                <div class="text-xs text-muted-foreground">{{ g.note }}</div>
+              </td>
+              <td class="py-2 pr-3 text-right whitespace-nowrap">{{ formatBytes(g.bytes) }}</td>
+              <td class="py-2 text-right"><button :class="btn" @click="removeGroup(g)">Delete</button></td>
+            </tr>
+            <tr v-for="o in g.byOrg.length > 1 || (g.byOrg[0] && g.byOrg[0].orgId !== org.orgId) ? g.byOrg : []" :key="g.id + o.orgId" class="align-top">
+              <td class="py-1 pr-3 pl-4 text-xs">{{ hostOf(o.orgId) }} <span class="text-muted-foreground">({{ o.keys.length }} {{ o.keys.length === 1 ? 'item' : 'items' }})</span></td>
+              <td class="py-1 pr-3 text-right text-xs whitespace-nowrap">{{ formatBytes(o.bytes) }}</td>
+              <td class="py-1 text-right"><button class="text-xs text-link hover:underline" @click="removeGroup(g, o)">Delete</button></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
     </div>
 
     <div :class="card">
