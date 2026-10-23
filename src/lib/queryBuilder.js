@@ -24,6 +24,27 @@ export function joinOptions(objectName, catalog) {
   return relatedTo(objectName, catalog).map((r) => ({ ...r, label: byName.get(r.object)?.label || r.object }))
 }
 
+/**
+ * A guess at how to join `other` under `parent` when you pick the object yourself (feedback
+ * #100): a relationship in the metadata, else a field both share (ids first, then any), else
+ * the parent's primary key against a field of the same name or ending in it. Field names come
+ * back as `{ objectField (parent), otherField }`; empty strings when nothing fits.
+ */
+export function guessJoin(parent, other, catalog) {
+  if (!parent || !other) return { objectField: '', otherField: '' }
+  const rel = joinOptions(parent.name, catalog).find((o) => o.object === other.name)
+  if (rel) return { objectField: rel.objectField, otherField: rel.otherField }
+  const theirs = new Set(other.fields.map((f) => f.name))
+  const shared = parent.fields.map((f) => f.name).filter((n) => theirs.has(n) && !/^(cdp_sys_|DataSource|InternalOrganization|KQ_)/.test(n))
+  const idLike = shared.find((n) => /Id__c$/i.test(n)) || shared[0]
+  if (idLike) return { objectField: idLike, otherField: idLike }
+  for (const pk of parent.primaryKeys || []) {
+    const hit = other.fields.find((f) => f.name.toLowerCase().endsWith(pk.toLowerCase().replace(/^ssot__/, '')))
+    if (hit) return { objectField: pk, otherField: hit.name }
+  }
+  return { objectField: '', otherField: '' }
+}
+
 export function emptyModel(base = '') {
   return { base, fields: [], joins: [], filters: [], orderBy: [], limit: 100, distinct: false }
 }

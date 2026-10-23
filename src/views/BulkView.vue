@@ -1,5 +1,6 @@
 <script setup>
 import DownloadMenu from '../components/DownloadMenu.vue'
+import HelpTip from '../components/HelpTip.vue'
 import DataTable from '../components/DataTable.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useOrg } from '../app/useOrg.js'
@@ -9,6 +10,7 @@ import { runQuery } from '../lib/query.js'
 import { inSpace } from '../lib/dataSpace.js'
 import { parseRulesets } from '../lib/profile.js'
 import { loadSegments, membershipTables } from '../lib/segments.js'
+import { samplesSql, samplesFrom } from '../lib/samples.js'
 import { parseInputs, bulkLookup, bulkSummary, bulkCsv, MAX_INPUTS } from '../lib/bulkLookup.js'
 
 const org = useOrg()
@@ -45,6 +47,21 @@ watch(() => job.value?.params, (p) => { if (p && !text.value) { text.value = p.t
 
 const items = computed(() => parseInputs(text.value))
 const tooMany = computed(() => items.value.length > MAX_INPUTS)
+
+// An empty box offers 10 random people to try (feedback #105).
+const sampling = ref(false)
+async function useSamples() {
+  if (!org.version) return
+  sampling.value = true
+  try {
+    await ensureCatalog()
+    const sql = samplesSql(catalog.objects.map((o) => o.name))
+    const list = sql ? samplesFrom(await runQuery(orgCall(), org.version, sql, { rowLimit: 10 })) : []
+    text.value = list.map((x) => x.value).join('\n')
+  } finally {
+    sampling.value = false
+  }
+}
 
 async function run() {
   await ensureCatalog()
@@ -109,7 +126,7 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
 <template>
   <section class="max-w-6xl mx-auto space-y-4">
     <div>
-      <h2 class="text-lg font-semibold">Bulk lookup</h2>
+      <h2 class="text-lg font-semibold" data-help="bulk">Bulk lookup <HelpTip topic="bulk" /></h2>
       <p class="text-sm text-muted-foreground">Paste emails, phones or IDs (one per line, or separated by commas), up to {{ MAX_INPUTS.toLocaleString() }}. Each is checked in Data Cloud, with its unified profile and, if you pick one, segment membership.</p>
     </div>
 
@@ -121,6 +138,7 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
         <select id="bulk-rs" v-model="rulesetId" class="border rounded-md px-2 py-1 bg-background"><option value="">none</option><option v-for="r in rulesets" :key="r.id" :value="r.id">{{ r.label }} ({{ r.id }})</option></select>
         <label class="text-muted-foreground" for="bulk-seg">Segment</label>
         <select id="bulk-seg" v-model="segmentName" class="border rounded-md px-2 py-1 bg-background"><option value="">none</option><option v-for="s in segments" :key="s.apiName" :value="s.apiName">{{ s.label }}</option></select>
+        <button v-if="!items.length" class="text-link hover:underline disabled:opacity-50" :disabled="sampling || !org.version" @click="useSamples">{{ sampling ? 'Picking…' : 'Use 10 random examples' }}</button>
         <button class="px-3 py-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50" :disabled="!items.length || job?.status === 'running' || !org.version" @click="run">{{ job?.status === 'running' ? 'Checking…' : 'Check' }}</button>
       </div>
       <p v-if="job?.status === 'running'" class="text-sm text-muted-foreground">Checking {{ job.progress || '' }}. You can use other pages meanwhile.</p>

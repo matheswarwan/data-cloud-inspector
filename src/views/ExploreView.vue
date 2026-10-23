@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
+import HelpTip from '../components/HelpTip.vue'
 import { Send } from 'lucide-vue-next'
 import { useOrg } from '../app/useOrg.js'
 import { sf } from '../lib/api.js'
@@ -66,7 +67,7 @@ const text = computed(() => {
 <template>
   <section class="max-w-6xl mx-auto space-y-3">
     <div class="space-y-1">
-      <h2 class="text-lg font-semibold">REST explore</h2>
+      <h2 class="text-lg font-semibold">REST explorer <HelpTip topic="explore" /></h2>
       <p class="text-sm text-muted-foreground">
         GET any Salesforce API path. POST is limited to the Data Cloud query endpoints
         (<code>ssot/query-sql</code>, <code>ssot/queryv2</code>); nothing that writes is allowed.

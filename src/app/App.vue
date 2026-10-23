@@ -1,16 +1,22 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { Settings, Search } from 'lucide-vue-next'
+import { useRoute, useRouter } from 'vue-router'
+import { Search } from 'lucide-vue-next'
 import AppSidebar from '../components/AppSidebar.vue'
 import ConnectionMenu from '../components/ConnectionMenu.vue'
 import FeedbackModal from '../components/feedback/FeedbackModal.vue'
 import CommandPalette from '../components/CommandPalette.vue'
 import DialogHost from '../components/DialogHost.vue'
+import FeatureTips from '../components/FeatureTips.vue'
+import { NAV } from './router.js'
+import { recordVisit } from '../lib/visits.js'
 import { useOrg, loadOrgs } from './useOrg.js'
 
 const org = useOrg()
 const route = useRoute()
+// Pages opened, for Home's Most used (feedback #106).
+const NAV_PATHS = NAV.map((n) => n.path)
+useRouter().afterEach((to) => recordVisit(to.path, NAV_PATHS))
 const feedback = ref(false)
 const palette = ref(null)
 onMounted(loadOrgs)
@@ -23,7 +29,6 @@ onMounted(loadOrgs)
       <div class="ml-auto flex items-center gap-2 text-sm">
         <button class="p-1.5 rounded-md hover:bg-accent" title="Search everything (Ctrl+K or Cmd+K)" aria-label="Search" @click="palette?.show()"><Search class="w-4 h-4" /></button>
         <ConnectionMenu />
-        <RouterLink to="/settings" class="p-1.5 rounded-md hover:bg-accent" active-class="bg-accent" title="Settings"><Settings class="w-4 h-4" /></RouterLink>
         <button class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border hover:bg-accent" title="Report a problem or send an idea" @click="feedback = true">
           Feedback
         </button>
@@ -52,6 +57,7 @@ onMounted(loadOrgs)
     </div>
     <CommandPalette ref="palette" />
     <DialogHost />
+    <FeatureTips />
     <FeedbackModal v-if="feedback" :screen="route.path" @close="feedback = false" />
   </div>
 </template>

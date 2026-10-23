@@ -1,7 +1,9 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, defineAsyncComponent } from 'vue'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
+import HelpTip from '../components/HelpTip.vue'
+const ModelDiagram = defineAsyncComponent(() => import('../components/ModelDiagram.vue'))
 import { useRoute, useRouter } from 'vue-router'
 import { RefreshCw } from 'lucide-vue-next'
 import { useOrg, currentOrg } from '../app/useOrg.js'
@@ -66,6 +68,26 @@ const DOT = { fail: 'bg-red-500', warn: 'bg-amber-400', running: 'bg-sky-500', i
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : 'never')
 const num = (n) => (n == null ? '—' : Number(n).toLocaleString())
 const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+// Overview (no stream picked, feedback #104): every stream as a table, or a lineage diagram of
+// stream -> DLO -> DMOs, like Data models. Kept in the URL (?view=diagram).
+const mode = computed({
+  get: () => (route.query.view === 'diagram' ? 'diagram' : 'table'),
+  set: (v) => router.replace({ query: { ...route.query, view: v === 'diagram' ? 'diagram' : undefined } }),
+})
+watch(() => route.params.name, (n) => { if (!n) ensureAllMappings() }, { immediate: true })
+const dmosOf = (s) => (catalog.mappings || []).filter((m) => m.source === s.dlo).map((m) => m.target)
+const streamCols = [
+  { key: 'label', label: 'Data stream', value: (s) => `${s.label} ${s.name}`, sortValue: (s) => s.label },
+  { key: 'connector', label: 'Source', value: (s) => [s.connector, s.sourceObject].filter(Boolean).join(': ') },
+  { key: 'dlo', label: 'Data lake object' },
+  { key: 'dmos', label: 'Maps into', value: (s) => dmosOf(s), sortValue: (s) => dmosOf(s).length, kind: 'number' },
+  { key: 'totalRecords', label: 'Records', align: 'right', kind: 'number' },
+  { key: 'health', label: 'Status', value: (s) => LEVEL_TEXT[s.health.level], sortValue: (s) => ['fail', 'warn', 'running', 'idle', 'ok'].indexOf(s.health.level), kind: 'number' },
+  { key: 'lastRunStatus', label: 'Last run', value: (s) => (s.lastRunStatus || '').toLowerCase() },
+  { key: 'lastRefreshDate', label: 'Last refresh', kind: 'date', value: (s) => (s.lastRefreshDate ? new Date(s.lastRefreshDate).toLocaleString() : ''), sortValue: (s) => s.lastRefreshDate || '', filter: false },
+]
+const view = ref([])
+const diagramNames = computed(() => [...new Set(view.value.flatMap(dmosOf))])
 const fieldCols = [
   { key: 'name', label: 'Source field' },
   { key: 'type', label: 'Type' },
@@ -75,7 +97,7 @@ const fieldCols = [
 
 <template>
   <section class="flex gap-4 min-h-0">
-    <ListPanel name="streams" label="data streams list">
+    <ListPanel v-if="route.params.name" name="streams" label="data streams list">
       <div class="flex gap-2">
         <input v-model="filter" placeholder="Search streams or source objects" class="flex-1 border rounded-md px-2 py-1 bg-background text-sm" />
         <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the streams again" @click="catalog.streams = null; loadList()"><RefreshCw class="w-4 h-4" /></button>
@@ -92,9 +114,40 @@ const fieldCols = [
     </ListPanel>
 
     <div class="flex-1 min-w-0 space-y-4">
-      <p v-if="!route.params.name" class="text-sm text-muted-foreground p-4">{{ catalog.streams ? 'Pick a data stream to see its source, schedule, records and fields.' : 'Loading data streams…' }}</p>
+      <template v-if="!route.params.name">
+        <div class="flex flex-wrap items-center gap-3">
+          <div>
+            <h2 class="text-lg font-semibold">Data streams <HelpTip topic="streams" /></h2>
+            <p class="text-sm text-muted-foreground">Where data comes into Data Cloud: each stream, the data lake object it fills and the data model objects that are mapped from it.</p>
+          </div>
+          <div class="ml-auto flex items-center gap-2 text-sm">
+            <div class="inline-flex rounded-md border overflow-hidden" role="radiogroup" aria-label="Show as">
+              <button role="radio" :aria-checked="mode === 'table'" :class="['px-2.5 py-1.5', mode === 'table' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent']" @click="mode = 'table'">Table</button>
+              <button role="radio" :aria-checked="mode === 'diagram'" :class="['px-2.5 py-1.5 border-l', mode === 'diagram' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent']" @click="mode = 'diagram'">Diagram</button>
+            </div>
+            <input v-model="filter" placeholder="Search streams or source objects" class="border rounded-md px-2 py-1.5 bg-background w-60" />
+            <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the streams again" aria-label="Load the streams again" @click="catalog.streams = null; loadList()"><RefreshCw class="w-4 h-4" /></button>
+          </div>
+        </div>
+        <p class="text-xs text-muted-foreground">{{ catalog.streams ? `${list.length} data streams` : 'Loading data streams…' }}</p>
+        <DataTable v-show="mode === 'table'" :columns="streamCols" :rows="list" row-key="name" box-class="max-h-[calc(100vh-13rem)]" :empty="catalog.streams ? 'No data streams in this data space.' : ''" @view="(v) => (view = v)">
+          <template #cell-label="{ row: s }"><RouterLink :to="`/streams/${s.name}`" class="text-link hover:underline">{{ s.label }}</RouterLink><div class="font-mono text-xs text-muted-foreground">{{ s.name }}</div></template>
+          <template #cell-dlo="{ value }"><RouterLink v-if="value" :to="`/objects/${value}`" class="font-mono text-xs text-link hover:underline">{{ value }}</RouterLink></template>
+          <template #cell-dmos="{ value }"><div class="text-xs"><RouterLink v-for="d in value" :key="d" :to="`/objects/${d}`" class="block font-mono text-link hover:underline">{{ d }}</RouterLink><span v-if="catalog.mappings && !value.length" class="text-muted-foreground">nothing mapped</span></div></template>
+          <template #cell-totalRecords="{ value }">{{ num(value) }}</template>
+          <template #cell-health="{ row: s }"><span class="whitespace-nowrap" :title="s.health.reason"><span :class="['inline-block w-2 h-2 rounded-full mr-1.5', DOT[s.health.level]]" />{{ LEVEL_TEXT[s.health.level] }}</span></template>
+        </DataTable>
+        <template v-if="mode === 'diagram'">
+          <ModelDiagram
+            v-if="catalog.mappings && catalog.streams" :objects="catalog.objects" :mappings="catalog.mappings" :names="diagramNames" :streams="view"
+            :title="`Data streams: ${currentOrg()?.host || ''}`" :subtitle="`${new Date().toISOString().slice(0, 10)}, data space ${org.dataSpace || 'default'}. ${view.length} data streams.`" file-name="data-streams-diagram"
+          />
+          <p v-else class="text-sm text-muted-foreground">{{ catalog.mappingsProgress ? `Reading mappings: ${catalog.mappingsProgress}` : 'Reading data streams and mappings…' }}</p>
+        </template>
+      </template>
       <p v-else-if="loading && !stream" class="text-sm text-muted-foreground">Loading…</p>
       <p v-if="error" class="text-sm text-destructive">{{ error }}</p>
+      <RouterLink v-if="route.params.name" to="/streams" class="text-xs text-link hover:underline">All data streams</RouterLink>
       <template v-if="stream">
         <div class="flex flex-wrap items-start gap-3">
           <div>

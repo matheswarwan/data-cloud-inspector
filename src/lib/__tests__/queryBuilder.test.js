@@ -62,3 +62,27 @@ describe('query builder', () => {
     expect(filterSql(m, CATALOG, { alias: 't0', field: 'ssot__FirstName__c', op: 'eq', value: '18' })).toBe("t0.ssot__FirstName__c = '18'")
   })
 })
+
+import { guessJoin } from '../queryBuilder.js'
+
+describe('guessJoin (any object, feedback #100)', () => {
+  const o = (name, fields, pk = [], relationships = []) => ({ name, label: name, kind: 'DLO', fields: fields.map((f) => ({ name: f })), primaryKeys: pk, relationships })
+  const cohort = o('AbnExperimentationCohortSummary__dll', ['Id__c', 'AbnExperimentId__c', 'DataSource__c', 'KQ_Id__c'], ['Id__c'])
+  const experiment = o('AbnExperiment_Home__dll', ['Id__c', 'Name__c', 'DataSource__c'], ['Id__c'])
+  const summary = o('AbnExperimentationSummary__dll', ['AbnExperimentId__c', 'Total__c'], ['AbnExperimentId__c'])
+  const plain = o('Plain__dll', ['Foo__c'])
+  const catalog = [cohort, experiment, summary, plain]
+  it('uses a shared id field, skipping system fields', () => {
+    expect(guessJoin(cohort, summary, catalog)).toEqual({ objectField: 'AbnExperimentId__c', otherField: 'AbnExperimentId__c' })
+    expect(guessJoin(cohort, experiment, catalog)).toEqual({ objectField: 'Id__c', otherField: 'Id__c' })
+  })
+  it('prefers a metadata relationship', () => {
+    const a = o('A__dlm', ['ssot__Id__c'], ['ssot__Id__c'], [{ from: 'B__dlm', fromField: 'ssot__PartyId__c', to: 'A__dlm', toField: 'ssot__Id__c' }])
+    const b = o('B__dlm', ['ssot__Id__c', 'ssot__PartyId__c'], ['ssot__Id__c'])
+    expect(guessJoin(a, b, [a, b])).toEqual({ objectField: 'ssot__Id__c', otherField: 'ssot__PartyId__c' })
+  })
+  it('gives blanks when nothing fits', () => {
+    expect(guessJoin(cohort, plain, catalog)).toEqual({ objectField: '', otherField: '' })
+    expect(guessJoin(null, plain, catalog)).toEqual({ objectField: '', otherField: '' })
+  })
+})

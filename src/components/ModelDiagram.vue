@@ -15,11 +15,15 @@ const props = defineProps({
   title: { type: String, default: 'Data model diagram' },
   subtitle: { type: String, default: '' },
   fileName: { type: String, default: 'data-model-diagram' },
+  // Data streams to draw, each feeding its DLO (Data streams diagram, feedback #104). With
+  // streams the DLOs are always drawn.
+  streams: { type: Array, default: null },
 })
 
-const fields = ref('keys')
+// Stream lineage starts without fields: it is about where data flows, not the keys.
+const fields = ref(props.streams ? 'none' : 'keys')
 const sources = ref(false)
-const graph = computed(() => diagramGraph(props.objects, props.mappings, new Set(props.names), { fields: fields.value, sources: sources.value }))
+const graph = computed(() => diagramGraph(props.objects, props.mappings, new Set(props.names), { fields: fields.value, sources: sources.value || !!props.streams, streams: props.streams }))
 const byId = computed(() => new Map(graph.value.nodes.map((n) => [n.id, n])))
 
 const pos = reactive({})
@@ -46,7 +50,7 @@ async function relayout() {
   }
 }
 // A new set of objects or options lays the diagram out again; moved boxes are not kept.
-watch(() => [props.names.join(','), fields.value, sources.value, props.objects.length, props.mappings.length], relayout)
+watch(() => [props.names.join(','), fields.value, sources.value, props.objects.length, props.mappings.length, props.streams?.length], relayout)
 onMounted(relayout)
 
 const placed = computed(() => graph.value.nodes.filter((n) => pos[n.id]))
@@ -144,7 +148,8 @@ onBeforeUnmount(onPointerUp)
 
 // Colours per category (the same in light and dark), and the theme's tokens for the rest.
 const CATEGORY = { Profile: '#2563eb', Engagement: '#d97706', Related: '#059669', Other: '#7c3aed' }
-const stripe = (n) => (n.kind === 'DLO' ? '#94a3b8' : CATEGORY[n.category.replace(/_/g, ' ')] || '#64748b')
+const STREAM_COLOUR = '#0891b2'
+const stripe = (n) => (n.kind === 'STREAM' ? STREAM_COLOUR : n.kind === 'DLO' ? '#94a3b8' : CATEGORY[n.category.replace(/_/g, ' ')] || '#64748b')
 const T = (name, alpha) => `hsl(var(--${name})${alpha != null ? ` / ${alpha}` : ''})`
 
 // Exports
@@ -235,7 +240,7 @@ const relCount = computed(() => graph.value.edges.filter((e) => e.kind === 'rel'
           <option value="keys">Keys and joins</option><option value="all">All fields</option><option value="none">None</option>
         </select>
       </label>
-      <label class="flex items-center gap-1.5"><input v-model="sources" type="checkbox" /> Data lake objects mapped in</label>
+      <label v-if="!streams" class="flex items-center gap-1.5"><input v-model="sources" type="checkbox" /> Data lake objects mapped in</label>
       <div class="relative">
         <input v-model="search" placeholder="Find a box" class="border rounded-md px-2 py-1 bg-background w-48" @keydown.enter="onSearchEnter" />
         <ul v-if="matches.length && search.trim()" class="absolute z-20 mt-1 w-72 max-h-60 overflow-auto border rounded-md bg-card shadow-lg text-sm">
@@ -274,8 +279,8 @@ const relCount = computed(() => graph.value.edges.filter((e) => e.kind === 'rel'
           <g data-viewport :transform="`translate(${view.x},${view.y}) scale(${view.k})`">
             <g v-for="p in paths" :key="p.e.id" :style="{ opacity: edgeDim(p.e) ? 0.12 : 1 }">
               <path
-                :d="p.d" fill="none" :marker-end="p.e.kind === 'map' ? 'url(#dci-arrow)' : undefined"
-                :style="{ stroke: p.e.kind === 'map' ? T('muted-foreground') : T('foreground', 0.55), strokeWidth: selected && (p.e.from === selected || p.e.to === selected) ? 2.2 : 1.3, strokeDasharray: p.e.kind === 'map' ? '5 4' : 'none' }"
+                :d="p.d" fill="none" :marker-end="p.e.kind !== 'rel' ? 'url(#dci-arrow)' : undefined"
+                :style="{ stroke: p.e.kind !== 'rel' ? T('muted-foreground') : T('foreground', 0.55), strokeWidth: selected && (p.e.from === selected || p.e.to === selected) ? 2.2 : 1.3, strokeDasharray: p.e.kind !== 'rel' ? '5 4' : 'none' }"
               />
               <text v-if="p.e.kind === 'rel' && cardinalityText(p.e.cardinality)" :x="p.mid.x" :y="p.mid.y - 4" text-anchor="middle" font-size="10" :style="{ fill: T('muted-foreground') }">{{ cardinalityText(p.e.cardinality) }}</text>
             </g>
@@ -287,7 +292,7 @@ const relCount = computed(() => graph.value.edges.filter((e) => e.kind === 'rel'
               <rect :width="n.width" :height="n.height" rx="5" :style="{ fill: T('card'), stroke: selected === n.id ? T('foreground') : T('border'), strokeWidth: selected === n.id ? 2 : 1, strokeDasharray: n.kind === 'DLO' ? '5 3' : 'none' }" />
               <rect :width="4" :height="n.height" rx="2" :style="{ fill: stripe(n) }" />
               <text x="12" y="17" font-size="12" font-weight="600" :style="{ fill: T('foreground') }">{{ n.label.length > 42 ? `${n.label.slice(0, 41)}…` : n.label }}</text>
-              <text x="12" y="32" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" :style="{ fill: T('muted-foreground') }">{{ n.name.length > 50 ? `${n.name.slice(0, 49)}…` : n.name }}</text>
+              <text x="12" y="32" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" :style="{ fill: T('muted-foreground') }">{{ (n.kind === 'STREAM' ? n.category || n.name : n.name).slice(0, 50) }}</text>
               <template v-if="n.fields.length">
                 <line x1="4" :x2="n.width" :y1="NODE.header" :y2="NODE.header" :style="{ stroke: T('border') }" />
                 <g v-for="(f, i) in n.fields" :key="f.name" :transform="`translate(0,${NODE.header + NODE.pad + i * NODE.row})`">
@@ -302,7 +307,8 @@ const relCount = computed(() => graph.value.edges.filter((e) => e.kind === 'rel'
         </svg>
         <div class="absolute left-2 bottom-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground bg-card/90 border rounded px-2 py-1 pointer-events-none">
           <span v-for="(c, k) in CATEGORY" :key="k" class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm" :style="{ background: c }" />{{ k }}</span>
-          <span v-if="sources" class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm border border-dashed border-muted-foreground" />DLO</span>
+          <span v-if="streams" class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm" :style="{ background: STREAM_COLOUR }" />Data stream</span>
+          <span v-if="sources || streams" class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm border border-dashed border-muted-foreground" />DLO</span>
           <span>{{ Math.round(view.k * 100) }}%</span>
         </div>
       </div>
@@ -311,9 +317,9 @@ const relCount = computed(() => graph.value.edges.filter((e) => e.kind === 'rel'
         <div>
           <div class="font-medium">{{ selNode.label }}</div>
           <div class="font-mono text-xs text-muted-foreground break-all">{{ selNode.name }}</div>
-          <div class="text-xs text-muted-foreground">{{ selNode.kind }}{{ selNode.category ? `, ${selNode.category.replace(/_/g, ' ')}` : '' }}, {{ selNode.fieldCount }} fields</div>
+          <div class="text-xs text-muted-foreground">{{ selNode.kind === 'STREAM' ? `Data stream${selNode.category ? `, ${selNode.category}` : ''}${selNode.status ? `, last run ${selNode.status.toLowerCase()}` : ''}` : `${selNode.kind}${selNode.category ? `, ${selNode.category.replace(/_/g, ' ')}` : ''}, ${selNode.fieldCount} fields` }}</div>
         </div>
-        <RouterLink :to="`/objects/${selNode.name}`" class="text-xs text-link hover:underline">Open in Objects</RouterLink>
+        <RouterLink :to="selNode.kind === 'STREAM' ? `/streams/${selNode.name}` : `/objects/${selNode.name}`" class="text-xs text-link hover:underline">{{ selNode.kind === 'STREAM' ? 'Open the data stream' : 'Open in Objects' }}</RouterLink>
         <div v-if="selNode.fields.some((f) => f.pk)" class="text-xs"><Key class="inline w-3 h-3" /> {{ selNode.fields.filter((f) => f.pk).map((f) => f.name).join(', ') }}</div>
         <div>
           <div class="text-xs text-muted-foreground mb-1">Drawn connections ({{ selEdges.length }})</div>
@@ -321,6 +327,7 @@ const relCount = computed(() => graph.value.edges.filter((e) => e.kind === 'rel'
             <li v-for="e in selEdges" :key="e.id" class="text-xs">
               <button class="text-link hover:underline text-left" @click="focusNode(other(e).id)"><Link2 class="inline w-3 h-3" /> {{ other(e).label }}</button>
               <div v-if="e.kind === 'rel'" class="font-mono text-muted-foreground break-all">{{ e.fromField }} = {{ e.toField }} <span class="font-sans">{{ cardinalityText(e.cardinality) || e.cardinality }}</span></div>
+              <div v-else-if="e.kind === 'feed'" class="text-muted-foreground">{{ byId.get(e.from)?.label }} feeds {{ byId.get(e.to)?.label }}</div>
               <div v-else class="text-muted-foreground">maps {{ e.count }} fields into {{ byId.get(e.to)?.label }}</div>
             </li>
           </ul>

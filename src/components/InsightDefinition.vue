@@ -1,4 +1,5 @@
 <script setup>
+import SqlBlock from './SqlBlock.vue'
 import DataTable from './DataTable.vue'
 // A calculated insight's definition: status, schedule, last run, the SQL (formatted) and its
 // dimensions and measures with formulas. Used by Objects and Calculated insights.
@@ -43,7 +44,7 @@ const fieldCols = [
                 <button class="ml-auto text-xs text-link hover:underline" @click="copySql(ci.sql)">{{ copied ? 'Copied' : 'Copy SQL' }}</button>
                 <button class="text-xs text-link hover:underline" @click="router.push({ path: '/sql', query: { sql: ci.sql } })">Open in a SQL tab</button>
               </div>
-              <pre class="p-3 text-xs font-mono whitespace-pre-wrap break-words">{{ prettySql(ci.sql) }}</pre>
+              <div class="p-2"><SqlBlock :code="prettySql(ci.sql)" box-class="max-h-[75vh]" /></div>
               <p class="px-3 pb-2 text-xs text-muted-foreground">Calculated insight SQL uses its own dialect, so it may need small edits before it runs as a query (for example DATE_ADD with a zero offset).</p>
             </div>
             <DataTable v-if="show === 'all' || show === 'fields'" :columns="fieldCols" :rows="[...ci.dimensions, ...ci.measures]" row-key="name">

@@ -1,5 +1,6 @@
 <script setup>
 import DataTable from '../components/DataTable.vue'
+import HelpTip from '../components/HelpTip.vue'
 import { ref, computed, watch } from 'vue'
 import { Check, X, Copy } from 'lucide-vue-next'
 import RecordLink from '../components/RecordLink.vue'
@@ -73,7 +74,7 @@ const checkCols = [
 <template>
   <section class="max-w-6xl mx-auto space-y-4">
     <div class="space-y-1">
-      <h2 class="text-lg font-semibold">Connection check</h2>
+      <h2 class="text-lg font-semibold">Connection check <HelpTip topic="connection" /></h2>
       <p class="text-sm text-muted-foreground">
         Checks that your browser session reaches the core API and the Data Cloud endpoints of
         <strong>{{ currentOrg()?.host || 'the selected org' }}</strong>. Every request is a read.

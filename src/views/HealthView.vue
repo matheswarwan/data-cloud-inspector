@@ -1,5 +1,6 @@
 <script setup>
 import DownloadMenu from '../components/DownloadMenu.vue'
+import HelpTip from '../components/HelpTip.vue'
 import DataTable from '../components/DataTable.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { RefreshCw } from 'lucide-vue-next'
@@ -80,7 +81,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
   <section class="max-w-6xl mx-auto space-y-4">
     <div class="flex flex-wrap items-center gap-3">
       <div>
-        <h2 class="text-lg font-semibold">Health</h2>
+        <h2 class="text-lg font-semibold">Health <HelpTip topic="health" /></h2>
         <p class="text-sm text-muted-foreground">
           Data streams, identity resolution, calculated insights, segments and activations, problems first.
           <span v-if="loading"> Checking: {{ job?.progress || 'starting' }}. You can use other pages meanwhile.</span>

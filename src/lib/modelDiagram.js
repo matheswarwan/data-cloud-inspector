@@ -18,8 +18,9 @@ const relKey = (r) => [`${r.from}.${r.fromField}`, `${r.to}.${r.toField}`].sort(
  * Nodes and edges for the DMOs in `names` (a Set of API names).
  * `fields`: 'keys' (primary keys and fields used by a drawn relationship), 'all' or 'none'.
  * `sources`: also draw the DLOs mapped into these DMOs (from `mappings`).
+ * `streams`: also draw these data streams, each feeding its DLO (Data streams diagram, #104).
  */
-export function diagramGraph(objects, mappings, names, { fields = 'keys', sources = false } = {}) {
+export function diagramGraph(objects, mappings, names, { fields = 'keys', sources = false, streams = null } = {}) {
   const byName = new Map(objects.map((o) => [o.name, o]))
   const shown = [...names].filter((n) => byName.has(n))
   const inSet = new Set(shown)
@@ -64,6 +65,20 @@ export function diagramGraph(objects, mappings, names, { fields = 'keys', source
       edges.push({ id: `m${edges.length}`, kind: 'map', from: m.source, to: m.target, fromField: '', toField: '', cardinality: '', count: m.fields?.length || 0 })
     }
     nodes.push(...dlos.values())
+  }
+  if (streams) {
+    const have = new Set(nodes.map((n) => n.id))
+    for (const st of streams) {
+      if (!st.dlo) continue
+      if (!have.has(st.dlo)) {
+        const o = byName.get(st.dlo)
+        nodes.push({ id: st.dlo, kind: 'DLO', name: st.dlo, label: o?.label || st.dlo, category: o?.category || '', fields: [], fieldCount: o?.fields.length || 0, outside: 0 })
+        have.add(st.dlo)
+      }
+      const id = `stream:${st.name}`
+      nodes.push({ id, kind: 'STREAM', name: st.name, label: st.label || st.name, category: [st.connector, st.sourceObject].filter(Boolean).join(': '), fields: [], fieldCount: 0, outside: 0, status: st.lastRunStatus || '' })
+      edges.push({ id: `f${edges.length}`, kind: 'feed', from: id, to: st.dlo, fromField: '', toField: '', cardinality: '' })
+    }
   }
   for (const n of nodes) Object.assign(n, nodeSize(n))
   return { nodes, edges }
@@ -157,7 +172,7 @@ const quote = (s) => `"${String(s).replace(/"/g, "'")}"`
 export function toMermaid(graph) {
   const lines = ['erDiagram']
   for (const n of graph.nodes) {
-    const id = mermaidId(n.name)
+    const id = mermaidId(n.id)
     if (!n.fields.length) { lines.push(`  ${id} {`, `  }`); continue }
     lines.push(`  ${id} {`)
     for (const f of n.fields) lines.push(`    ${mermaidType(f.type)} ${mermaidId(f.name)}${f.pk ? ' PK' : f.fk ? ' FK' : ''}`)
@@ -165,6 +180,7 @@ export function toMermaid(graph) {
   }
   for (const e of graph.edges) {
     if (e.kind === 'map') lines.push(`  ${mermaidId(e.from)} }o..|| ${mermaidId(e.to)} : ${quote('maps to')}`)
+    else if (e.kind === 'feed') lines.push(`  ${mermaidId(e.from)} ||..|| ${mermaidId(e.to)} : ${quote('feeds')}`)
     else lines.push(`  ${mermaidId(e.from)} ${MERMAID_REL[cardinalityText(e.cardinality)] || '}o--o{'} ${mermaidId(e.to)} : ${quote(e.fromField && e.toField ? `${e.fromField} = ${e.toField}` : 'related')}`)
   }
   return `${lines.join('\n')}\n`
@@ -193,11 +209,11 @@ export function toDot(graph) {
   const lines = ['digraph DataModel {', '  rankdir=LR;', '  node [shape=box, style="rounded", fontname="Helvetica", fontsize=10];', '  edge [fontname="Helvetica", fontsize=9];']
   for (const n of graph.nodes) {
     const body = [n.label, n.name, ...n.fields.map((f) => `${f.pk ? 'PK ' : f.fk ? 'FK ' : ''}${f.name}`)].map(esc).join('\\l')
-    lines.push(`  "${esc(n.id)}" [label="${body}\\l"${n.kind === 'DLO' ? ', style="rounded,dashed"' : ''}];`)
+    lines.push(`  "${esc(n.id)}" [label="${body}\\l"${n.kind === 'DLO' ? ', style="rounded,dashed"' : n.kind === 'STREAM' ? ', shape=cds' : ''}];`)
   }
   for (const e of graph.edges) {
-    const label = e.kind === 'map' ? 'maps to' : [cardinalityText(e.cardinality), e.fromField && `${e.fromField} = ${e.toField}`].filter(Boolean).join(' ')
-    lines.push(`  "${esc(e.from)}" -> "${esc(e.to)}" [label="${esc(label)}"${e.kind === 'map' ? ', style=dashed' : ''}];`)
+    const label = e.kind === 'map' ? 'maps to' : e.kind === 'feed' ? 'feeds' : [cardinalityText(e.cardinality), e.fromField && `${e.fromField} = ${e.toField}`].filter(Boolean).join(' ')
+    lines.push(`  "${esc(e.from)}" -> "${esc(e.to)}" [label="${esc(label)}"${e.kind !== 'rel' ? ', style=dashed' : ''}];`)
   }
   lines.push('}')
   return `${lines.join('\n')}\n`
@@ -212,12 +228,12 @@ export function toDrawio(graph, pos) {
   for (const n of graph.nodes) {
     const p = pos[n.id] || { x: 0, y: 0 }
     const html = `<b>${xml(n.label)}</b><br><font style="font-size:9px">${xml(n.name)}</font>${n.fields.length ? `<hr>${n.fields.map((f) => `${f.pk ? 'PK ' : f.fk ? 'FK ' : ''}${xml(f.name)}`).join('<br>')}` : ''}`
-    const style = `rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=2;arcSize=4;${n.kind === 'DLO' ? 'dashed=1;fillColor=#f5f5f5;' : 'fillColor=#ffffff;'}strokeColor=#64748b;fontSize=11;`
+    const style = `rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=2;arcSize=4;${n.kind === 'DLO' ? 'dashed=1;fillColor=#f5f5f5;' : n.kind === 'STREAM' ? 'fillColor=#ecfeff;' : 'fillColor=#ffffff;'}strokeColor=#64748b;fontSize=11;`
     cells.push(`<mxCell id="${id.get(n.id)}" value="${xml(html)}" style="${style}" vertex="1" parent="1"><mxGeometry x="${p.x}" y="${p.y}" width="${n.width}" height="${n.height}" as="geometry"/></mxCell>`)
   }
   graph.edges.forEach((e, i) => {
-    const label = e.kind === 'map' ? 'maps to' : cardinalityText(e.cardinality)
-    const style = `edgeStyle=entityRelationEdgeStyle;html=1;endArrow=none;strokeColor=#64748b;fontSize=9;${e.kind === 'map' ? 'dashed=1;endArrow=block;' : ''}`
+    const label = e.kind === 'map' ? 'maps to' : e.kind === 'feed' ? 'feeds' : cardinalityText(e.cardinality)
+    const style = `edgeStyle=entityRelationEdgeStyle;html=1;endArrow=none;strokeColor=#64748b;fontSize=9;${e.kind !== 'rel' ? 'dashed=1;endArrow=block;' : ''}`
     cells.push(`<mxCell id="e${i}" value="${xml(label)}" style="${style}" edge="1" parent="1" source="${id.get(e.from)}" target="${id.get(e.to)}"><mxGeometry relative="1" as="geometry"/></mxCell>`)
   })
   return `<mxfile host="Data Cloud Inspector"><diagram name="Data model"><mxGraphModel><root>${cells.join('')}</root></mxGraphModel></diagram></mxfile>\n`

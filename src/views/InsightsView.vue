@@ -1,5 +1,6 @@
 <script setup>
 import DataTable from '../components/DataTable.vue'
+import HelpTip from '../components/HelpTip.vue'
 // Calculated insights as Data Cloud shows them: a list view, and a record page with Details,
 // Dimensions and Measures, SQL, Data (a preview) and Used by.
 import { ref, computed, watch, onMounted } from 'vue'
@@ -132,7 +133,7 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
     <div class="flex flex-wrap items-center gap-3">
       <div>
         <div class="text-xs text-muted-foreground">Calculated Insights</div>
-        <h2 class="text-lg font-semibold">All calculated insights</h2>
+        <h2 class="text-lg font-semibold">All calculated insights <HelpTip topic="insights" /></h2>
       </div>
       <div class="ml-auto flex items-center gap-2 text-sm">
         <input v-model="search" placeholder="Search this list" class="border rounded-md px-2 py-1 bg-background w-60" />

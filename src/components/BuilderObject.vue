@@ -3,7 +3,7 @@
 // objects that can be added under it (recursively).
 import { ref, computed } from 'vue'
 import { X } from 'lucide-vue-next'
-import { joinOptions, addJoin, removeJoin } from '../lib/queryBuilder.js'
+import { joinOptions, addJoin, removeJoin, guessJoin } from '../lib/queryBuilder.js'
 
 const props = defineProps({
   model: { type: Object, required: true },
@@ -39,6 +39,25 @@ function add() {
   if (opt) addJoin(props.model, props.alias, opt)
   adding.value = ''
 }
+// Join any object, choosing the fields yourself (feedback #100): for objects the metadata
+// does not relate, such as most DLOs.
+const custom = ref(null) // { text, object, objectField, otherField }
+const otherObj = computed(() => props.catalog.find((o) => o.name === custom.value?.object) || null)
+const objectChoices = computed(() => [...props.catalog].sort((a, b) => a.kind.localeCompare(b.kind) || a.label.localeCompare(b.label)))
+function pickOther() {
+  const c = custom.value
+  const t = c.text.trim()
+  const hit = props.catalog.find((o) => o.name === t) || props.catalog.find((o) => `${o.label} (${o.name})` === t)
+  c.object = hit?.name || ''
+  if (hit) Object.assign(c, guessJoin(obj.value, hit, props.catalog))
+}
+function addCustom() {
+  const c = custom.value
+  if (!c.object || !c.objectField || !c.otherField) return
+  addJoin(props.model, props.alias, { object: c.object, objectField: c.objectField, otherField: c.otherField })
+  custom.value = null
+}
+const listId = computed(() => `dci-builder-objects-${props.alias}`)
 const short = (f) => f.replace(/^ssot__/, '').replace(/__c$/, '')
 const parentLabel = computed(() => (join.value ? `${join.value.alias}.${short(join.value.field)} = ${join.value.parent}.${short(join.value.parentField)}` : ''))
 </script>
@@ -71,11 +90,35 @@ const parentLabel = computed(() => (join.value ? `${join.value.alias}.${short(jo
           <span class="font-mono truncate">{{ f.name }}</span>
         </label>
       </div>
-      <div v-if="options.length" class="flex items-center gap-2 pt-1">
-        <select v-model="adding" class="border rounded px-1 py-0.5 bg-background max-w-md" @change="add">
+      <div class="flex flex-wrap items-center gap-2 pt-1">
+        <select v-if="options.length" v-model="adding" class="border rounded px-1 py-0.5 bg-background max-w-md" @change="add">
           <option value="">Add a related object…</option>
           <option v-for="(o, i) in options" :key="o.object + o.otherField + o.objectField" :value="i">{{ o.label }} ({{ o.object }}.{{ o.otherField }} = {{ o.objectField }})</option>
         </select>
+        <span v-else class="text-muted-foreground">The metadata relates no objects to this one.</span>
+        <button v-if="!custom" class="text-link hover:underline" @click="custom = { text: '', object: '', objectField: '', otherField: '' }">Join another object…</button>
+      </div>
+      <div v-if="custom" class="border rounded p-2 space-y-1.5 bg-background">
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="text-muted-foreground" :for="`${listId}-input`">Object</label>
+          <input :id="`${listId}-input`" v-model="custom.text" :list="listId" placeholder="Type to search DLOs, DMOs and calculated insights" class="border rounded px-2 py-0.5 bg-background w-96 max-w-full" @change="pickOther" @input="pickOther" />
+          <datalist :id="listId"><option v-for="o in objectChoices" :key="o.name" :value="o.name">{{ o.kind }} · {{ o.label }}</option></datalist>
+          <button class="ml-auto p-0.5 rounded hover:bg-accent" aria-label="Cancel joining another object" @click="custom = null"><X class="w-3.5 h-3.5" /></button>
+        </div>
+        <div v-if="otherObj" class="flex flex-wrap items-center gap-2">
+          <span class="text-muted-foreground">Join on</span>
+          <select v-model="custom.otherField" class="border rounded px-1 py-0.5 bg-background font-mono" :aria-label="`${otherObj.label} field`">
+            <option value="">{{ otherObj.label }} field…</option>
+            <option v-for="f in otherObj.fields" :key="f.name" :value="f.name">{{ f.name }}</option>
+          </select>
+          <span>=</span>
+          <select v-model="custom.objectField" class="border rounded px-1 py-0.5 bg-background font-mono" :aria-label="`${obj?.label} field`">
+            <option value="">{{ obj?.label }} field…</option>
+            <option v-for="f in obj?.fields || []" :key="f.name" :value="f.name">{{ alias }}.{{ f.name }}</option>
+          </select>
+          <button class="px-2 py-0.5 rounded border hover:bg-accent disabled:opacity-50" :disabled="!custom.objectField || !custom.otherField" @click="addCustom">Add join</button>
+        </div>
+        <p v-if="otherObj && !custom.objectField" class="text-muted-foreground">No field pair to suggest; pick the two fields that hold the same value.</p>
       </div>
     </div>
   </div>

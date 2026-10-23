@@ -1,5 +1,6 @@
 <script setup>
 import DataTable from '../components/DataTable.vue'
+import HelpTip from '../components/HelpTip.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { RefreshCw } from 'lucide-vue-next'
@@ -102,7 +103,7 @@ const recentCols = computed(() => [
   <section class="max-w-6xl mx-auto space-y-4">
     <div class="flex flex-wrap items-center gap-3">
       <div>
-        <h2 class="text-lg font-semibold">Personalization</h2>
+        <h2 class="text-lg font-semibold">Personalization <HelpTip topic="personalization" /></h2>
         <p class="text-sm text-muted-foreground">Salesforce Personalization setup (points, decisions, recommenders, experiments) and what the personalization log recorded.</p>
       </div>
       <button :class="[btn, 'ml-auto']" :disabled="loading" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /> Load again</button>
@@ -190,7 +191,8 @@ const recentCols = computed(() => [
           <div class="flex items-baseline gap-2">
             <span class="font-medium">{{ labelOf(g) }}</span>
             <span class="font-mono text-xs text-muted-foreground">{{ graphName(g) }}</span>
-            <button class="ml-auto text-xs text-link hover:underline" @click="rawGraph = rawGraph === g ? null : g">{{ rawGraph === g ? 'Hide' : 'Show' }} raw JSON</button>
+            <RouterLink :to="`/graphs/${graphName(g)}`" class="ml-auto text-xs text-link hover:underline">Open in Data graphs</RouterLink>
+            <button class="text-xs text-link hover:underline" @click="rawGraph = rawGraph === g ? null : g">{{ rawGraph === g ? 'Hide' : 'Show' }} raw JSON</button>
           </div>
           <dl class="grid grid-cols-[12rem_1fr] gap-x-3 gap-y-0.5 text-xs">
             <template v-for="[k, v] in scalars(g)" :key="k"><dt class="text-muted-foreground">{{ k }}</dt><dd class="break-all">{{ v }}</dd></template>

@@ -9,6 +9,9 @@ import SettingsView from '../views/SettingsView.vue'
 import HealthView from '../views/HealthView.vue'
 import PersonalizationView from '../views/PersonalizationView.vue'
 import CompareView from '../views/CompareView.vue'
+import DataGraphsView from '../views/DataGraphsView.vue'
+import HelpView from '../views/HelpView.vue'
+import HomeView from '../views/HomeView.vue'
 import IdentityView from '../views/IdentityView.vue'
 import QueryBuilderView from '../views/QueryBuilderView.vue'
 import BulkView from '../views/BulkView.vue'
@@ -20,13 +23,16 @@ import DataModelsView from '../views/DataModelsView.vue'
 // The sidebar, in the order and groups the user chose (feedback #95); `group` starts a new
 // section. Activations is not in that list and sits with Segments.
 export const NAV = [
+  { path: '/', label: 'Home', icon: 'Home', group: 0 },
   { path: '/objects', label: 'Objects', icon: 'Boxes', group: 1 },
   { path: '/sql', label: 'SQL', icon: 'Database', group: 1 },
+  { path: '/sql/builder', label: 'Query builder', icon: 'Blocks', group: 1 },
   { path: '/bulk', label: 'Bulk lookup', icon: 'ListChecks', group: 2, job: 'bulk:' },
   { path: '/profile', label: 'Profiles', icon: 'User', group: 2 },
   { path: '/streams', label: 'Data streams', icon: 'ArrowDownToLine', group: 3 },
   { path: '/models', label: 'Data models', icon: 'Network', group: 3 },
   { path: '/identity', label: 'Identity', icon: 'Fingerprint', group: 3 },
+  { path: '/graphs', label: 'Data graphs', icon: 'Share2', group: 3 },
   { path: '/segments', label: 'Segments', icon: 'Users', group: 3 },
   { path: '/activations', label: 'Activations', icon: 'Send', group: 3 },
   { path: '/insights', label: 'Insights', icon: 'Calculator', group: 3 },
@@ -41,7 +47,7 @@ export function createAppRouter() {
   return createRouter({
     history: createWebHashHistory(),
     routes: [
-      { path: '/', redirect: '/objects' },
+      { path: '/', component: HomeView },
       { path: '/profile/:kind(u|s)?/:id?', component: ProfileView },
       { path: '/sql', component: SqlView },
       { path: '/sql/builder', component: QueryBuilderView },
@@ -59,6 +65,8 @@ export function createAppRouter() {
       { path: '/personalization', component: PersonalizationView },
       { path: '/compare', component: CompareView },
       { path: '/identity/:id?', component: IdentityView },
+      { path: '/graphs/:name?', component: DataGraphsView },
+      { path: '/help', component: HelpView },
     ],
   })
 }

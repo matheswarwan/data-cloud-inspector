@@ -1,5 +1,6 @@
 <script setup>
 import DownloadMenu from '../components/DownloadMenu.vue'
+import HelpTip from '../components/HelpTip.vue'
 import { ref, shallowRef, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, Copy, ChevronRight, ChevronDown } from 'lucide-vue-next'
@@ -10,6 +11,7 @@ import { currentOrg } from '../app/useOrg.js'
 import { useOrg } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall, cachedRulesets } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
+import { samplesSql, samplesFrom } from '../lib/samples.js'
 import { inSpace } from '../lib/dataSpace.js'
 import {
   INDIVIDUAL, parseRulesets, search, loadProfile, loadRelated, explainMatches, possibleMissedMatches,
@@ -80,6 +82,24 @@ function fromRoute() {
 function go(path, query = {}) {
   router.push({ path, query: { ...query, rs: rulesetId.value || undefined } })
 }
+
+// An empty search shows 10 random people to try (feedback #105).
+const samples = ref(null) // null, 'loading', [] or [{ name, email, phone, id, value }]
+async function showSamples() {
+  if (!org.version) return
+  results.value = null
+  error.value = ''
+  samples.value = 'loading'
+  try {
+    await ensureCatalog()
+    const sql = samplesSql(catalog.objects.map((o) => o.name))
+    samples.value = sql ? samplesFrom(await runQuery(orgCall(), org.version, sql, { rowLimit: 10 })) : []
+  } catch (err) {
+    samples.value = null
+    error.value = err.message
+  }
+}
+function trySample(sm) { samples.value = null; text.value = sm.value; go('/profile', { q: sm.value }) }
 
 async function runSearch() {
   if (!text.value.trim() || !org.version) return
@@ -190,7 +210,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
 
 <template>
   <section class="space-y-4 max-w-7xl mx-auto">
-    <form class="flex flex-wrap gap-2 items-center" @submit.prevent="go('/profile', { q: text })">
+    <form class="flex flex-wrap gap-2 items-center" @submit.prevent="text.trim() ? (samples = null, go('/profile', { q: text })) : showSamples()">
       <input v-model="text" placeholder="Email, phone, name or ID (use * as a wildcard)" class="flex-1 min-w-72 border rounded-md px-3 py-1.5 bg-background text-sm" />
       <label class="text-sm text-muted-foreground" for="rs">Ruleset</label>
       <select id="rs" v-model="rulesetId" class="border rounded-md px-2 py-1.5 bg-background text-sm" @change="switchRuleset">
@@ -202,6 +222,15 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
       </button>
       <RouterLink to="/bulk" class="text-sm text-link hover:underline">Bulk lookup</RouterLink>
     </form>
+    <div v-if="samples" class="border rounded-md bg-card p-3 text-sm space-y-2">
+      <p class="text-muted-foreground">{{ samples === 'loading' ? 'Picking 10 random people…' : samples.length ? 'Nothing to search for, so here are 10 random people to try:' : 'No people found to suggest.' }}</p>
+      <div v-if="Array.isArray(samples)" class="flex flex-wrap gap-1.5">
+        <button v-for="sm in samples" :key="sm.id + sm.value" class="px-2 py-1 rounded-md border hover:bg-accent text-left" :title="[sm.email, sm.phone, sm.id].filter(Boolean).join(' · ')" @click="trySample(sm)">
+          <span>{{ sm.name || sm.id }}</span> <span class="font-mono text-xs text-muted-foreground">{{ sm.value }}</span>
+        </button>
+      </div>
+      <button v-if="Array.isArray(samples) && samples.length" class="text-xs text-link hover:underline" @click="showSamples">Another 10</button>
+    </div>
     <div v-if="rsError" class="text-sm text-destructive">Could not read the rulesets: {{ rsError }}</div>
     <div v-if="error" class="p-3 rounded-md border border-destructive text-sm whitespace-pre-wrap">{{ error }}</div>
 
@@ -294,7 +323,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
 
       <!-- Why these records are together -->
       <div v-if="ruleset" :class="card">
-        <h3 class="p-3 border-b font-medium">Match rules of {{ ruleset.label }}</h3>
+        <h3 class="p-3 border-b font-medium" data-help="profile-rules">Match rules of {{ ruleset.label }} <HelpTip topic="profile-rules" /></h3>
         <div class="p-3 space-y-4 text-sm">
           <p v-if="profile.sources.length < 2" class="text-muted-foreground">
             One source record, so there is nothing to match. These are the values the rules compare; see Possible missed matches below for others that share an email.
@@ -335,7 +364,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
 
       <!-- Possible missed matches -->
       <div v-if="missed.length" :class="card">
-        <h3 class="p-3 border-b font-medium flex items-center gap-2">Possible missed matches ({{ missed.length }})</h3>
+        <h3 class="p-3 border-b font-medium flex items-center gap-2" data-help="profile-missed">Possible missed matches ({{ missed.length }}) <HelpTip topic="profile-missed" /></h3>
         <p class="px-3 pt-3 text-xs text-muted-foreground">Other people with the same email who are not in this profile. That is expected when the other criteria differ (for example the names); check the match rules above.</p>
         <ul class="p-3 text-sm space-y-1">
           <li v-for="m in missed" :key="m.id">

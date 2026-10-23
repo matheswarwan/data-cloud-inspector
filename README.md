@@ -7,6 +7,12 @@ Status: 1.0.2 (`releases/data-cloud-inspector-1.0.2.zip`), an update to 1.0.0, t
 
 ## What it does
 
+Home shows whether the org is connected and as whom, a short read-only promise, the most used
+pages and recent queries. Help (bottom of the sidebar, next to Settings) explains every page;
+question marks next to headings explain that part, and pages with easy-to-miss features show
+a tip on the first visit (off in Help or from the tip). SQL anywhere in the tool (calculated
+insights, segments, Query builder, data graphs) is shown in a read-only editor with highlighting.
+
 Pages are in a left sidebar (collapsible), grouped: Objects and SQL; Bulk lookup and
 Profiles; Data streams, Data models, Identity, Segments, Activations and Insights;
 Personalization; Compare, REST explorer, Health and Connection check. Wherever a page used to
@@ -18,7 +24,7 @@ or a list of values to tick when a column has few of them). The list on the left
 SQL, Data streams, Identity, Segments and Activations can be resized (drag its edge,
 double-click to reset) or hidden; both are remembered per page.
 
-- Profiles: look up a person by email, phone, name or ID (`*` as a wildcard) and pick an
+- Profiles (an empty search offers 10 random people, as does Bulk lookup): look up a person by email, phone, name or ID (`*` as a wildcard) and pick an
   identity resolution ruleset. The page shows the unified record, the source records behind
   it with the link's match keys, the ruleset's match rules with each record's values and the
   pairs that satisfy them, people who share an email but are not in the profile, contact
@@ -30,12 +36,13 @@ double-click to reset) or hidden; both are remembered per page.
   autocomplete from the org, Format, saved queries and history. Results sort by any column, filter, open a cell's full value and copy a column; they load 1,000 rows at a
   time; Download CSV fetches every row (up to 500,000); Copy for AI copies the SQL, column
   types and the first 50 rows as Markdown.
-- Data graphs (SQL page, Graphs tab): every data graph with its objects and fields, status and
+- Data graphs (own page, under Identity): every data graph with its objects and fields, status and
   record count; Objects joined as SQL (a SELECT joining the graph's objects along the graph's
   own join fields), The built graph as SQL (its values table, one JSON document per record),
   and Fetch one record's graph (GET `ssot/data-graphs/data/<name>/<id>`, JSON expanded).
-- Query Builder (SQL page): a starting object, ticked fields, related objects joined from the
-  metadata relationships (inner or left), filters, sort, DISTINCT, limit, Count rows, Open in a
+- Query builder (own page, under SQL): a starting object, ticked fields, related objects joined
+  from the metadata relationships (inner or left), or any other object joined on fields you pick
+  (a guess is filled in), filters, sort, DISTINCT, limit, Count rows, Open in a
   SQL tab.
 - Objects: every DLO, DMO and calculated insight with fields, API names, types, primary keys
   and key qualifiers; relationships; for a DMO, the objects mapped to it field by field and
@@ -57,7 +64,7 @@ double-click to reset) or hidden; both are remembered per page.
 - Bulk lookup (also from Profiles): up to 1,000 emails, phones or IDs, checked 200 per query:
   found, source records, unified profile, segment membership and whether the criteria match now;
   CSV and Markdown; runs in the background.
-- Data streams: source, schedule, record counts, problem records, the DMOs it maps into,
+- Data streams: a table of every stream or a lineage diagram (stream, DLO, DMOs); per stream: source, schedule, record counts, problem records, the DMOs it maps into,
   and its source fields with the DLO field each lands in.
 - Activations: segment, target, refresh, last publish, attributes sent with output
   names, contact points, filters, latest and history audience with row counts.

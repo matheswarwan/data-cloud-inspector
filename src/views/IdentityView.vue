@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import HelpTip from '../components/HelpTip.vue'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -94,7 +95,7 @@ const sourceCols = [
   <section class="flex gap-4 min-h-0">
     <ListPanel name="identity" label="rulesets list" :width="288">
       <div class="flex items-center gap-2">
-        <h2 class="font-semibold">Identity resolution</h2>
+        <h2 class="font-semibold">Identity resolution <HelpTip topic="identity" /></h2>
         <button class="ml-auto p-1.5 rounded-md border hover:bg-accent" title="Load the rulesets again" @click="load({ refresh: true })"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
       </div>
       <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
@@ -195,7 +196,7 @@ const sourceCols = [
 
         <!-- Compare two people -->
         <div :class="card">
-          <h3 class="p-3 border-b font-medium">Compare two people</h3>
+          <h3 class="p-3 border-b font-medium" data-help="identity-compare">Compare two people <HelpTip topic="identity-compare" /></h3>
           <div class="p-3 space-y-3">
             <p class="text-sm text-muted-foreground">Pick two source records to see, criterion by criterion, whether this ruleset would join them.</p>
             <div class="grid md:grid-cols-2 gap-4">

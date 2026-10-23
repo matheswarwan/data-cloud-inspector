@@ -85,3 +85,11 @@
   animation: dci-inserted 2.2s ease-out;
   border-radius: 2px;
 }
+
+/* The part of the page a first-visit tip is about (FeatureTips). */
+[data-help-active] {
+  outline: 2px solid #f59e0b;
+  outline-offset: 3px;
+  border-radius: 0.375rem;
+  transition: outline-color 0.3s;
+}

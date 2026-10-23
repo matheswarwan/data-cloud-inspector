@@ -1,5 +1,6 @@
 <script setup>
 import DownloadMenu from '../components/DownloadMenu.vue'
+import HelpTip from '../components/HelpTip.vue'
 import { ref, computed, watch } from 'vue'
 import { useOrg } from '../app/useOrg.js'
 import { sf } from '../lib/api.js'
@@ -56,7 +57,7 @@ const pairs = [
 <template>
   <section class="max-w-6xl mx-auto space-y-4">
     <div>
-      <h2 class="text-lg font-semibold">Compare two orgs</h2>
+      <h2 class="text-lg font-semibold">Compare two orgs <HelpTip topic="compare" /></h2>
       <p class="text-sm text-muted-foreground">For example a sandbox and production: objects, fields, segments, calculated insights and data streams that exist in only one, and field type changes. Default data space in each org.</p>
     </div>
     <p v-if="org.orgs.length < 2" class="text-sm p-3 border rounded-md bg-card">Only one org is logged in in this browser. Log in to the second org in another tab, then choose Find orgs again in the connection menu.</p>

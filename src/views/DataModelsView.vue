@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import HelpTip from '../components/HelpTip.vue'
 import DownloadMenu from '../components/DownloadMenu.vue'
 import DataTable from '../components/DataTable.vue'
 import { defineAsyncComponent } from 'vue'
@@ -55,11 +56,11 @@ const getSheets = () => dataModelSheets(view.value, catalog.usage)
   <section :class="[mode === 'diagram' ? '' : 'max-w-7xl', 'mx-auto space-y-3']">
     <div class="flex flex-wrap items-center gap-3">
       <div>
-        <h2 class="text-lg font-semibold">Data models</h2>
+        <h2 class="text-lg font-semibold">Data models <HelpTip topic="models" /></h2>
         <p class="text-sm text-muted-foreground">The data model objects, where their data comes from and what uses them.</p>
       </div>
       <div class="ml-auto flex flex-wrap items-center gap-2 text-sm">
-        <div class="inline-flex rounded-md border overflow-hidden" role="radiogroup" aria-label="Show as">
+        <div class="inline-flex rounded-md border overflow-hidden" role="radiogroup" aria-label="Show as" data-help="models-diagram">
           <button role="radio" :aria-checked="mode === 'table'" :class="['px-2.5 py-1.5', mode === 'table' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent']" @click="mode = 'table'">Table</button>
           <button role="radio" :aria-checked="mode === 'diagram'" :class="['px-2.5 py-1.5 border-l', mode === 'diagram' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent']" @click="mode = 'diagram'">Diagram</button>
         </div>

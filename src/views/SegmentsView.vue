@@ -1,4 +1,6 @@
 <script setup>
+import SqlBlock from '../components/SqlBlock.vue'
+import HelpTip from '../components/HelpTip.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
@@ -200,7 +202,7 @@ const versionCols = [
         </div>
 
         <div :class="card">
-          <h3 class="p-3 border-b font-medium">Counts</h3>
+          <h3 class="p-3 border-b font-medium" data-help="segment-counts">Counts <HelpTip topic="segment-counts" /></h3>
           <div class="p-3 space-y-3 text-sm">
             <table class="text-sm">
               <tr><td class="pr-6 py-0.5 text-muted-foreground">At the last publish</td><td class="text-right">{{ num(seg.lastCount) }}</td></tr>
@@ -219,7 +221,7 @@ const versionCols = [
               <div class="text-muted-foreground mb-1">Equivalent SQL</div>
               <p v-if="sql.error" class="text-xs">Not available: {{ sql.error }}.</p>
               <template v-else>
-                <pre class="text-xs font-mono border rounded p-2 whitespace-pre-wrap">{{ sql.select }}</pre>
+                <SqlBlock :code="sql.select" box-class="max-h-80" />
                 <div class="flex gap-2 mt-2">
                   <button :class="btn" @click="toSql(sql.select)">Open in SQL</button>
                   <button :class="btn" @click="copy(sql.select, 'the SQL')">Copy SQL</button>
@@ -231,7 +233,7 @@ const versionCols = [
         </div>
 
         <div :class="card">
-          <h3 class="p-3 border-b font-medium">Is this person in the segment?</h3>
+          <h3 class="p-3 border-b font-medium" data-help="segment-check">Is this person in the segment? <HelpTip topic="segment-check" /></h3>
           <form class="p-3 flex gap-2" @submit.prevent="check">
             <input v-model="who" placeholder="Email, phone, name or ID" class="flex-1 border rounded-md px-2 py-1 bg-background text-sm" />
             <button class="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="checking || !who.trim()">{{ checking ? 'Checking…' : 'Check' }}</button>

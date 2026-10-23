@@ -101,3 +101,24 @@ describe('exports', () => {
     expect(cardinalityText('')).toBe('')
   })
 })
+
+describe('streams in the diagram (feedback #104)', () => {
+  const streams = [
+    { name: 'Contact_Home', label: 'Contact Home', dlo: 'Contact_Home__dll', connector: 'SalesforceDotCom', sourceObject: 'Contact', lastRunStatus: 'SUCCESS' },
+    { name: 'Web', label: 'Web', dlo: 'Web__dll', connector: 'IngestApi' },
+    { name: 'NoDlo', label: 'No DLO', dlo: '' },
+  ]
+  const g = diagramGraph(objects, mappings, names, { sources: true, streams })
+  it('adds a box per stream and feeds its DLO, adding DLOs nothing maps from', () => {
+    const st = g.nodes.filter((n) => n.kind === 'STREAM')
+    expect(st.map((n) => n.id)).toEqual(['stream:Contact_Home', 'stream:Web'])
+    expect(st[0].category).toBe('SalesforceDotCom: Contact')
+    expect(g.nodes.find((n) => n.id === 'Web__dll')).toMatchObject({ kind: 'DLO' })
+    expect(g.edges.filter((e) => e.kind === 'feed').map((e) => [e.from, e.to])).toEqual([['stream:Contact_Home', 'Contact_Home__dll'], ['stream:Web', 'Web__dll']])
+  })
+  it('exports streams', () => {
+    expect(toMermaid(g)).toContain('stream_Contact_Home ||..|| Contact_Home__dll : "feeds"')
+    expect(toDot(g)).toContain('"stream:Web" -> "Web__dll" [label="feeds", style=dashed];')
+    expect(Object.keys(layoutDiagram(g, dagre))).toHaveLength(g.nodes.length)
+  })
+})

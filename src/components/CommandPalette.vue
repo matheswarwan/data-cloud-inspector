@@ -35,7 +35,7 @@ async function show() {
 }
 
 const items = computed(() => paletteItems({
-  pages: [...NAV, { path: '/sql/builder', label: 'Query Builder' }, { path: '/settings', label: 'Settings' }],
+  pages: [...NAV, { path: '/help', label: 'Help' }, { path: '/settings', label: 'Settings' }],
   objects: catalog.objects, segments: segments.value, saved: queries.saved,
 }))
 const results = computed(() => searchPalette(items.value, text.value))

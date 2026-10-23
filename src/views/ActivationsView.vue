@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import HelpTip from '../components/HelpTip.vue'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
 import { useRoute } from 'vue-router'
@@ -70,7 +71,7 @@ const attrCols = [
   <section class="flex gap-4 min-h-0">
     <ListPanel name="activations" label="activations list">
       <div class="flex items-center gap-2">
-        <h2 class="font-semibold">Activations</h2>
+        <h2 class="font-semibold">Activations <HelpTip topic="activations" /></h2>
         <button class="ml-auto p-1.5 rounded-md border hover:bg-accent" title="Load again" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
       </div>
       <p v-if="error" class="text-xs text-destructive">{{ error }}</p>

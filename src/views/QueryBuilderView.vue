@@ -1,4 +1,6 @@
 <script setup>
+import SqlBlock from '../components/SqlBlock.vue'
+import HelpTip from '../components/HelpTip.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { X } from 'lucide-vue-next'
@@ -64,8 +66,8 @@ const input = 'border rounded px-1.5 py-1 bg-background text-xs'
   <section class="space-y-4">
     <div class="flex flex-wrap items-center gap-3">
       <div>
-        <h2 class="text-lg font-semibold">Query Builder</h2>
-        <p class="text-sm text-muted-foreground">Pick fields and related objects; the joins come from your org's relationships. Then open the SQL in a SQL tab.</p>
+        <h2 class="text-lg font-semibold" data-help="builder">Query builder <HelpTip topic="builder" /></h2>
+        <p class="text-sm text-muted-foreground">Pick fields and related objects; the joins come from your org's relationships, or join any object on fields you choose. Then open the SQL in a SQL tab.</p>
       </div>
       <div class="ml-auto flex gap-2">
         <button v-if="model.base" :class="btn" @click="reset">Start again</button>
@@ -125,7 +127,7 @@ const input = 'border rounded px-1.5 py-1 bg-background text-xs'
             <button :class="btn" @click="copy">Copy</button>
             <button :class="btn" :disabled="counting" @click="countRows">{{ counting ? 'Counting…' : 'Count rows' }}</button>
           </div>
-          <pre class="p-3 text-xs font-mono whitespace-pre-wrap break-all max-h-96 overflow-auto">{{ sql }}</pre>
+          <div class="p-2"><SqlBlock :code="sql" box-class="max-h-96" /></div>
           <p v-if="count != null" class="px-3 pb-2 text-sm"><strong>{{ count.toLocaleString() }}</strong> rows without the limit.</p>
           <p v-if="countError" class="px-3 pb-2 text-xs text-destructive">{{ countError }}</p>
           <p v-if="notice" class="px-3 pb-2 text-xs text-muted-foreground">{{ notice }}</p>
