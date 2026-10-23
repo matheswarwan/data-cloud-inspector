@@ -37,11 +37,24 @@ const cacheKey = (orgId) => `dci_catalog_${orgId}${org.dataSpace && org.dataSpac
 const SESSION_TTL = 30 * 60 * 1000
 const sessionKey = (orgId, what) => `dci_s_${orgId}_${org.dataSpace || 'default'}_${what}`
 
-export async function ensureCatalog({ refresh = false } = {}) {
+// One catalog load at a time per org and data space: a second caller waits for the load
+// that is already running instead of returning before the objects are there.
+let inflight = null
+let inflightKey = ''
+export function ensureCatalog(opts = {}) {
+  const key = `${org.orgId}|${org.dataSpace}`
+  if (!opts.refresh && inflight && inflightKey === key) return inflight
+  inflightKey = key
+  const p = loadCatalogState(opts).finally(() => { if (inflight === p) inflight = null })
+  inflight = p
+  return p
+}
+
+async function loadCatalogState({ refresh = false } = {}) {
   const { orgId, version } = org
   if (!orgId || !version) return
   const key = `${orgId}|${org.dataSpace}`
-  if (!refresh && state.key === key && (state.objects.length || state.loading)) return
+  if (!refresh && state.key === key && state.objects.length) return
   if (state.key !== key) Object.assign(state, { objects: [], errors: [], loadedAt: '', streams: null, mappings: null, recordIds: null, usage: null })
   state.orgId = orgId
   state.key = key
@@ -77,7 +90,10 @@ export async function ensureStreams() {
 
 export async function ensureAllMappings() {
   if (state.mappings || !org.version) return state.mappings
+  await ensureCatalog()
+  if (state.mappings) return state.mappings
   const dmos = state.objects.filter((o) => o.kind === 'DMO').map((o) => o.name)
+  if (!dmos.length) return null // no objects yet: never cache an empty list
   state.mappings = await sessionCached(sessionKey(org.orgId, 'mappings'), SESSION_TTL, () => loadAllMappings(orgCall(), org.version, dmos, {
     onProgress: (done, total) => { state.mappingsProgress = `${done} of ${total} DMOs` },
   }))

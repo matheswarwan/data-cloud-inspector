@@ -1,0 +1,42 @@
+<script setup>
+// Left sidebar (feedback #95, as in Marketing Cloud Toolkit): the pages in groups with
+// dividers, a dot for background jobs, and a collapse to icons only (remembered).
+import { ref, watch } from 'vue'
+import { Boxes, Database, ListChecks, User, ArrowDownToLine, Network, Fingerprint, Users, Send, Calculator, LayoutTemplate, GitCompare, Terminal, HeartPulse, Plug, Circle, PanelLeftOpen, PanelLeftClose } from 'lucide-vue-next'
+import { NAV } from '../app/router.js'
+import { jobBadge } from '../app/useJobs.js'
+
+const KEY = 'dci_sidebarCollapsed'
+const read = () => { try { return localStorage.getItem(KEY) === '1' } catch { return false } }
+const collapsed = ref(read())
+watch(collapsed, (v) => { try { localStorage.setItem(KEY, v ? '1' : '0') } catch { /* private window */ } })
+const ICONS = { Boxes, Database, ListChecks, User, ArrowDownToLine, Network, Fingerprint, Users, Send, Calculator, LayoutTemplate, GitCompare, Terminal, HeartPulse, Plug }
+const icon = (name) => ICONS[name] || Circle
+</script>
+
+<template>
+  <aside :class="['shrink-0 border-r bg-card sticky top-[49px] h-[calc(100vh-49px)] overflow-y-auto py-2 flex flex-col', collapsed ? 'w-12' : 'w-52']" aria-label="Pages">
+    <nav class="flex-1 px-1.5 space-y-0.5">
+      <template v-for="(item, i) in NAV" :key="item.path">
+        <div v-if="i && item.group !== NAV[i - 1].group" class="my-2 border-t" role="separator" />
+        <RouterLink
+          :to="item.path" :title="collapsed ? item.label : ''"
+          class="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+          active-class="bg-accent text-foreground font-medium"
+        >
+          <component :is="icon(item.icon)" class="w-4 h-4 shrink-0" />
+          <span v-if="!collapsed" class="truncate">{{ item.label }}</span>
+          <span
+            v-if="item.job && jobBadge(item.job)"
+            :class="['w-1.5 h-1.5 rounded-full shrink-0', collapsed ? '-ml-2 -mt-3' : 'ml-auto', jobBadge(item.job) === 'running' ? 'bg-sky-500 animate-pulse' : 'bg-amber-500']"
+            :title="jobBadge(item.job) === 'running' ? 'Running in the background' : 'Finished: results waiting'"
+          />
+        </RouterLink>
+      </template>
+    </nav>
+    <button class="mx-1.5 mt-2 px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-accent flex items-center gap-2" :title="collapsed ? 'Expand the sidebar' : 'Collapse the sidebar'" @click="collapsed = !collapsed">
+      <component :is="collapsed ? PanelLeftOpen : PanelLeftClose" class="w-4 h-4" />
+      <span v-if="!collapsed">Collapse</span>
+    </button>
+  </aside>
+</template>

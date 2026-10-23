@@ -1,4 +1,5 @@
 <script setup>
+import DownloadMenu from '../components/DownloadMenu.vue'
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { RefreshCw, Copy, Key, ExternalLink } from 'lucide-vue-next'
@@ -253,7 +254,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
             <button :class="btn" @click="query(selected)">Query</button>
             <button :class="btn" :disabled="counts[selected.name] === 'counting'" @click="count(selected)">{{ counts[selected.name] === 'counting' ? 'Counting…' : 'Count rows' }}</button>
             <button :class="btn" @click="copy(selectFor(selected), 'the SELECT')">Copy SELECT</button>
-            <button :class="btn" @click="copy(objectMarkdown(selected), 'the fields as Markdown')">Copy as Markdown</button>
+            <DownloadMenu :get-markdown="() => objectMarkdown(selected)" :get-sheets="() => [{ name: selected.label, columns: ['Field', 'Label', 'Type', 'Key', 'Key qualifier', 'Used by'], rows: selected.fields.map((f) => [f.name, f.label, f.businessType || f.type, f.primaryKey ? 'yes' : '', f.keyQualifier, (fieldUses.get(f.name) || []).join(', ')]) }]" :file-name="selected.name" />
           </div>
         </div>
 

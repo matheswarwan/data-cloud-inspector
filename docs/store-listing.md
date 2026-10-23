@@ -49,7 +49,7 @@ PROFILES
 - See the ruleset's match rules side by side with each record's values, and which records satisfy them.
 - Find people who share an email but were not unified with this profile.
 - Contact points, an engagement timeline, segment membership and every other related record, found through your org's own data model.
-- Copy the whole profile as Markdown.
+- View, copy or download the whole profile: Markdown, Word, PDF or HTML.
 
 SQL
 - Run Data Cloud SQL against data lake objects, data model objects and calculated insights.
@@ -80,7 +80,7 @@ HEALTH
 - One page for data streams, identity resolution, calculated insights, segments and activations, problems first.
 - Why each one needs a look: never ran, last run failed, rows rejected (problem records), no source profiles, overdue publish.
 - Consolidation rate and profile counts per identity resolution ruleset.
-- Copy the report as Markdown for a status update.
+- View, copy or download the report (Markdown, Word, PDF, HTML or Excel) for a status update.
 
 BULK LOOKUP
 - Paste up to 1,000 emails, phones or IDs and see for each: found or not, its unified profile, and whether it is in a segment and matches it now. Download as CSV.
@@ -100,12 +100,12 @@ OBJECTS
 - For a DMO: what is mapped into it, field by field, and the state of each data stream.
 - For a DLO: its data stream and the DMOs it maps to.
 - Used by: the calculated insights, segments and activations that depend on an object, field by field, so you can see what a change would affect.
-- Row counts, a ready-made SELECT, and Copy as Markdown.
+- Row counts, a ready-made SELECT, and the object as Markdown, Word, PDF, HTML or Excel.
 
 ALSO
-- Ctrl+K to search pages, objects, fields, segments and saved queries, or find a person.
+- Pages in a left sidebar, grouped. Ctrl+K to search pages, objects, fields, segments and saved queries, or find a person.
 - Compare two orgs, for example a sandbox and production: objects, fields, segments, calculated insights and data streams that differ.
-- Export the data model as one document (HTML for Word or PDF, or Markdown).
+- Data models: the DMOs with something mapped into them, or all of them, with their sources and what uses them; download as Markdown, Word, PDF, HTML or Excel.
 - Data spaces: pick the data space in the connection menu.
 - Open records in Salesforce: segments, data streams, DLOs, calculated insights, rulesets and CRM records link to their page in the org.
 - REST explore with ready-made examples for the Data Cloud API.

@@ -1,4 +1,5 @@
 <script setup>
+import DownloadMenu from '../components/DownloadMenu.vue'
 import { ref, reactive, markRaw, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { formatDialect, postgresql } from 'sql-formatter'
@@ -340,6 +341,10 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
           <button v-if="more" :class="btn" :disabled="!!tab.busy" @click="loadMore">Load {{ Math.min(1000, tab.result.total - tab.result.rows.length).toLocaleString() }} more</button>
           <button :class="btn" :disabled="!!tab.busy || !tab.result.columns.length" @click="downloadCsv">Download CSV</button>
           <button :class="btn" :disabled="!tab.result.columns.length" @click="copyMarkdown">Copy for AI</button>
+          <DownloadMenu
+            :get-markdown="() => resultMarkdown(tab.result.sql, tab.result.columns, tab.result.rows, { total: tab.result.total, max: 1000 })"
+            :get-sheets="() => [{ name: 'Results', columns: tab.result.columns.map((c) => c.name), rows: tab.result.rows }]"
+            :file-name="tabTitle(tab, tabs.indexOf(tab))" :disabled="!tab.result.columns.length" />
           <span v-if="tab.busy" class="text-muted-foreground">{{ tab.busy }} <button class="underline" @click="cancel()">stop</button></span>
         </div>
         <ResultTable :columns="tab.result.columns" :rows="tab.result.rows" />

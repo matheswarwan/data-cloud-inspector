@@ -1,4 +1,5 @@
 <script setup>
+import DownloadMenu from '../components/DownloadMenu.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useOrg } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall, cachedRulesets } from '../app/useCatalog.js'
@@ -75,13 +76,18 @@ function download() {
   Object.assign(document.createElement('a'), { href: url, download: `bulk-lookup-${new Date().toISOString().slice(0, 10)}.csv` }).click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
-async function copyMarkdown() {
+function bulkMarkdown() {
   const yn = (v) => (v == null ? '' : v ? 'yes' : 'no')
+  const s = summary.value
   const head = `| Input | Found | Unified profiles |${ran.value.segment ? ' In segment | Matches now |' : ''} Note |`
   const sep = `| --- | --- | --- |${ran.value.segment ? ' --- | --- |' : ''} --- |`
   const body = shown.value.map((r) => `| ${r.input} | ${r.sourceIds.length} | ${r.unifiedIds.length} |${ran.value.segment ? ` ${yn(r.member)} | ${yn(r.matchesNow)} |` : ''} ${r.note} |`)
-  await navigator.clipboard.writeText([head, sep, ...body].join('\n'))
-  notice.value = `Copied ${shown.value.length} rows as Markdown.`
+  return [`# Bulk lookup`, '', `${s.total} checked: ${s.found} found, ${s.notFound} not found, ${s.unified} unified${ran.value.segment ? `, ${s.members} in ${ran.value.segmentLabel}` : ''}.`, '', head, sep, ...body].join('\n')
+}
+function bulkSheets() {
+  const yn = (v) => (v == null ? '' : v ? 'yes' : 'no')
+  const columns = ['Input', 'Kind', 'Found', 'Source records', 'Unified profiles', ...(ran.value.segment ? ['In segment', 'Matches now'] : []), 'Note']
+  return [{ name: 'Bulk lookup', columns, rows: shown.value.map((r) => [r.input, r.kind, yn(r.sourceIds.length > 0), r.sourceIds.join(' '), r.unifiedIds.join(' '), ...(ran.value.segment ? [yn(r.member), yn(r.matchesNow)] : []), r.note]) }]
 }
 
 const yn = (v) => (v == null ? '' : v ? 'yes' : 'no')
@@ -126,7 +132,7 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
         </button>
         <span class="ml-auto flex gap-2">
           <button :class="btn" @click="download">Download CSV</button>
-          <button :class="btn" @click="copyMarkdown">Copy as Markdown</button>
+          <DownloadMenu :get-markdown="bulkMarkdown" :get-sheets="bulkSheets" file-name="bulk-lookup" />
         </span>
       </div>
       <p v-if="notice" class="text-xs text-muted-foreground">{{ notice }}</p>

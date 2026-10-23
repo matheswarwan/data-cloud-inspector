@@ -1,4 +1,5 @@
 <script setup>
+import DownloadMenu from '../components/DownloadMenu.vue'
 import { ref, shallowRef, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, Copy, ChevronRight, ChevronDown } from 'lucide-vue-next'
@@ -180,11 +181,7 @@ function toSql(sql) {
   router.push({ path: '/sql', query: { sql } })
 }
 
-async function copyMarkdown() {
-  const md = profileMarkdown({ ruleset: ruleset.value, profile: profile.value, related: [...related.value, ...unifiedRelated.value], explanation: explanation.value })
-  await navigator.clipboard.writeText(md)
-  notice.value = 'Copied the profile as Markdown.'
-}
+const profileMd = () => profileMarkdown({ ruleset: ruleset.value, profile: profile.value, related: [...related.value, ...unifiedRelated.value], explanation: explanation.value })
 
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : '')
 const card = 'border rounded-md bg-card'
@@ -246,7 +243,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
         </div>
         <div class="ml-auto flex gap-2">
           <a v-if="ruleset?.recordId" :class="btn" :href="recordUrl(currentOrg()?.host, ruleset.recordId)" target="_blank" rel="noopener">Open ruleset</a>
-          <button :class="btn" :disabled="!!loading" @click="copyMarkdown">Copy as Markdown</button>
+          <DownloadMenu :get-markdown="profileMd" :file-name="`profile-${title || 'person'}`" :disabled="!!loading" />
         </div>
       </div>
       <div v-if="notice" class="text-sm text-muted-foreground">{{ notice }}</div>

@@ -1,4 +1,5 @@
 <script setup>
+import DownloadMenu from '../components/DownloadMenu.vue'
 import { ref, computed, watch } from 'vue'
 import { useOrg } from '../app/useOrg.js'
 import { sf } from '../lib/api.js'
@@ -42,12 +43,6 @@ function compare() {
 }
 
 const md = computed(() => (diff.value ? compareMarkdown(diff.value, { a: ran.value.hostA || host(a.value), b: ran.value.hostB || host(b.value) }) : ''))
-async function copy() { await navigator.clipboard.writeText(md.value); notice.value = 'Copied the comparison as Markdown.' }
-function download() {
-  const url = URL.createObjectURL(new Blob([md.value], { type: 'text/markdown' }))
-  Object.assign(document.createElement('a'), { href: url, download: `data-cloud-comparison-${new Date().toISOString().slice(0, 10)}.md` }).click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
 
 const card = 'border rounded-md bg-card'
 const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
@@ -78,8 +73,7 @@ const pairs = [
 
     <template v-if="diff">
       <div class="flex gap-2">
-        <button :class="btn" @click="copy">Copy as Markdown</button>
-        <button :class="btn" @click="download">Download Markdown</button>
+        <DownloadMenu :get-markdown="() => md" file-name="data-cloud-comparison" />
         <span v-if="notice" class="text-sm text-muted-foreground self-center">{{ notice }}</span>
       </div>
       <p v-if="diff.same" :class="[card, 'p-3 text-sm']">No differences in objects, fields, segments, calculated insights or data streams.</p>

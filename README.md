@@ -7,12 +7,18 @@ Status: 1.0.0, the first store release (submitted from `releases/data-cloud-insp
 
 ## What it does
 
+Pages are in a left sidebar (collapsible), grouped: Objects and SQL; Bulk lookup and
+Profiles; Data streams, Data models, Identity, Segments, Activations and Insights;
+Personalization; Compare, REST explorer, Health and Connection check. Wherever a page used to
+have Copy as Markdown it now has a Download menu: View, Copy, Markdown, Word (.docx), PDF
+(print), HTML, and Excel where there are tables.
+
 - Profiles: look up a person by email, phone, name or ID (`*` as a wildcard) and pick an
   identity resolution ruleset. The page shows the unified record, the source records behind
   it with the link's match keys, the ruleset's match rules with each record's values and the
   pairs that satisfy them, people who share an email but are not in the profile, contact
   points, an engagement timeline, segment membership and every other related record (found
-  through the metadata's relationships). Copy as Markdown exports the whole profile.
+  through the metadata's relationships). The Download menu views, copies or saves the whole profile (Markdown, Word, PDF, HTML).
 - SQL: query tabs (each with its own SQL, editor and results, running at the same time; the
   tabs are remembered). Run Data Cloud SQL against DLOs, DMOs and calculated insights, with an Objects panel
   (search, expand, insert an object, a field or a SELECT of ticked fields), table and field
@@ -27,17 +33,20 @@ Status: 1.0.0, the first store release (submitted from `releases/data-cloud-insp
   their data streams; for a DLO, its data stream and the DMOs it maps to; Used by: the
   calculated insights (from their SQL) and segments (from their criteria) that use the object
   and which fields, with the segments' activations, also shown per field. Row counts, Query,
-  Copy SELECT and Copy as Markdown. A calculated insight shows its definition: SQL, formulas,
+  Copy SELECT and the Download menu. A calculated insight shows its definition: SQL, formulas,
   schedule, last run and errors.
+- Data models: the DMOs with something mapped into them, or all of them, with category,
+  field count, the DLOs and streams mapped into each and what uses them; download as
+  Markdown, Word, PDF, HTML or Excel (sheets for DMOs, fields and mappings).
 - Identity: every ruleset with match and reconciliation rules in plain words, stats
   (consolidation rate), source records per unified profile, the largest profiles, where records
   come from, and Compare two people criterion by criterion.
-- Bulk lookup (More, or from Profiles): up to 1,000 emails, phones or IDs, checked 200 per query:
+- Bulk lookup (also from Profiles): up to 1,000 emails, phones or IDs, checked 200 per query:
   found, source records, unified profile, segment membership and whether the criteria match now;
   CSV and Markdown; runs in the background.
-- Data streams (More): source, schedule, record counts, problem records, the DMOs it maps into,
+- Data streams: source, schedule, record counts, problem records, the DMOs it maps into,
   and its source fields with the DLO field each lands in.
-- Activations (More): segment, target, refresh, last publish, attributes sent with output
+- Activations: segment, target, refresh, last publish, attributes sent with output
   names, contact points, filters, latest and history audience with row counts.
 - Insights: calculated insights as Data Cloud shows them: a list view, and a record page with
   Details, Expression (SQL), Output (dimensions and measures), Data (a preview) and Used by.
@@ -47,7 +56,7 @@ Status: 1.0.0, the first store release (submitted from `releases/data-cloud-insp
   segment?" with which condition keeps them out.
 - Health: every data stream, identity resolution ruleset (source and unified profiles,
   consolidation rate), calculated insight, segment and activation with a status (failed,
-  needs a look, running, inactive, OK) and the reason, problems first; Copy as Markdown.
+  needs a look, running, inactive, OK) and the reason, problems first; Download menu (Markdown, Word, PDF, HTML, Excel).
 - Personalization: points with their decisions by priority, recommenders (status, last
   refresh), experiments with their decisions, content schemas and objectives (SOQL); activity
   from the personalization log (requests per day, by point, decision and recommender, by

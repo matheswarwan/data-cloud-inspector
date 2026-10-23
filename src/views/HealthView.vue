@@ -1,4 +1,5 @@
 <script setup>
+import DownloadMenu from '../components/DownloadMenu.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { RefreshCw } from 'lucide-vue-next'
 import { useOrg, currentOrg } from '../app/useOrg.js'
@@ -50,10 +51,8 @@ function inside(i) {
   return null
 }
 
-async function copyMarkdown() {
-  await navigator.clipboard.writeText(healthMarkdown(sections.value, { host: currentOrg()?.host, at: checkedAt.value || new Date() }))
-  notice.value = 'Copied the health report as Markdown.'
-}
+const healthMd = () => healthMarkdown(sections.value, { host: currentOrg()?.host, at: checkedAt.value || new Date() })
+const healthSheets = () => sections.value.map((s) => ({ name: s.title, columns: ['Status', 'Name', 'Why', 'Last run', 'Details'], rows: s.items.map((i) => [i.level, i.label, i.reason, i.lastRun || '', i.details || '']) }))
 
 function ago(iso) {
   if (!iso) return 'never'
@@ -84,7 +83,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
       </div>
       <div class="ml-auto flex items-center gap-2">
         <label class="text-sm flex items-center gap-1.5"><input v-model="problemsOnly" type="checkbox" /> Problems only</label>
-        <button :class="btn" :disabled="loading || !sections.length" @click="copyMarkdown">Copy as Markdown</button>
+        <DownloadMenu :get-markdown="healthMd" :get-sheets="healthSheets" file-name="data-cloud-health" :disabled="loading || !sections.length" />
         <button :class="btn" :disabled="loading" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /> Check again</button>
       </div>
     </div>
