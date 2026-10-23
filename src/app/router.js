@@ -11,6 +11,7 @@ import PersonalizationView from '../views/PersonalizationView.vue'
 import CompareView from '../views/CompareView.vue'
 import IdentityView from '../views/IdentityView.vue'
 import QueryBuilderView from '../views/QueryBuilderView.vue'
+import BulkView from '../views/BulkView.vue'
 
 export const NAV = [
   { path: '/profile', label: 'Profiles' },
@@ -20,8 +21,10 @@ export const NAV = [
   { path: '/segments', label: 'Segments' },
   { path: '/personalization', label: 'Personalization' },
   { path: '/health', label: 'Health', job: 'health:' },
-  { path: '/compare', label: 'Compare', job: 'compare' },
-  { path: '/explore', label: 'REST' },
+  { path: '/bulk', label: 'Bulk lookup', job: 'bulk:', more: true },
+  { path: '/compare', label: 'Compare', job: 'compare', more: true },
+  { path: '/explore', label: 'REST explore', more: true },
+  { path: '/connection', label: 'Connection check', more: true },
 ]
 
 export function createAppRouter() {
@@ -32,6 +35,7 @@ export function createAppRouter() {
       { path: '/profile/:kind(u|s)?/:id?', component: ProfileView },
       { path: '/sql', component: SqlView },
       { path: '/sql/builder', component: QueryBuilderView },
+      { path: '/bulk', component: BulkView },
       { path: '/objects/:name?', component: ObjectsView },
       { path: '/segments/:name?', component: SegmentsView },
       { path: '/explore', component: ExploreView },

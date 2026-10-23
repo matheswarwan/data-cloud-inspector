@@ -203,6 +203,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
       <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="searching || !org.version">
         {{ searching ? 'Searching…' : 'Search' }}
       </button>
+      <RouterLink to="/bulk" class="text-sm text-link hover:underline">Bulk lookup</RouterLink>
     </form>
     <div v-if="rsError" class="text-sm text-destructive">Could not read the rulesets: {{ rsError }}</div>
     <div v-if="error" class="p-3 rounded-md border border-destructive text-sm whitespace-pre-wrap">{{ error }}</div>
