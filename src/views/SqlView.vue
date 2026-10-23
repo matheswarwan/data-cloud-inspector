@@ -319,6 +319,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
         </button>
         <button v-else :class="btn" @click="cancel()">Stop waiting</button>
         <button :class="btn" @click="formatSql">Format</button>
+        <RouterLink to="/sql/builder" :class="btn">Query Builder</RouterLink>
         <button :class="btn" @click="save">{{ tab.savedId ? 'Save' : 'Save as' }}</button>
         <span v-if="tabs.filter((t) => t.running).length > 1" class="text-xs text-muted-foreground">{{ tabs.filter((t) => t.running).length }} queries running</span>
         <span class="text-xs text-muted-foreground ml-2">

@@ -10,6 +10,7 @@ import HealthView from '../views/HealthView.vue'
 import PersonalizationView from '../views/PersonalizationView.vue'
 import CompareView from '../views/CompareView.vue'
 import IdentityView from '../views/IdentityView.vue'
+import QueryBuilderView from '../views/QueryBuilderView.vue'
 
 export const NAV = [
   { path: '/profile', label: 'Profiles' },
@@ -30,6 +31,7 @@ export function createAppRouter() {
       { path: '/', redirect: '/profile' },
       { path: '/profile/:kind(u|s)?/:id?', component: ProfileView },
       { path: '/sql', component: SqlView },
+      { path: '/sql/builder', component: QueryBuilderView },
       { path: '/objects/:name?', component: ObjectsView },
       { path: '/segments/:name?', component: SegmentsView },
       { path: '/explore', component: ExploreView },

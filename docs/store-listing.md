@@ -12,12 +12,12 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 - **Privacy policy URL:** https://data-cloud-inspector.mathes.dev/privacy (Worker
   `data-cloud-inspector-site`, source in `site/`; deploy steps in `site/wrangler.jsonc`).
 - **Publisher:** CloudKettle's developer account (same as SFMC Query Saver).
-- **Version:** 1.4.0, `releases/data-cloud-inspector-1.4.0.zip` (GitHub release `v1.4.0`). Earlier versions were never submitted; submit 1.4.0 as the first store version.
+- **Version:** 1.5.0, `releases/data-cloud-inspector-1.5.0.zip` (GitHub release `v1.5.0`). Earlier versions were never submitted; submit 1.5.0 as the first store version.
 
 ## Submitting (CloudKettle developer account)
 
 1. Chrome Web Store Developer Dashboard, signed in to the CloudKettle publisher, then New item.
-2. Upload `releases/data-cloud-inspector-1.4.0.zip`.
+2. Upload `releases/data-cloud-inspector-1.5.0.zip`.
 3. Store listing tab: name, summary (from the manifest), description, category Developer Tools,
    language English, the five screenshots from `docs/store/` (the store takes at most five), and the 128 px icon
    (`public/images/icon128.png`). Optional: a 440x280 promo tile.
@@ -28,6 +28,10 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 6. Submit for review. Tell Claude when it is published, so the release can be recorded.
 
 ## What's new
+
+1.5.0: Query Builder (fields, related objects joined from the org's relationships, filters, sort,
+count, open in SQL); calculated insight definitions (SQL, formulas, schedule, last run); segment
+size over time.
 
 1.4.0: Identity page (rulesets in plain words, stats, profile sizes, largest profiles, where
 records come from, compare two people against the rules).
@@ -71,6 +75,7 @@ PROFILES
 SQL
 - Run Data Cloud SQL against data lake objects, data model objects and calculated insights.
 - Query tabs: several queries at once, each with its own results.
+- Query Builder: tick fields, add related objects (the joins come from your org's relationships), add filters, count the rows, then open the SQL in a tab.
 - Search your objects beside the editor and insert an object, a field, or a SELECT of the fields you tick.
 - Autocomplete for every object and field in your org, Format, saved queries and history.
 - Load results 1,000 rows at a time, download every row as CSV, or copy the results ready to paste into an AI assistant.
@@ -84,7 +89,7 @@ SEGMENTS
 - Every segment with its status, schedule and member count.
 - The criteria in plain words, and the equivalent SQL.
 - Compare the count at the last publish, in the membership table, and matching the criteria now.
-- Publish history.
+- Publish history and size over time.
 - Check whether a person is in a segment, and which condition keeps them out.
 
 HEALTH
@@ -103,6 +108,7 @@ OBJECTS
 - Relationships between objects.
 - For a DMO: what is mapped into it, field by field, and the state of each data stream.
 - For a DLO: its data stream and the DMOs it maps to.
+- For a calculated insight: its SQL, formulas, schedule, last run and errors.
 - Used by: the calculated insights, segments and activations that depend on an object, field by field, so you can see what a change would affect.
 - Row counts, a ready-made SELECT, and Copy as Markdown.
 

@@ -3,7 +3,7 @@
 A read-only Chrome extension for Salesforce Data Cloud (Data 360). It uses the Salesforce
 login you already have in the browser, so there is nothing to install in the org.
 
-Status: 1.4.0, the first store release. Zips are in `releases/`.
+Status: 1.5.0, the first store release. Zips are in `releases/`.
 
 ## What it does
 
@@ -19,12 +19,16 @@ Status: 1.4.0, the first store release. Zips are in `releases/`.
   autocomplete from the org, Format, saved queries and history. Results load 1,000 rows at a
   time; Download CSV fetches every row (up to 500,000); Copy for AI copies the SQL, column
   types and the first 50 rows as Markdown.
+- Query Builder (SQL page): a starting object, ticked fields, related objects joined from the
+  metadata relationships (inner or left), filters, sort, DISTINCT, limit, Count rows, Open in a
+  SQL tab.
 - Objects: every DLO, DMO and calculated insight with fields, API names, types, primary keys
   and key qualifiers; relationships; for a DMO, the objects mapped to it field by field and
   their data streams; for a DLO, its data stream and the DMOs it maps to; Used by: the
   calculated insights (from their SQL) and segments (from their criteria) that use the object
   and which fields, with the segments' activations, also shown per field. Row counts, Query,
-  Copy SELECT and Copy as Markdown.
+  Copy SELECT and Copy as Markdown. A calculated insight shows its definition: SQL, formulas,
+  schedule, last run and errors.
 - Identity: every ruleset with match and reconciliation rules in plain words, stats
   (consolidation rate), source records per unified profile, the largest profiles, where records
   come from, and Compare two people criterion by criterion.
