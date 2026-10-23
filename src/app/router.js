@@ -14,6 +14,7 @@ import QueryBuilderView from '../views/QueryBuilderView.vue'
 import BulkView from '../views/BulkView.vue'
 import StreamsView from '../views/StreamsView.vue'
 import ActivationsView from '../views/ActivationsView.vue'
+import InsightsView from '../views/InsightsView.vue'
 
 export const NAV = [
   { path: '/profile', label: 'Profiles' },
@@ -21,6 +22,7 @@ export const NAV = [
   { path: '/objects', label: 'Objects' },
   { path: '/identity', label: 'Identity' },
   { path: '/segments', label: 'Segments' },
+  { path: '/insights', label: 'Insights' },
   { path: '/personalization', label: 'Personalization' },
   { path: '/health', label: 'Health', job: 'health:' },
   { path: '/streams', label: 'Data streams', more: true },
@@ -42,6 +44,7 @@ export function createAppRouter() {
       { path: '/bulk', component: BulkView },
       { path: '/streams/:name?', component: StreamsView },
       { path: '/activations/:id?', component: ActivationsView },
+      { path: '/insights/:name?', component: InsightsView },
       { path: '/objects/:name?', component: ObjectsView },
       { path: '/segments/:name?', component: SegmentsView },
       { path: '/explore', component: ExploreView },

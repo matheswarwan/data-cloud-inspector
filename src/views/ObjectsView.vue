@@ -9,7 +9,7 @@ import { usageOf, fieldUsage } from '../lib/usage.js'
 import { problemCounts, latestProblemsSql } from '../lib/problems.js'
 import { buildModel, modelMarkdown, modelHtml } from '../lib/modelDoc.js'
 import { loadInsight, baseInsightName } from '../lib/insights.js'
-import { formatDialect, sql as ansiSql } from 'sql-formatter'
+import InsightDefinition from '../components/InsightDefinition.vue'
 import { filterObjects, selectFor, objectMarkdown } from '../lib/catalog.js'
 import { loadMappings } from '../lib/lineage.js'
 import { runQuery } from '../lib/query.js'
@@ -96,9 +96,6 @@ watch([tab, () => selected.value?.name], async ([t, name]) => {
     if (insight.name === name) insight.loading = false
   }
 })
-function prettySql(text) {
-  try { return formatDialect(text, { dialect: ansiSql, keywordCase: 'upper' }) } catch { return text }
-}
 
 const problems = reactive({}) // problem record DLO -> { count, latest, error }
 watch(() => (catalog.streams || []).filter((s) => s.dlo === selected.value?.name && s.problemDlo).map((s) => s.problemDlo).join(','), async (list) => {
@@ -407,37 +404,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
         <div v-else class="space-y-3 text-sm">
           <p v-if="insight.loading" class="text-muted-foreground">Loading the definition…</p>
           <p v-else-if="insight.error" class="text-destructive">{{ insight.error }}</p>
-          <template v-else-if="insight.data">
-            <p v-if="insight.data.description" class="text-muted-foreground">{{ insight.data.description }}</p>
-            <div class="border rounded-md bg-card p-3 grid grid-cols-[10rem_1fr] md:grid-cols-[10rem_1fr_10rem_1fr] gap-x-3 gap-y-1">
-              <span class="text-muted-foreground">Status</span><span>{{ [insight.data.status, insight.data.definitionStatus].filter(Boolean).join(', ').toLowerCase() }}{{ insight.data.enabled ? '' : ' (disabled)' }}</span>
-              <span class="text-muted-foreground">Type</span><span>{{ insight.data.type.replace(/_/g, ' ').toLowerCase() }}{{ insight.data.fromPackage ? ', from a package' : '' }}</span>
-              <span class="text-muted-foreground">Schedule</span><span>{{ insight.data.schedule.replace(/_/g, ' ').toLowerCase() || 'none' }}</span>
-              <span class="text-muted-foreground">Last run</span><span :class="/fail|error/i.test(insight.data.lastRunStatus) ? 'text-destructive' : ''">{{ insight.data.lastRunStatus.toLowerCase() || 'never' }}{{ insight.data.lastRun ? `, ${time(insight.data.lastRun)}` : '' }}{{ insight.data.lastRunError ? ` (${insight.data.lastRunError})` : '' }}</span>
-              <span class="text-muted-foreground">Partitioned by</span><span class="font-mono text-xs">{{ selected.partitionBy || 'none' }}</span>
-              <span class="text-muted-foreground">Dialect</span><span>{{ insight.data.dialect }}</span>
-            </div>
-            <div class="border rounded-md bg-card">
-              <div class="p-2 border-b flex items-center gap-2">
-                <span class="font-medium">SQL</span>
-                <button class="ml-auto text-xs text-link hover:underline" @click="copy(insight.data.sql, 'the SQL')">Copy SQL</button>
-                <button class="text-xs text-link hover:underline" @click="router.push({ path: '/sql', query: { sql: insight.data.sql } })">Open in a SQL tab</button>
-              </div>
-              <pre class="p-3 text-xs font-mono whitespace-pre-wrap break-words">{{ prettySql(insight.data.sql) }}</pre>
-              <p class="px-3 pb-2 text-xs text-muted-foreground">Calculated insight SQL uses its own dialect, so it may need small edits before it runs as a query (for example DATE_ADD with a zero offset).</p>
-            </div>
-            <table class="w-full border rounded-md bg-card">
-              <thead class="text-left text-muted-foreground border-b"><tr><th class="p-2 font-normal">Field</th><th class="p-2 font-normal">Role</th><th class="p-2 font-normal">Type</th><th class="p-2 font-normal">Formula</th></tr></thead>
-              <tbody>
-                <tr v-for="f in [...insight.data.dimensions, ...insight.data.measures]" :key="f.name" class="border-b last:border-0 align-top">
-                  <td class="p-2"><span class="font-mono text-xs">{{ f.name }}</span><div class="text-xs text-muted-foreground">{{ f.label }}</div></td>
-                  <td class="p-2 text-xs">{{ f.role }}</td>
-                  <td class="p-2 text-xs">{{ f.type }}{{ f.granularity ? `, by ${f.granularity.toLowerCase()}` : '' }}{{ f.aggregation ? `, ${f.aggregation.toLowerCase()}` : '' }}</td>
-                  <td class="p-2 font-mono text-xs break-all">{{ f.formula }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </template>
+          <InsightDefinition v-else-if="insight.data" :ci="insight.data" :partition-by="selected.partitionBy" />
         </div>
       </div>
     </div>
