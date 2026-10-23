@@ -12,11 +12,11 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 - **Privacy policy URL:** https://data-cloud-inspector.mathes.dev/privacy (Worker
   `data-cloud-inspector-site`, source in `site/`; deploy steps in `site/wrangler.jsonc`).
 - **Publisher:** CloudKettle's developer account (same as SFMC Query Saver).
-- **Version:** 1.0.1, `releases/data-cloud-inspector-1.0.1.zip` (GitHub release `v1.0.1`), an update to the item submitted as 1.0.0 on 2026-10-23. No permission changes. 1.0.0 was the first store version; builds numbered 1.1.0 to 1.7.0 were never published and are folded into it (GitHub pre-releases, zips in `releases/archive/`), which is why this update is 1.0.1.
+- **Version:** 1.0.2, `releases/data-cloud-inspector-1.0.2.zip` (GitHub release `v1.0.2`), an update to the item submitted as 1.0.0 on 2026-10-23 (1.0.1 was built the same day; whether it was uploaded is not recorded). No permission changes. 1.0.0 was the first store version; builds numbered 1.1.0 to 1.7.0 were never published and are folded into it (GitHub pre-releases, zips in `releases/archive/`), which is why updates are numbered 1.0.x.
 
 ## Updating (1.0.1 and later)
 
-1. Developer Dashboard, the Data Cloud Inspector item, Package tab, Upload new package: `releases/data-cloud-inspector-1.0.1.zip`.
+1. Developer Dashboard, the Data Cloud Inspector item, Package tab, Upload new package: the latest zip, now `releases/data-cloud-inspector-1.0.2.zip`.
 2. Store listing tab: replace the five screenshots with the new ones from `docs/store/` (they show the left sidebar) and paste the description below (it mentions the Download menu and Data models).
 3. Submit for review. If 1.0.0 is still in review, the dashboard may ask to cancel that review first; uploading 1.0.1 then replaces it.
 
@@ -34,6 +34,8 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 6. Submit for review. Tell Claude when it is published, so the release can be recorded.
 
 ## What's new (version notes)
+
+1.0.2: sort and filter any table by column; resize or hide the list on the left; a data model diagram (export as SVG, PNG, Mermaid, draw.io or Graphviz); data graphs on the SQL page.
 
 1.0.1: pages in a left sidebar; a Download menu everywhere (view, copy, Markdown, Word, PDF, HTML, Excel); a Data models page (mapped or all DMOs).
 
