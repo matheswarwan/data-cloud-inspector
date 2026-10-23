@@ -7,11 +7,16 @@ import { orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
 import { recordUrl } from '../lib/links.js'
 import { loadSetup, loadActivity, pointTree, experimentTree, nameOf, ACTIVITY_SQL } from '../lib/personalization.js'
+import { loadDataGraphs, labelOf, nameOf as graphName, scalars, objectTree } from '../lib/dataGraphs.js'
+import GraphTree from '../components/GraphTree.vue'
 
 const router = useRouter()
 const org = useOrg()
 const setup = ref(null)
 const activity = ref(null)
+const graphs = ref(null)
+const graphsError = ref('')
+const rawGraph = ref(null)
 const loading = ref(false)
 const days = ref(30)
 const tab = ref('setup')
@@ -26,6 +31,8 @@ async function load() {
   if (org.orgId !== orgId) return
   setup.value = s
   activity.value = a
+  graphsError.value = ''
+  graphs.value = await loadDataGraphs(orgCall(), org.version).catch((err) => { graphsError.value = err.message; return [] })
   loading.value = false
 }
 onMounted(load)
@@ -66,6 +73,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
         <button :class="tabBtn('experiments')" @click="tab = 'experiments'">Experiments ({{ experiments.length }})</button>
         <button :class="tabBtn('schemas')" @click="tab = 'schemas'">Schemas and objectives ({{ setup.schemas.length + setup.objectives.length }})</button>
         <button :class="tabBtn('activity')" @click="tab = 'activity'">Activity</button>
+        <button :class="tabBtn('graphs')" @click="tab = 'graphs'">Data graphs{{ graphs ? ` (${graphs.length})` : '' }}</button>
       </nav>
 
       <!-- Points and decisions -->
@@ -156,8 +164,29 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
         <p v-else class="text-sm text-muted-foreground">No objectives.</p>
       </div>
 
+      <!-- Data graphs -->
+      <div v-if="tab === 'graphs'" class="space-y-3">
+        <p v-if="graphsError" class="text-sm text-destructive">{{ graphsError }}</p>
+        <p v-else-if="graphs && !graphs.length" class="text-sm text-muted-foreground">No data graphs in this data space. Data graphs feed Personalization and Agentforce with a person's data in one call.</p>
+        <div v-for="g in graphs || []" :key="graphName(g)" :class="[card, 'p-3 text-sm space-y-2']">
+          <div class="flex items-baseline gap-2">
+            <span class="font-medium">{{ labelOf(g) }}</span>
+            <span class="font-mono text-xs text-muted-foreground">{{ graphName(g) }}</span>
+            <button class="ml-auto text-xs text-link hover:underline" @click="rawGraph = rawGraph === g ? null : g">{{ rawGraph === g ? 'Hide' : 'Show' }} raw JSON</button>
+          </div>
+          <dl class="grid grid-cols-[12rem_1fr] gap-x-3 gap-y-0.5 text-xs">
+            <template v-for="[k, v] in scalars(g)" :key="k"><dt class="text-muted-foreground">{{ k }}</dt><dd class="break-all">{{ v }}</dd></template>
+          </dl>
+          <div v-if="objectTree(g).length">
+            <div class="text-xs text-muted-foreground mb-1">Objects</div>
+            <GraphTree :nodes="objectTree(g)" />
+          </div>
+          <pre v-if="rawGraph === g" class="text-xs border rounded p-2 overflow-auto max-h-96">{{ JSON.stringify(g, null, 2) }}</pre>
+        </div>
+      </div>
+
       <!-- Activity -->
-      <div v-else-if="tab === 'activity'" class="space-y-4">
+      <div v-if="tab === 'activity'" class="space-y-4">
         <div class="flex items-center gap-2 text-sm">
           <label for="days" class="text-muted-foreground">Period</label>
           <select id="days" v-model.number="days" class="border rounded-md px-2 py-1 bg-background">
