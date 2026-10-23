@@ -4,11 +4,11 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { RefreshCw } from 'lucide-vue-next'
 import { useOrg, currentOrg } from '../app/useOrg.js'
-import { orgCall } from '../app/useCatalog.js'
+import { orgCall, ensureDataGraphs } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
 import { recordUrl } from '../lib/links.js'
 import { loadSetup, loadActivity, pointTree, experimentTree, nameOf, ACTIVITY_SQL } from '../lib/personalization.js'
-import { loadDataGraphs, labelOf, nameOf as graphName, scalars, objectTree } from '../lib/dataGraphs.js'
+import { labelOf, nameOf as graphName, scalars, objectTree } from '../lib/dataGraphs.js'
 import GraphTree from '../components/GraphTree.vue'
 
 const router = useRouter()
@@ -33,7 +33,7 @@ async function load() {
   setup.value = s
   activity.value = a
   graphsError.value = ''
-  graphs.value = await loadDataGraphs(orgCall(), org.version).catch((err) => { graphsError.value = err.message; return [] })
+  graphs.value = await ensureDataGraphs({ refresh: true }).catch((err) => { graphsError.value = err.message; return [] })
   loading.value = false
 }
 onMounted(load)

@@ -10,6 +10,7 @@ import { loadUsage } from '../lib/usage.js'
 import { fetchAllPages } from '../lib/pages.js'
 import { withDataSpace } from '../lib/dataSpace.js'
 import { storeGet, storeSet, storeRemove, sessionCached, sessionForget } from '../lib/store.js'
+import { loadDataGraphs } from '../lib/dataGraphs.js'
 import { useOrg, currentDataSpaceId } from './useOrg.js'
 
 const org = useOrg()
@@ -29,6 +30,12 @@ export function orgCall() {
   call.dataSpace = dataSpace
   call.dataSpaceId = currentDataSpaceId()
   return call
+}
+
+/** Data graphs with their definitions, kept 10 minutes in session storage. */
+export function ensureDataGraphs({ refresh = false } = {}) {
+  if (!org.orgId || !org.version) return Promise.resolve([])
+  return sessionCached(sessionKey(org.orgId, 'dataGraphs'), 10 * 60 * 1000, () => loadDataGraphs(orgCall(), org.version), { refresh })
 }
 
 const cacheKey = (orgId) => `dci_catalog_${orgId}${org.dataSpace && org.dataSpace !== 'default' ? `_${org.dataSpace}` : ''}`

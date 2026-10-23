@@ -63,6 +63,7 @@ SQL
 - Run Data Cloud SQL against data lake objects, data model objects and calculated insights.
 - Query tabs: several queries at once, each with its own results.
 - Query Builder: tick fields, add related objects (the joins come from your org's relationships), add filters, count the rows, then open the SQL in a tab.
+- Data graphs beside the editor: open a graph's objects joined as SQL, query the built graph, or fetch one record's graph.
 - Search your objects beside the editor and insert an object, a field, or a SELECT of the fields you tick.
 - Autocomplete for every object and field in your org, Format, saved queries and history.
 - Sort and filter the results, open a cell's full value, copy a column.

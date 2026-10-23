@@ -1,6 +1,7 @@
 <script setup>
 import DownloadMenu from '../components/DownloadMenu.vue'
 import ListPanel from '../components/ListPanel.vue'
+import DataGraphsPanel from '../components/DataGraphsPanel.vue'
 import { ref, reactive, markRaw, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { formatDialect, postgresql } from 'sql-formatter'
@@ -255,13 +256,15 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
 
 <template>
   <section class="flex gap-4 min-h-0">
-    <ListPanel name="sql" label="objects, saved and history panel" :width="288">
+    <ListPanel name="sql" label="objects, graphs, saved and history panel" :width="288">
       <div class="flex gap-1 text-sm">
         <button :class="['px-2 py-1 rounded-md', panel === 'objects' ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="panel = 'objects'">Objects</button>
+        <button :class="['px-2 py-1 rounded-md', panel === 'graphs' ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="panel = 'graphs'">Graphs</button>
         <button :class="['px-2 py-1 rounded-md', panel === 'saved' ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="panel = 'saved'">Saved</button>
         <button :class="['px-2 py-1 rounded-md', panel === 'history' ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="panel = 'history'">History</button>
       </div>
       <SchemaPanel v-if="panel === 'objects'" @insert="(text) => editor()?.insert(text)" />
+      <DataGraphsPanel v-else-if="panel === 'graphs'" @open-sql="(sql, title) => openSql(sql, { title })" />
       <ul v-else-if="panel === 'saved'" class="text-sm space-y-0.5 max-h-[75vh] overflow-auto">
         <li v-if="!queries.saved.length" class="text-muted-foreground text-xs p-2">No saved queries yet.</li>
         <li

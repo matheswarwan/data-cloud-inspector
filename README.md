@@ -30,6 +30,10 @@ double-click to reset) or hidden; both are remembered per page.
   autocomplete from the org, Format, saved queries and history. Results sort by any column, filter, open a cell's full value and copy a column; they load 1,000 rows at a
   time; Download CSV fetches every row (up to 500,000); Copy for AI copies the SQL, column
   types and the first 50 rows as Markdown.
+- Data graphs (SQL page, Graphs tab): every data graph with its objects and fields, status and
+  record count; Objects joined as SQL (a SELECT joining the graph's objects along the graph's
+  own join fields), The built graph as SQL (its values table, one JSON document per record),
+  and Fetch one record's graph (GET `ssot/data-graphs/data/<name>/<id>`, JSON expanded).
 - Query Builder (SQL page): a starting object, ticked fields, related objects joined from the
   metadata relationships (inner or left), filters, sort, DISTINCT, limit, Count rows, Open in a
   SQL tab.

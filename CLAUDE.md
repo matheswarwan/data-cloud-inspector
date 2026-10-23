@@ -27,6 +27,12 @@ stack and conventions as `../sfmc-toolkit`. Plan and status log: `../data-cloud-
   Status: GET `query-sql/<id>`. Unordered queries page in no stable order.
 - The SQL dialect is PostgreSQL-like (`generate_series` works, `UNNEST(SEQUENCE())` does not).
 - Mappings need `dmoDeveloperName` (a DLO name alone is a 400).
+- Data graphs (checked 2026-10-23): `ssot/data-graphs/metadata` lists a graph only once it has
+  built, without labels (`developerName`, `dgObject`, `paths`, `idsDmo`, `valuesDmo`); SOQL on
+  `DataGraph` (`DataGraphApiName`, `Status`, `LastRunStatus`, `RecordCount`, `DataSpaceId`) lists
+  all; `ssot/data-graphs/<name>` gives the definition (`sourceObject`, `path`, `sourceFieldName`);
+  `ssot/data-graphs/data/<name>/<primary record id>` gives one record, `json_blob__c` HTML-escaped.
+  The values table (`valuesDmoName`) has `Id__c` and `json_blob__c`.
 - Data streams report `lastRunStatus: 'NONE'` for a stream that never ran.
 - Identity resolution: `identity-resolutions` gives match rules and, per entity, `unifiedDmoName`
   and `linkDmoName`. Link DMOs: `SourceRecordId__c`, `UnifiedRecordId__c`, `MatchKeys__c`.
