@@ -200,16 +200,37 @@ export async function membershipCount(q, table, seg) {
 /** One row per publish, newest first: `{ version, at, members, added, removed }`. */
 export async function publishHistory(q, table, seg) {
   if (!table) return []
-  const rows = toObjects(await q(`SELECT Version_Stamp__c AS version, MIN(Timestamp__c) AS at, Delta_Type__c AS delta, COUNT(*) AS n FROM ${table} WHERE Segment_Id__c = ${lit(seg.id15)} GROUP BY Version_Stamp__c, Delta_Type__c ORDER BY Version_Stamp__c DESC LIMIT 200`))
+  const rows = toObjects(await q(`SELECT Version_Stamp__c AS version, Snapshot_Type__c AS snapshot, Delta_Type__c AS delta, MIN(Timestamp__c) AS at, COUNT(*) AS n FROM ${table} WHERE Segment_Id__c = ${lit(seg.id15)} GROUP BY Version_Stamp__c, Snapshot_Type__c, Delta_Type__c ORDER BY Version_Stamp__c DESC LIMIT 400`))
   const byVersion = new Map()
   for (const r of rows) {
-    const v = byVersion.get(r.version) || { version: r.version, at: r.at, members: 0, deltas: {} }
-    v.deltas[r.delta || 'none'] = Number(r.n)
+    const v = byVersion.get(r.version) || { version: r.version, at: r.at, members: 0, deltas: {}, snapshot: r.snapshot || '' }
+    v.deltas[r.delta || 'none'] = (v.deltas[r.delta || 'none'] || 0) + Number(r.n)
     v.members += Number(r.n)
+    if (r.snapshot) v.snapshot = r.snapshot
     if (r.at && (!v.at || r.at < v.at)) v.at = r.at
     byVersion.set(r.version, v)
   }
-  return [...byVersion.values()]
+  return withSizes([...byVersion.values()])
+}
+
+const LEAVES = /delet|remov|exit|drop/i
+
+/**
+ * Adds `size` to each publish (newest first in, newest first out). A full snapshot (F) holds
+ * every member, minus rows marked as leaving; an incremental one changes the previous size by
+ * its added and leaving rows. Only F with "new" rows has been seen live.
+ */
+export function withSizes(versions) {
+  const asc = [...versions].sort((a, b) => String(a.version).localeCompare(String(b.version)))
+  let size = null
+  for (const v of asc) {
+    const leaving = Object.entries(v.deltas).filter(([k]) => LEAVES.test(k)).reduce((n, [, c]) => n + c, 0)
+    const staying = v.members - leaving
+    if (/^f/i.test(v.snapshot) || size == null) size = staying
+    else size = Math.max(0, size + staying - leaving)
+    v.size = size
+  }
+  return asc.reverse()
 }
 
 /**

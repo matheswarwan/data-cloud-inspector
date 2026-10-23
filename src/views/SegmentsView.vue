@@ -248,15 +248,27 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
           <p v-if="detail?.loading" class="p-3 text-sm text-muted-foreground">Loading…</p>
           <p v-else-if="!detail?.history" class="p-3 text-sm text-muted-foreground">No history table found for {{ seg.on }}.</p>
           <p v-else-if="!detail.versions?.length" class="p-3 text-sm text-muted-foreground">No publishes recorded in {{ detail.history }}.</p>
-          <table v-else class="w-full text-sm">
+          <div v-else-if="detail.versions.length > 1" class="p-3">
+            <div class="text-xs text-muted-foreground mb-1">Size over time</div>
+            <div class="flex items-end gap-0.5 h-28">
+              <div
+                v-for="v in [...detail.versions].reverse()" :key="v.version" class="flex-1 min-w-1 bg-foreground/60 rounded-t-sm"
+                :style="{ height: `${Math.max(2, (v.size / Math.max(1, ...detail.versions.map((x) => x.size))) * 100)}%` }"
+                :title="`${when(v.at)}: ${num(v.size)} members`"
+              />
+            </div>
+            <div class="flex justify-between text-xs text-muted-foreground mt-1"><span>{{ when(detail.versions.at(-1).at) }}</span><span>{{ when(detail.versions[0].at) }}</span></div>
+          </div>
+          <table v-if="detail?.versions?.length" class="w-full text-sm">
             <thead class="text-left text-muted-foreground border-b">
-              <tr><th class="p-2 font-normal">Published</th><th class="p-2 font-normal text-right">Rows</th><th class="p-2 font-normal">Changes</th><th class="p-2 font-normal">Version</th></tr>
+              <tr><th class="p-2 font-normal">Published</th><th class="p-2 font-normal text-right">Members</th><th class="p-2 font-normal text-right">Rows</th><th class="p-2 font-normal">Changes</th><th class="p-2 font-normal">Version</th></tr>
             </thead>
             <tbody>
               <tr v-for="v in detail.versions" :key="v.version" class="border-b last:border-0">
                 <td class="p-2">{{ when(v.at) }}</td>
+                <td class="p-2 text-right font-medium">{{ num(v.size) }}</td>
                 <td class="p-2 text-right">{{ num(v.members) }}</td>
-                <td class="p-2 text-xs">{{ Object.entries(v.deltas).map(([k, n]) => `${num(n)} ${k}`).join(', ') }}</td>
+                <td class="p-2 text-xs">{{ v.snapshot === 'F' ? 'full, ' : v.snapshot ? 'incremental, ' : '' }}{{ Object.entries(v.deltas).map(([k, n]) => `${num(n)} ${k}`).join(', ') }}</td>
                 <td class="p-2 font-mono text-xs text-muted-foreground">{{ v.version }}</td>
               </tr>
             </tbody>

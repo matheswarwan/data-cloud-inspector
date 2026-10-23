@@ -1,4 +1,4 @@
-import { decodeHtml, parseCriteria, normalizeSegment, describeCriteria, criteriaSql, segmentSql, topConditions, membershipTables, publishHistory, checkMembers } from '../segments.js'
+import { withSizes, decodeHtml, parseCriteria, normalizeSegment, describeCriteria, criteriaSql, segmentSql, topConditions, membershipTables, publishHistory, checkMembers } from '../segments.js'
 
 const LIVE = '{&quot;type&quot;:&quot;TextComparison&quot;,&quot;subject&quot;:{&quot;objectApiName&quot;:&quot;ssot__Individual__dlm&quot;,&quot;fieldApiName&quot;:&quot;ssot__PersonName__c&quot;},&quot;operator&quot;:&quot;has value&quot;,&quot;subjectFieldDataType&quot;:&quot;TEXT&quot;}'
 const ON = 'ssot__Individual__dlm'
@@ -61,10 +61,19 @@ describe('segment', () => {
   it('groups publish history by version', async () => {
     const q = async () => ({ columns: ['version', 'at', 'delta', 'n'].map((name) => ({ name })), rows: [['v2', '2026-10-23', 'new', 3], ['v2', '2026-10-23', 'deleted', 1], ['v1', '2026-10-22', 'new', 150]] })
     expect(await publishHistory(q, 'Individual_SMH_2__dlm', seg)).toEqual([
-      { version: 'v2', at: '2026-10-23', members: 4, deltas: { new: 3, deleted: 1 } },
-      { version: 'v1', at: '2026-10-22', members: 150, deltas: { new: 150 } },
+      { version: 'v2', at: '2026-10-23', members: 4, deltas: { new: 3, deleted: 1 }, snapshot: '', size: 152 },
+      { version: 'v1', at: '2026-10-22', members: 150, deltas: { new: 150 }, snapshot: '', size: 150 },
     ])
   })
+  it('works out the size of each publish', () => {
+    const v = withSizes([
+      { version: '3', snapshot: 'F', members: 120, deltas: { new: 120 } },
+      { version: '2', snapshot: 'I', members: 15, deltas: { new: 10, deleted: 5 } },
+      { version: '1', snapshot: 'F', members: 100, deltas: { new: 100 } },
+    ])
+    expect(v.map((x) => [x.version, x.size])).toEqual([['3', 120], ['2', 105], ['1', 100]])
+  })
+
   it('checks members and which condition fails', async () => {
     const two = normalizeSegment({ ...seg.raw, includeCriteria: { operator: 'and', filters: [rule('ssot__FirstName__c', 'equals', { value: 'Ann' }), rule('ssot__LastName__c', 'equals', { value: 'Lee' })] } })
     const q = async (sql) => {
