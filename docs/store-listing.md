@@ -12,12 +12,12 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 - **Privacy policy URL:** https://data-cloud-inspector.mathes.dev/privacy (Worker
   `data-cloud-inspector-site`, source in `site/`; deploy steps in `site/wrangler.jsonc`).
 - **Publisher:** CloudKettle's developer account (same as SFMC Query Saver).
-- **Version:** 1.6.0, `releases/data-cloud-inspector-1.6.0.zip` (GitHub release `v1.6.0`). Earlier versions were never submitted; submit 1.6.0 as the first store version.
+- **Version:** 1.7.0, `releases/data-cloud-inspector-1.7.0.zip` (GitHub release `v1.7.0`). Earlier versions were never submitted; submit 1.7.0 as the first store version.
 
 ## Submitting (CloudKettle developer account)
 
 1. Chrome Web Store Developer Dashboard, signed in to the CloudKettle publisher, then New item.
-2. Upload `releases/data-cloud-inspector-1.6.0.zip`.
+2. Upload `releases/data-cloud-inspector-1.7.0.zip`.
 3. Store listing tab: name, summary (from the manifest), description, category Developer Tools,
    language English, the five screenshots from `docs/store/` (the store takes at most five), and the 128 px icon
    (`public/images/icon128.png`). Optional: a 440x280 promo tile.
@@ -28,6 +28,10 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 6. Submit for review. Tell Claude when it is published, so the release can be recorded.
 
 ## What's new
+
+1.7.0: Bulk lookup (paste up to 1,000 emails, phones or IDs: found, unified, in a segment), Data
+streams page (source, schedule, records, problem records, fields), Activations page (segment,
+target, attributes sent, contact points, audience); less-used pages move to a More menu.
 
 1.6.0: the SQL results table sorts by any column, filters the loaded rows, shows a cell's full
 value (JSON pretty-printed) with Copy, copies a column, and can wrap long text.
@@ -101,6 +105,13 @@ HEALTH
 - Why each one needs a look: never ran, last run failed, rows rejected (problem records), no source profiles, overdue publish.
 - Consolidation rate and profile counts per identity resolution ruleset.
 - Copy the report as Markdown for a status update.
+
+BULK LOOKUP
+- Paste up to 1,000 emails, phones or IDs and see for each: found or not, its unified profile, and whether it is in a segment and matches it now. Download as CSV.
+
+DATA STREAMS AND ACTIVATIONS
+- Every data stream with its source, schedule, record counts, problem records, the DMOs it feeds, and its fields.
+- Every activation with its segment, target, the attributes it sends, its contact points and its audience.
 
 PERSONALIZATION
 - Personalization points with their decisions in priority order, recommenders, experiments, content schemas and objectives.

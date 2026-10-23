@@ -12,6 +12,8 @@ import CompareView from '../views/CompareView.vue'
 import IdentityView from '../views/IdentityView.vue'
 import QueryBuilderView from '../views/QueryBuilderView.vue'
 import BulkView from '../views/BulkView.vue'
+import StreamsView from '../views/StreamsView.vue'
+import ActivationsView from '../views/ActivationsView.vue'
 
 export const NAV = [
   { path: '/profile', label: 'Profiles' },
@@ -21,6 +23,8 @@ export const NAV = [
   { path: '/segments', label: 'Segments' },
   { path: '/personalization', label: 'Personalization' },
   { path: '/health', label: 'Health', job: 'health:' },
+  { path: '/streams', label: 'Data streams', more: true },
+  { path: '/activations', label: 'Activations', more: true },
   { path: '/bulk', label: 'Bulk lookup', job: 'bulk:', more: true },
   { path: '/compare', label: 'Compare', job: 'compare', more: true },
   { path: '/explore', label: 'REST explore', more: true },
@@ -36,6 +40,8 @@ export function createAppRouter() {
       { path: '/sql', component: SqlView },
       { path: '/sql/builder', component: QueryBuilderView },
       { path: '/bulk', component: BulkView },
+      { path: '/streams/:name?', component: StreamsView },
+      { path: '/activations/:id?', component: ActivationsView },
       { path: '/objects/:name?', component: ObjectsView },
       { path: '/segments/:name?', component: SegmentsView },
       { path: '/explore', component: ExploreView },

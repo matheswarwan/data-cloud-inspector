@@ -43,9 +43,10 @@ const shown = (items) => (problemsOnly.value ? items.filter((i) => i.level === '
 
 // Where a row opens: our own page when there is one, else the record in Salesforce.
 function inside(i) {
-  if (i.kind === 'Data stream' && i.dlo) return `/objects/${i.dlo}`
+  if (i.kind === 'Data stream') return `/streams/${i.name}`
   if (i.kind === 'Calculated insight') return `/objects/${i.name}`
   if (i.kind === 'Segment') return `/segments/${i.name}`
+  if (i.kind === 'Activation' && i.recordId) return `/activations/${i.recordId}`
   return null
 }
 
