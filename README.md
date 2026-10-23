@@ -3,7 +3,7 @@
 A read-only Chrome extension for Salesforce Data Cloud (Data 360). It uses the Salesforce
 login you already have in the browser, so there is nothing to install in the org.
 
-Status: 1.1.0, the first store release. Zips are in `releases/`.
+Status: 1.2.0, the first store release. Zips are in `releases/`.
 
 ## What it does
 
@@ -50,8 +50,10 @@ Status: 1.1.0, the first store release. Zips are in `releases/`.
   fields, mappings, streams and usage.
 - Health also counts each stream's problem records (rejected rows); Personalization shows data
   graphs.
-- Settings: System, Light or Dark theme; cached metadata per org (clear); export and import
-  saved queries; clear history; forget the feedback contact.
+- Health and Compare run as background jobs: use other pages meanwhile (the nav shows running
+  and finished); results are kept until the browser closes.
+- Settings: System, Light or Dark theme; Storage with the size of everything kept and Delete per
+  part (per org where it applies) or everything; export and import saved queries.
 - Feedback (header button): problem, idea or question, an optional marked-up screenshot and
   optional technical details shown before sending. Sent to the Marketing Cloud Toolkit's
   feedback Worker with `app = 'data-cloud-inspector'`.

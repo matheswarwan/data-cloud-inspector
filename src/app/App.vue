@@ -7,6 +7,7 @@ import FeedbackModal from '../components/feedback/FeedbackModal.vue'
 import CommandPalette from '../components/CommandPalette.vue'
 import { NAV } from './router.js'
 import { useOrg, loadOrgs } from './useOrg.js'
+import { jobBadge } from './useJobs.js'
 
 const org = useOrg()
 const route = useRoute()
@@ -24,7 +25,11 @@ onMounted(loadOrgs)
           v-for="item in NAV" :key="item.path" :to="item.path"
           class="px-2 py-1 rounded-md text-sm hover:bg-accent whitespace-nowrap"
           active-class="bg-accent font-medium"
-        >{{ item.label }}</RouterLink>
+        >{{ item.label }}<span
+            v-if="item.job && jobBadge(item.job)"
+            :class="['inline-block w-1.5 h-1.5 rounded-full ml-1 align-middle', jobBadge(item.job) === 'running' ? 'bg-sky-500 animate-pulse' : 'bg-amber-500']"
+            :title="jobBadge(item.job) === 'running' ? 'Running in the background' : 'Finished: results waiting'"
+          /></RouterLink>
       </nav>
       <div class="ml-auto flex items-center gap-2 text-sm">
         <button class="p-1.5 rounded-md hover:bg-accent" title="Search everything (Ctrl+K or Cmd+K)" aria-label="Search" @click="palette?.show()"><Search class="w-4 h-4" /></button>

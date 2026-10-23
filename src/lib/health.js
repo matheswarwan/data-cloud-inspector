@@ -136,10 +136,15 @@ export async function insightPages(call, version) {
  * Every section, each `{ title, items, error }`; a section that fails to load says so
  * and the others still show.
  */
-export async function loadHealth(call, version, { now = Date.now() } = {}) {
+export async function loadHealth(call, version, { now = Date.now(), onProgress = () => {} } = {}) {
   const v = `/services/data/v${version}/ssot`
+  let done = 0
+  const TOTAL = 6
   const section = async (title, fn) => {
-    try { return { title, items: sortItems(await fn()), error: '' } } catch (err) { return { title, items: [], error: err.message } }
+    let out
+    try { out = { title, items: sortItems(await fn()), error: '' } } catch (err) { out = { title, items: [], error: err.message } }
+    onProgress(`${++done} of ${TOTAL} areas checked (last: ${title})`)
+    return out
   }
   return Promise.all([
     section('Data streams', async () => {

@@ -12,12 +12,12 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 - **Privacy policy URL:** https://data-cloud-inspector.mathes.dev/privacy (Worker
   `data-cloud-inspector-site`, source in `site/`; deploy steps in `site/wrangler.jsonc`).
 - **Publisher:** CloudKettle's developer account (same as SFMC Query Saver).
-- **Version:** 1.1.0, `releases/data-cloud-inspector-1.1.0.zip` (GitHub release `v1.1.0`). 1.0.0 was never submitted; submit 1.1.0 as the first store version.
+- **Version:** 1.2.0, `releases/data-cloud-inspector-1.2.0.zip` (GitHub release `v1.2.0`). Earlier versions were never submitted; submit 1.2.0 as the first store version.
 
 ## Submitting (CloudKettle developer account)
 
 1. Chrome Web Store Developer Dashboard, signed in to the CloudKettle publisher, then New item.
-2. Upload `releases/data-cloud-inspector-1.1.0.zip`.
+2. Upload `releases/data-cloud-inspector-1.2.0.zip`.
 3. Store listing tab: name, summary (from the manifest), description, category Developer Tools,
    language English, the six screenshots from `docs/store/`, and the 128 px icon
    (`public/images/icon128.png`). Optional: a 440x280 promo tile.
@@ -28,6 +28,10 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 6. Submit for review. Tell Claude when it is published, so the release can be recorded.
 
 ## What's new
+
+1.2.0: Health and Compare run in the background (use other pages meanwhile; results wait, also
+after reopening, until the browser closes); Settings, Storage shows what is kept with sizes and
+a Delete for each part.
 
 1.1.0: data spaces, problem records on Health, Export data model (HTML or Markdown), Compare
 two orgs, Ctrl+K search, Data graphs.
@@ -99,6 +103,7 @@ ALSO
 - REST explore with ready-made examples for the Data Cloud API.
 - A connection check that shows which Data Cloud APIs your org answers.
 - Light, dark or system theme.
+- See what the extension stores, with sizes, and delete any part of it.
 - Send feedback with a screenshot you can mark up.
 
 READ ONLY

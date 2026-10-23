@@ -16,8 +16,8 @@ export const NAV = [
   { path: '/objects', label: 'Objects' },
   { path: '/segments', label: 'Segments' },
   { path: '/personalization', label: 'Personalization' },
-  { path: '/health', label: 'Health' },
-  { path: '/compare', label: 'Compare' },
+  { path: '/health', label: 'Health', job: 'health:' },
+  { path: '/compare', label: 'Compare', job: 'compare' },
   { path: '/explore', label: 'REST explore' },
 ]
 

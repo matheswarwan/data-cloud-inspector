@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { RefreshCw } from 'lucide-vue-next'
 import { useOrg, currentOrg } from '../app/useOrg.js'
 import { orgCall } from '../app/useCatalog.js'
+import { useJob, startJob, markSeen } from '../app/useJobs.js'
 import { recordUrl } from '../lib/links.js'
 import { loadHealth, countLevels, healthMarkdown, LEVELS, LEVEL_TEXT } from '../lib/health.js'
 import { latestProblemsSql } from '../lib/problems.js'
@@ -10,25 +11,31 @@ import { useRouter } from 'vue-router'
 
 const org = useOrg()
 const router = useRouter()
-const sections = ref([])
-const loading = ref(false)
-const checkedAt = ref(null)
 const problemsOnly = ref(false)
 const notice = ref('')
 
-async function load() {
-  if (!org.version) return
-  loading.value = true
-  notice.value = ''
-  const orgId = org.orgId
-  const result = await loadHealth(orgCall(), org.version)
-  if (org.orgId !== orgId) return
-  sections.value = result
-  checkedAt.value = new Date()
-  loading.value = false
+// The check runs as a background job per org and data space: leave the page, come back, and
+// the result is there (also after reopening the inspector, until the browser closes).
+const jobId = computed(() => `health:${org.orgId}:${org.dataSpace || 'default'}`)
+const job = computed(() => (org.orgId ? useJob(jobId.value) : null))
+const sections = computed(() => job.value?.result || [])
+const loading = computed(() => job.value?.status === 'running')
+const checkedAt = computed(() => (job.value?.finishedAt ? new Date(job.value.finishedAt) : null))
+
+function load() {
+  if (!org.version || !org.orgId) return
+  const call = orgCall()
+  const version = org.version
+  startJob(jobId.value, (progress) => loadHealth(call, version, { onProgress: progress }))
 }
-onMounted(load)
-watch(() => [org.orgId, org.version, org.dataSpace], load)
+// First visit: start a check unless one ran (or is running) for this org and data space.
+function autoStart() {
+  if (!org.version) return
+  setTimeout(() => { if (job.value && job.value.status === 'idle' && !job.value.result) load() }, 150)
+}
+onMounted(autoStart)
+watch(() => [org.orgId, org.version, org.dataSpace], autoStart)
+watch(() => [job.value?.status, jobId.value], () => { if (job.value && job.value.status !== 'running') markSeen(jobId.value) }, { immediate: true })
 
 const all = computed(() => sections.value.flatMap((s) => s.items))
 const totals = computed(() => countLevels(all.value))
@@ -69,7 +76,9 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
         <h2 class="text-lg font-semibold">Health</h2>
         <p class="text-sm text-muted-foreground">
           Data streams, identity resolution, calculated insights, segments and activations, problems first.
-          <span v-if="checkedAt"> Checked {{ checkedAt.toLocaleTimeString() }}.</span>
+          <span v-if="loading"> Checking: {{ job?.progress || 'starting' }}. You can use other pages meanwhile.</span>
+          <span v-else-if="checkedAt"> Checked {{ checkedAt.toLocaleString() }}.</span>
+          <span v-if="job?.status === 'failed'" class="text-destructive"> The check failed: {{ job.error }}</span>
         </p>
       </div>
       <div class="ml-auto flex items-center gap-2">
