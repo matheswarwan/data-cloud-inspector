@@ -5,6 +5,7 @@ import { Settings, Search } from 'lucide-vue-next'
 import ConnectionMenu from '../components/ConnectionMenu.vue'
 import FeedbackModal from '../components/feedback/FeedbackModal.vue'
 import CommandPalette from '../components/CommandPalette.vue'
+import DialogHost from '../components/DialogHost.vue'
 import { NAV } from './router.js'
 import { useOrg, loadOrgs } from './useOrg.js'
 import { jobBadge } from './useJobs.js'
@@ -57,6 +58,7 @@ onMounted(loadOrgs)
       <RouterView />
     </main>
     <CommandPalette ref="palette" />
+    <DialogHost />
     <FeedbackModal v-if="feedback" :screen="route.path" @close="feedback = false" />
   </div>
 </template>

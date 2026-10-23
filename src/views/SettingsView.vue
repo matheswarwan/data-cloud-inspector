@@ -6,6 +6,7 @@ import { useOrg, currentOrg, recheckOrg } from '../app/useOrg.js'
 import { send } from '../lib/api.js'
 import { resetCatalog, ensureCatalog } from '../app/useCatalog.js'
 import { readStorage, deleteKeys, formatBytes } from '../lib/storageUsage.js'
+import { askConfirm } from '../app/useDialog.js'
 import { useQueries, loadQueries, saveQuery, clearHistory, reloadQueries } from '../app/useQueries.js'
 import { storeAll, storeRemove } from '../lib/store.js'
 import { FEEDBACK_CONTACT_KEY } from '../lib/feedbackContact.js'
@@ -64,14 +65,14 @@ async function afterDelete(groupId) {
 async function removeGroup(g, part = null) {
   const keys = part ? part.keys : g.keys
   const what = part ? `${g.label.toLowerCase()} of ${hostOf(part.orgId)}` : g.label.toLowerCase()
-  if ((g.id === 'saved' || g.id === 'history') && !confirm(`Delete ${what}? This cannot be undone.`)) return
+  if ((g.id === 'saved' || g.id === 'history') && !(await askConfirm({ title: `Delete ${what}?`, message: 'This cannot be undone.', primary: 'Delete', danger: true }))) return
   await deleteKeys(g.area, keys)
   notice.value = `Deleted ${what} (${formatBytes(part ? part.bytes : g.bytes)}).`
   await afterDelete(g.id)
 }
 
 async function removeAll() {
-  if (!confirm('Delete everything Data Cloud Inspector keeps in this browser: caches, saved queries, history, OAuth logins and settings? This cannot be undone.')) return
+  if (!(await askConfirm({ title: 'Delete everything?', message: 'Caches, saved queries, history, OAuth logins and settings that Data Cloud Inspector keeps in this browser. This cannot be undone.', primary: 'Delete everything', danger: true }))) return
   for (const g of storage.value?.groups || []) await deleteKeys(g.area, g.keys)
   notice.value = 'Deleted everything the extension kept in this browser.'
   await afterDelete('all')
@@ -89,7 +90,7 @@ async function forgetContact() {
 }
 
 async function wipeHistory() {
-  if (!confirm(`Delete all ${queries.history.length} queries in the run history?`)) return
+  if (!(await askConfirm({ title: 'Clear the run history?', message: `${queries.history.length} queries will be removed.`, primary: 'Clear', danger: true }))) return
   await clearHistory()
   notice.value = 'Cleared the run history.'
 }

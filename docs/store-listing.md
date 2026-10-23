@@ -12,12 +12,12 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 - **Privacy policy URL:** https://data-cloud-inspector.mathes.dev/privacy (Worker
   `data-cloud-inspector-site`, source in `site/`; deploy steps in `site/wrangler.jsonc`).
 - **Publisher:** CloudKettle's developer account (same as SFMC Query Saver).
-- **Version:** 1.2.0, `releases/data-cloud-inspector-1.2.0.zip` (GitHub release `v1.2.0`). Earlier versions were never submitted; submit 1.2.0 as the first store version.
+- **Version:** 1.3.0, `releases/data-cloud-inspector-1.3.0.zip` (GitHub release `v1.3.0`). Earlier versions were never submitted; submit 1.3.0 as the first store version.
 
 ## Submitting (CloudKettle developer account)
 
 1. Chrome Web Store Developer Dashboard, signed in to the CloudKettle publisher, then New item.
-2. Upload `releases/data-cloud-inspector-1.2.0.zip`.
+2. Upload `releases/data-cloud-inspector-1.3.0.zip`.
 3. Store listing tab: name, summary (from the manifest), description, category Developer Tools,
    language English, the six screenshots from `docs/store/`, and the 128 px icon
    (`public/images/icon128.png`). Optional: a 440x280 promo tile.
@@ -28,6 +28,9 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 6. Submit for review. Tell Claude when it is published, so the release can be recorded.
 
 ## What's new
+
+1.3.0: query tabs in SQL (several queries, each with its own results, running at the same time);
+saving, deleting and closing use in-page dialogs instead of browser pop-ups.
 
 1.2.0: Health and Compare run in the background (use other pages meanwhile; results wait, also
 after reopening, until the browser closes); Settings, Storage shows what is kept with sizes and
@@ -64,6 +67,7 @@ PROFILES
 
 SQL
 - Run Data Cloud SQL against data lake objects, data model objects and calculated insights.
+- Query tabs: several queries at once, each with its own results.
 - Search your objects beside the editor and insert an object, a field, or a SELECT of the fields you tick.
 - Autocomplete for every object and field in your org, Format, saved queries and history.
 - Load results 1,000 rows at a time, download every row as CSV, or copy the results ready to paste into an AI assistant.

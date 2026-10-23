@@ -3,7 +3,7 @@
 A read-only Chrome extension for Salesforce Data Cloud (Data 360). It uses the Salesforce
 login you already have in the browser, so there is nothing to install in the org.
 
-Status: 1.2.0, the first store release. Zips are in `releases/`.
+Status: 1.3.0, the first store release. Zips are in `releases/`.
 
 ## What it does
 
@@ -13,7 +13,8 @@ Status: 1.2.0, the first store release. Zips are in `releases/`.
   pairs that satisfy them, people who share an email but are not in the profile, contact
   points, an engagement timeline, segment membership and every other related record (found
   through the metadata's relationships). Copy as Markdown exports the whole profile.
-- SQL: run Data Cloud SQL against DLOs, DMOs and calculated insights, with an Objects panel
+- SQL: query tabs (each with its own SQL, editor and results, running at the same time; the
+  tabs are remembered). Run Data Cloud SQL against DLOs, DMOs and calculated insights, with an Objects panel
   (search, expand, insert an object, a field or a SELECT of ticked fields), table and field
   autocomplete from the org, Format, saved queries and history. Results load 1,000 rows at a
   time; Download CSV fetches every row (up to 500,000); Copy for AI copies the SQL, column
