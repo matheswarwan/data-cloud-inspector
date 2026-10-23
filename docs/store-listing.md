@@ -12,7 +12,13 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 - **Privacy policy URL:** https://data-cloud-inspector.mathes.dev/privacy (Worker
   `data-cloud-inspector-site`, source in `site/`; deploy steps in `site/wrangler.jsonc`).
 - **Publisher:** CloudKettle's developer account (same as SFMC Query Saver).
-- **Version:** 1.0.0, `releases/data-cloud-inspector-1.0.0.zip` (GitHub release `v1.0.0`). The first store version. Builds numbered 1.1.0 to 1.7.0 were never published; they are folded into this 1.0.0 (GitHub pre-releases, zips in `releases/archive/`).
+- **Version:** 1.0.1, `releases/data-cloud-inspector-1.0.1.zip` (GitHub release `v1.0.1`), an update to the item submitted as 1.0.0 on 2026-10-23. No permission changes. 1.0.0 was the first store version; builds numbered 1.1.0 to 1.7.0 were never published and are folded into it (GitHub pre-releases, zips in `releases/archive/`), which is why this update is 1.0.1.
+
+## Updating (1.0.1 and later)
+
+1. Developer Dashboard, the Data Cloud Inspector item, Package tab, Upload new package: `releases/data-cloud-inspector-1.0.1.zip`.
+2. Store listing tab: replace the five screenshots with the new ones from `docs/store/` (they show the left sidebar) and paste the description below (it mentions the Download menu and Data models).
+3. Submit for review. If 1.0.0 is still in review, the dashboard may ask to cancel that review first; uploading 1.0.1 then replaces it.
 
 ## Submitting (CloudKettle developer account)
 
@@ -28,6 +34,8 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 6. Submit for review. Tell Claude when it is published, so the release can be recorded.
 
 ## What's new (version notes)
+
+1.0.1: pages in a left sidebar; a Download menu everywhere (view, copy, Markdown, Word, PDF, HTML, Excel); a Data models page (mapped or all DMOs).
 
 1.0.0: first release.
 
