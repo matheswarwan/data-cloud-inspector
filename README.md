@@ -3,7 +3,7 @@
 A read-only Chrome extension for Salesforce Data Cloud (Data 360). It uses the Salesforce
 login you already have in the browser, so there is nothing to install in the org.
 
-Status: 1.0.0, the first store release. Zips are in `releases/`.
+Status: 1.1.0, the first store release. Zips are in `releases/`.
 
 ## What it does
 
@@ -43,6 +43,13 @@ Status: 1.0.0, the first store release. Zips are in `releases/`.
   profile, role and Data Cloud permission sets it acts as) with a shareable report
   (response shapes only).
 - REST explore with examples that fill in the request.
+- Ctrl+K search over pages, objects, fields, segments and saved queries, with Find person.
+- Compare two orgs: objects, fields (and type changes), segments, calculated insights and data
+  streams in only one.
+- Export data model: one HTML or Markdown document of DMOs, DLOs and calculated insights with
+  fields, mappings, streams and usage.
+- Health also counts each stream's problem records (rejected rows); Personalization shows data
+  graphs.
 - Settings: System, Light or Dark theme; cached metadata per org (clear); export and import
   saved queries; clear history; forget the feedback contact.
 - Feedback (header button): problem, idea or question, an optional marked-up screenshot and

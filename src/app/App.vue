@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { Settings } from 'lucide-vue-next'
+import { Settings, Search } from 'lucide-vue-next'
 import ConnectionMenu from '../components/ConnectionMenu.vue'
 import FeedbackModal from '../components/feedback/FeedbackModal.vue'
 import CommandPalette from '../components/CommandPalette.vue'
@@ -17,17 +17,17 @@ onMounted(loadOrgs)
 
 <template>
   <div class="min-h-screen flex flex-col">
-    <header class="flex flex-wrap items-center gap-3 border-b px-4 py-2 bg-card">
-      <h1 class="font-semibold text-base mr-4">Data Cloud Inspector</h1>
-      <nav class="flex gap-1">
+    <header class="flex flex-wrap items-center gap-2 border-b px-4 py-2 bg-card">
+      <h1 class="font-semibold text-base mr-2 whitespace-nowrap">Data Cloud Inspector</h1>
+      <nav class="flex gap-0.5">
         <RouterLink
           v-for="item in NAV" :key="item.path" :to="item.path"
-          class="px-3 py-1 rounded-md text-sm hover:bg-accent"
+          class="px-2 py-1 rounded-md text-sm hover:bg-accent whitespace-nowrap"
           active-class="bg-accent font-medium"
         >{{ item.label }}</RouterLink>
       </nav>
       <div class="ml-auto flex items-center gap-2 text-sm">
-        <button class="px-2 py-1 rounded-md border text-xs text-muted-foreground hover:bg-accent" title="Search everything (Ctrl+K or Cmd+K)" @click="palette?.show()">Search <kbd class="font-mono">Ctrl K</kbd></button>
+        <button class="p-1.5 rounded-md hover:bg-accent" title="Search everything (Ctrl+K or Cmd+K)" aria-label="Search" @click="palette?.show()"><Search class="w-4 h-4" /></button>
         <ConnectionMenu />
         <RouterLink to="/settings" class="p-1.5 rounded-md hover:bg-accent" active-class="bg-accent" title="Settings"><Settings class="w-4 h-4" /></RouterLink>
         <button class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border hover:bg-accent" title="Report a problem or send an idea" @click="feedback = true">

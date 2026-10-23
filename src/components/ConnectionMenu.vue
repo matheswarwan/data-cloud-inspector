@@ -39,7 +39,7 @@ onUnmounted(() => { document.removeEventListener('mousedown', onDoc); document.r
 <template>
   <div ref="root" class="relative">
     <button
-      class="inline-flex items-center gap-2 px-3 py-1 rounded-md border text-sm hover:bg-accent max-w-80"
+      class="inline-flex items-center gap-2 px-2.5 py-1 rounded-md border text-sm hover:bg-accent max-w-64"
       :aria-expanded="open" title="Connection" @click="open = !open"
     >
       <span :class="['w-2 h-2 rounded-full shrink-0', status.dot]" />

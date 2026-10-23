@@ -12,12 +12,12 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 - **Privacy policy URL:** https://data-cloud-inspector.mathes.dev/privacy (Worker
   `data-cloud-inspector-site`, source in `site/`; deploy steps in `site/wrangler.jsonc`).
 - **Publisher:** CloudKettle's developer account (same as SFMC Query Saver).
-- **Version:** 1.0.0, `releases/data-cloud-inspector-1.0.0.zip` (GitHub release `v1.0.0`).
+- **Version:** 1.1.0, `releases/data-cloud-inspector-1.1.0.zip` (GitHub release `v1.1.0`). 1.0.0 was never submitted; submit 1.1.0 as the first store version.
 
-## Submitting 1.0.0 (CloudKettle developer account)
+## Submitting (CloudKettle developer account)
 
 1. Chrome Web Store Developer Dashboard, signed in to the CloudKettle publisher, then New item.
-2. Upload `releases/data-cloud-inspector-1.0.0.zip`.
+2. Upload `releases/data-cloud-inspector-1.1.0.zip`.
 3. Store listing tab: name, summary (from the manifest), description, category Developer Tools,
    language English, the six screenshots from `docs/store/`, and the 128 px icon
    (`public/images/icon128.png`). Optional: a 440x280 promo tile.
@@ -28,6 +28,9 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 6. Submit for review. Tell Claude when it is published, so the release can be recorded.
 
 ## What's new
+
+1.1.0: data spaces, problem records on Health, Export data model (HTML or Markdown), Compare
+two orgs, Ctrl+K search, Data graphs.
 
 1.0.0: first release. Profiles (unified profile, source records, match rules, missed matches,
 contact points, engagement, segments), Segments (criteria, counts, equivalent SQL, publish
@@ -70,12 +73,13 @@ SEGMENTS
 
 HEALTH
 - One page for data streams, identity resolution, calculated insights, segments and activations, problems first.
-- Why each one needs a look: never ran, last run failed, no source profiles, overdue publish.
+- Why each one needs a look: never ran, last run failed, rows rejected (problem records), no source profiles, overdue publish.
 - Consolidation rate and profile counts per identity resolution ruleset.
 - Copy the report as Markdown for a status update.
 
 PERSONALIZATION
 - Personalization points with their decisions in priority order, recommenders, experiments, content schemas and objectives.
+- Data graphs with their objects.
 - Activity from the personalization log: requests per day, by point, decision and recommender, status codes, and the latest requests linked to the person's profile.
 
 OBJECTS
@@ -87,6 +91,10 @@ OBJECTS
 - Row counts, a ready-made SELECT, and Copy as Markdown.
 
 ALSO
+- Ctrl+K to search pages, objects, fields, segments and saved queries, or find a person.
+- Compare two orgs, for example a sandbox and production: objects, fields, segments, calculated insights and data streams that differ.
+- Export the data model as one document (HTML for Word or PDF, or Markdown).
+- Data spaces: pick the data space in the connection menu.
 - Open records in Salesforce: segments, data streams, DLOs, calculated insights, rulesets and CRM records link to their page in the org.
 - REST explore with ready-made examples for the Data Cloud API.
 - A connection check that shows which Data Cloud APIs your org answers.
