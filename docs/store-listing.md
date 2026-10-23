@@ -12,14 +12,14 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 - **Privacy policy URL:** https://data-cloud-inspector.mathes.dev/privacy (Worker
   `data-cloud-inspector-site`, source in `site/`; deploy steps in `site/wrangler.jsonc`).
 - **Publisher:** CloudKettle's developer account (same as SFMC Query Saver).
-- **Version:** 1.3.0, `releases/data-cloud-inspector-1.3.0.zip` (GitHub release `v1.3.0`). Earlier versions were never submitted; submit 1.3.0 as the first store version.
+- **Version:** 1.4.0, `releases/data-cloud-inspector-1.4.0.zip` (GitHub release `v1.4.0`). Earlier versions were never submitted; submit 1.4.0 as the first store version.
 
 ## Submitting (CloudKettle developer account)
 
 1. Chrome Web Store Developer Dashboard, signed in to the CloudKettle publisher, then New item.
-2. Upload `releases/data-cloud-inspector-1.3.0.zip`.
+2. Upload `releases/data-cloud-inspector-1.4.0.zip`.
 3. Store listing tab: name, summary (from the manifest), description, category Developer Tools,
-   language English, the six screenshots from `docs/store/`, and the 128 px icon
+   language English, the five screenshots from `docs/store/` (the store takes at most five), and the 128 px icon
    (`public/images/icon128.png`). Optional: a 440x280 promo tile.
 4. Privacy practices tab: single purpose, the permission justifications, data usage and the
    certifications below; privacy policy URL https://data-cloud-inspector.mathes.dev/privacy.
@@ -28,6 +28,9 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 6. Submit for review. Tell Claude when it is published, so the release can be recorded.
 
 ## What's new
+
+1.4.0: Identity page (rulesets in plain words, stats, profile sizes, largest profiles, where
+records come from, compare two people against the rules).
 
 1.3.0: query tabs in SQL (several queries, each with its own results, running at the same time);
 saving, deleting and closing use in-page dialogs instead of browser pop-ups.
@@ -71,6 +74,11 @@ SQL
 - Search your objects beside the editor and insert an object, a field, or a SELECT of the fields you tick.
 - Autocomplete for every object and field in your org, Format, saved queries and history.
 - Load results 1,000 rows at a time, download every row as CSV, or copy the results ready to paste into an AI assistant.
+
+IDENTITY RESOLUTION
+- Every ruleset with its match and reconciliation rules in plain words, and its stats: source and unified profiles, consolidation rate, last run.
+- How many source records each unified profile has, and the largest profiles, where wrong merges usually hide.
+- Compare two people: criterion by criterion, would this ruleset join them, and are they in the same profile.
 
 SEGMENTS
 - Every segment with its status, schedule and member count.
@@ -146,16 +154,15 @@ Data Cloud Inspector lets Salesforce Data Cloud users inspect their own org, rea
 - **Usage data:** none. No analytics.
 - Certify: data is not sold, not used for unrelated purposes, and not used for creditworthiness or lending.
 
-## Screenshots (1280x800, in `docs/store/`)
+## Screenshots (1280x800, in `docs/store/`; the store takes at most five)
 
 1. `1-profile.png`: a unified profile with its source record.
-2. `2-match-rules.png`: match rules with each record's values, and possible missed matches.
-3. `3-sql.png`: SQL with a join and results.
+2. `2-identity.png`: a ruleset's rules and Compare two people.
+3. `3-sql.png`: SQL with the objects panel, a join and results.
 4. `4-objects.png`: the Individual DMO and what is mapped into it.
 5. `5-segment.png`: a segment's criteria, counts, equivalent SQL and a membership check.
-6. `6-explore.png`: REST explore examples.
 
-Taken on a developer org with sample data. The org domain and org ID are replaced, and the sample people who share an email in shot 2 are renamed to fictional names.
+Taken on a developer org with sample data. The org domain and org ID are replaced, and the sample people and the Salesforce email in shot 2 are replaced with fictional ones.
 
 ## Store icon
 

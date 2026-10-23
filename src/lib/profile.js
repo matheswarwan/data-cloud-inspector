@@ -50,6 +50,19 @@ export function parseRulesets(list) {
         unified: entities[INDIVIDUAL]?.unified || '',
         link: entities[INDIVIDUAL]?.link || '',
         entities,
+        description: r.description || '',
+        runsAutomatically: !!r.doesRunAutomatically,
+        caseSensitive: !!r.isCaseSensitive,
+        dataSpace: r.dataSpaceName || '',
+        reconciliation: (r.reconciliationRules || []).map((rec) => ({
+          entity: rec.entityName,
+          ruleType: rec.ruleType || '',
+          ignoreEmpty: rec.shouldIgnoreEmptyValue !== false,
+          fields: rec.fields || [],
+          sources: rec.sources || [],
+          unified: rec.unifiedDmoName || '',
+          link: rec.linkDmoName || '',
+        })),
         rules: (r.matchRules || []).map((m) => ({
           label: m.label || '',
           criteria: (m.criteria || []).map((c) => ({

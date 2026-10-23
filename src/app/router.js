@@ -9,16 +9,18 @@ import SettingsView from '../views/SettingsView.vue'
 import HealthView from '../views/HealthView.vue'
 import PersonalizationView from '../views/PersonalizationView.vue'
 import CompareView from '../views/CompareView.vue'
+import IdentityView from '../views/IdentityView.vue'
 
 export const NAV = [
   { path: '/profile', label: 'Profiles' },
   { path: '/sql', label: 'SQL' },
   { path: '/objects', label: 'Objects' },
+  { path: '/identity', label: 'Identity' },
   { path: '/segments', label: 'Segments' },
   { path: '/personalization', label: 'Personalization' },
   { path: '/health', label: 'Health', job: 'health:' },
   { path: '/compare', label: 'Compare', job: 'compare' },
-  { path: '/explore', label: 'REST explore' },
+  { path: '/explore', label: 'REST' },
 ]
 
 export function createAppRouter() {
@@ -36,6 +38,7 @@ export function createAppRouter() {
       { path: '/health', component: HealthView },
       { path: '/personalization', component: PersonalizationView },
       { path: '/compare', component: CompareView },
+      { path: '/identity/:id?', component: IdentityView },
     ],
   })
 }

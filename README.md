@@ -3,7 +3,7 @@
 A read-only Chrome extension for Salesforce Data Cloud (Data 360). It uses the Salesforce
 login you already have in the browser, so there is nothing to install in the org.
 
-Status: 1.3.0, the first store release. Zips are in `releases/`.
+Status: 1.4.0, the first store release. Zips are in `releases/`.
 
 ## What it does
 
@@ -25,6 +25,9 @@ Status: 1.3.0, the first store release. Zips are in `releases/`.
   calculated insights (from their SQL) and segments (from their criteria) that use the object
   and which fields, with the segments' activations, also shown per field. Row counts, Query,
   Copy SELECT and Copy as Markdown.
+- Identity: every ruleset with match and reconciliation rules in plain words, stats
+  (consolidation rate), source records per unified profile, the largest profiles, where records
+  come from, and Compare two people criterion by criterion.
 - Segments: every segment with status, schedule and member count; the criteria in plain
   words and as raw JSON; counts at the last publish, in the membership table and matching
   the criteria now; the equivalent SQL; publish history; and "is this person in the
