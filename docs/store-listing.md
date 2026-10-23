@@ -12,12 +12,12 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 - **Privacy policy URL:** https://data-cloud-inspector.mathes.dev/privacy (Worker
   `data-cloud-inspector-site`, source in `site/`; deploy steps in `site/wrangler.jsonc`).
 - **Publisher:** CloudKettle's developer account (same as SFMC Query Saver).
-- **Version:** 1.5.0, `releases/data-cloud-inspector-1.5.0.zip` (GitHub release `v1.5.0`). Earlier versions were never submitted; submit 1.5.0 as the first store version.
+- **Version:** 1.6.0, `releases/data-cloud-inspector-1.6.0.zip` (GitHub release `v1.6.0`). Earlier versions were never submitted; submit 1.6.0 as the first store version.
 
 ## Submitting (CloudKettle developer account)
 
 1. Chrome Web Store Developer Dashboard, signed in to the CloudKettle publisher, then New item.
-2. Upload `releases/data-cloud-inspector-1.5.0.zip`.
+2. Upload `releases/data-cloud-inspector-1.6.0.zip`.
 3. Store listing tab: name, summary (from the manifest), description, category Developer Tools,
    language English, the five screenshots from `docs/store/` (the store takes at most five), and the 128 px icon
    (`public/images/icon128.png`). Optional: a 440x280 promo tile.
@@ -28,6 +28,9 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 6. Submit for review. Tell Claude when it is published, so the release can be recorded.
 
 ## What's new
+
+1.6.0: the SQL results table sorts by any column, filters the loaded rows, shows a cell's full
+value (JSON pretty-printed) with Copy, copies a column, and can wrap long text.
 
 1.5.0: Query Builder (fields, related objects joined from the org's relationships, filters, sort,
 count, open in SQL); calculated insight definitions (SQL, formulas, schedule, last run); segment
@@ -78,6 +81,7 @@ SQL
 - Query Builder: tick fields, add related objects (the joins come from your org's relationships), add filters, count the rows, then open the SQL in a tab.
 - Search your objects beside the editor and insert an object, a field, or a SELECT of the fields you tick.
 - Autocomplete for every object and field in your org, Format, saved queries and history.
+- Sort and filter the results, open a cell's full value, copy a column.
 - Load results 1,000 rows at a time, download every row as CSV, or copy the results ready to paste into an AI assistant.
 
 IDENTITY RESOLUTION
