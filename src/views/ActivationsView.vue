@@ -1,5 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import ListPanel from '../components/ListPanel.vue'
+import DataTable from '../components/DataTable.vue'
 import { useRoute } from 'vue-router'
 import { RefreshCw } from 'lucide-vue-next'
 import { useOrg, currentOrg } from '../app/useOrg.js'
@@ -57,11 +59,16 @@ const DOT = { fail: 'bg-red-500', warn: 'bg-amber-400', running: 'bg-sky-500', i
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : 'never')
 const num = (n) => (typeof n === 'number' ? n.toLocaleString() : n || '…')
 const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent'
+const attrCols = [
+  { key: 'field', label: 'Field', value: (x) => `${x.entity.replace(/^ssot__|__dlm$/g, '')}.${x.name} ${x.label || ''}`, sortValue: (x) => `${x.entity}.${x.name}` },
+  { key: 'output', label: 'Sent as' },
+  { key: 'type', label: 'Type' },
+]
 </script>
 
 <template>
   <section class="flex gap-4 min-h-0">
-    <aside class="w-80 shrink-0 space-y-2">
+    <ListPanel name="activations" label="activations list">
       <div class="flex items-center gap-2">
         <h2 class="font-semibold">Activations</h2>
         <button class="ml-auto p-1.5 rounded-md border hover:bg-accent" title="Load again" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
@@ -76,7 +83,7 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
           </RouterLink>
         </li>
       </ul>
-    </aside>
+    </ListPanel>
 
     <div class="flex-1 min-w-0 space-y-4">
       <p v-if="!route.params.id" class="text-sm text-muted-foreground p-4">{{ loading ? 'Loading activations…' : 'Pick an activation to see what it sends, where, and when it last published.' }}</p>
@@ -96,13 +103,13 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
           <dt class="text-muted-foreground">Refresh</dt><dd>{{ [act.refreshType, act.processing].filter(Boolean).join(', ').toLowerCase() }}{{ act.excludeDeletes ? ', deletes not sent' : '' }}{{ act.excludeUpdates ? ', updates not sent' : '' }}</dd>
           <dt class="text-muted-foreground">Activates</dt><dd>{{ act.subjectLabel || act.subject }} <span class="font-mono text-xs text-muted-foreground">{{ act.subject }}</span></dd>
         </dl>
-        <div class="grid lg:grid-cols-2 gap-4">
+        <div class="grid xl:grid-cols-[3fr_2fr] gap-4 items-start">
           <div class="border rounded-md bg-card">
             <h3 class="p-3 border-b font-medium text-sm">Attributes sent ({{ act.attributes.length }})</h3>
-            <table class="w-full text-xs">
-              <thead class="text-left text-muted-foreground"><tr><th class="p-2 font-normal">Field</th><th class="p-2 font-normal">Sent as</th><th class="p-2 font-normal">Type</th></tr></thead>
-              <tbody><tr v-for="x in act.attributes" :key="x.entity + x.name" class="border-t"><td class="p-2"><span class="font-mono">{{ x.entity.replace(/^ssot__|__dlm$/g, '') }}.{{ x.name }}</span><div class="text-muted-foreground">{{ x.label }}</div></td><td class="p-2 font-mono">{{ x.output }}</td><td class="p-2">{{ x.type }}</td></tr></tbody>
-            </table>
+            <DataTable :columns="attrCols" :rows="act.attributes" :row-key="(x) => x.entity + x.name" :bordered="false" text-size="text-xs" box-class="max-h-[60vh]">
+              <template #cell-field="{ row: x }"><span class="font-mono whitespace-nowrap">{{ x.entity.replace(/^ssot__|__dlm$/g, '') }}.{{ x.name }}</span><div class="text-muted-foreground">{{ x.label }}</div></template>
+              <template #cell-output="{ value }"><span class="font-mono whitespace-nowrap">{{ value }}</span></template>
+            </DataTable>
           </div>
           <div class="space-y-4">
             <div class="border rounded-md bg-card p-3 text-sm space-y-1">

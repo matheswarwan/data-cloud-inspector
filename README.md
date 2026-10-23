@@ -13,6 +13,11 @@ Personalization; Compare, REST explorer, Health and Connection check. Wherever a
 have Copy as Markdown it now has a Download menu: View, Copy, Markdown, Word (.docx), PDF
 (print), HTML, and Excel where there are tables.
 
+Tables sort by any column (click the header) and filter per column (the funnel icon: text,
+or a list of values to tick when a column has few of them). The list on the left of Objects,
+SQL, Data streams, Identity, Segments and Activations can be resized (drag its edge,
+double-click to reset) or hidden; both are remembered per page.
+
 - Profiles: look up a person by email, phone, name or ID (`*` as a wildcard) and pick an
   identity resolution ruleset. The page shows the unified record, the source records behind
   it with the link's match keys, the ruleset's match rules with each record's values and the

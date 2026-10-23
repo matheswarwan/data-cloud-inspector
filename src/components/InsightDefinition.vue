@@ -1,4 +1,5 @@
 <script setup>
+import DataTable from './DataTable.vue'
 // A calculated insight's definition: status, schedule, last run, the SQL (formatted) and its
 // dimensions and measures with formulas. Used by Objects and Calculated insights.
 import { ref } from 'vue'
@@ -17,6 +18,12 @@ async function copySql(text) {
   copied.value = true
   setTimeout(() => { copied.value = false }, 1500)
 }
+const fieldCols = [
+  { key: 'name', label: 'Field', value: (f) => `${f.name} ${f.label || ''}`, sortValue: (f) => f.name },
+  { key: 'role', label: 'Role' },
+  { key: 'type', label: 'Type', value: (f) => `${f.type}${f.granularity ? `, by ${f.granularity.toLowerCase()}` : ''}${f.aggregation ? `, ${f.aggregation.toLowerCase()}` : ''}` },
+  { key: 'formula', label: 'Formula' },
+]
 </script>
 
 <template>
@@ -39,16 +46,11 @@ async function copySql(text) {
               <pre class="p-3 text-xs font-mono whitespace-pre-wrap break-words">{{ prettySql(ci.sql) }}</pre>
               <p class="px-3 pb-2 text-xs text-muted-foreground">Calculated insight SQL uses its own dialect, so it may need small edits before it runs as a query (for example DATE_ADD with a zero offset).</p>
             </div>
-            <table v-if="show === 'all' || show === 'fields'" class="w-full border rounded-md bg-card">
-              <thead class="text-left text-muted-foreground border-b"><tr><th class="p-2 font-normal">Field</th><th class="p-2 font-normal">Role</th><th class="p-2 font-normal">Type</th><th class="p-2 font-normal">Formula</th></tr></thead>
-              <tbody>
-                <tr v-for="f in [...ci.dimensions, ...ci.measures]" :key="f.name" class="border-b last:border-0 align-top">
-                  <td class="p-2"><span class="font-mono text-xs">{{ f.name }}</span><div class="text-xs text-muted-foreground">{{ f.label }}</div></td>
-                  <td class="p-2 text-xs">{{ f.role }}</td>
-                  <td class="p-2 text-xs">{{ f.type }}{{ f.granularity ? `, by ${f.granularity.toLowerCase()}` : '' }}{{ f.aggregation ? `, ${f.aggregation.toLowerCase()}` : '' }}</td>
-                  <td class="p-2 font-mono text-xs break-all">{{ f.formula }}</td>
-                </tr>
-              </tbody>
-            </table>
+            <DataTable v-if="show === 'all' || show === 'fields'" :columns="fieldCols" :rows="[...ci.dimensions, ...ci.measures]" row-key="name">
+              <template #cell-name="{ row: f }"><span class="font-mono text-xs">{{ f.name }}</span><div class="text-xs text-muted-foreground">{{ f.label }}</div></template>
+              <template #cell-role="{ value }"><span class="text-xs">{{ value }}</span></template>
+              <template #cell-type="{ value }"><span class="text-xs">{{ value }}</span></template>
+              <template #cell-formula="{ value }"><span class="font-mono text-xs break-all">{{ value }}</span></template>
+            </DataTable>
   </div>
 </template>

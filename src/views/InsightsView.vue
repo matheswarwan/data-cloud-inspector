@@ -1,4 +1,5 @@
 <script setup>
+import DataTable from '../components/DataTable.vue'
 // Calculated insights as Data Cloud shows them: a list view, and a record page with Details,
 // Dimensions and Measures, SQL, Data (a preview) and Used by.
 import { ref, computed, watch, onMounted } from 'vue'
@@ -52,6 +53,17 @@ const list = computed(() => {
   const t = search.value.trim().toLowerCase()
   return insights.value.filter((i) => (!status.value || i.status === status.value) && (!t || i.label.toLowerCase().includes(t) || i.name.toLowerCase().includes(t)))
 })
+const listCols = [
+  { key: 'label', label: 'Calculated Insight Name', value: (i) => `${i.label} ${i.name}`, sortValue: (i) => i.label },
+  { key: 'dataSpace', label: 'Data Space' },
+  { key: 'status', label: 'Status', value: (i) => cap(i.status) },
+  { key: 'lastRun', label: 'Last Run Time', kind: 'date', value: (i) => when(i.lastRun), sortValue: (i) => i.lastRun || '', filter: false },
+  { key: 'lastRunStatus', label: 'Last Run Status', value: (i) => cap(i.lastRunStatus) || 'Never' },
+  { key: 'schedule', label: 'Schedule', value: (i) => cap(i.schedule) },
+  { key: 'type', label: 'Insight Type', value: (i) => insightType(i.type) },
+  { key: 'dimensions', label: 'Dimensions', align: 'right', kind: 'number', value: (i) => i.dimensions.length },
+  { key: 'measures', label: 'Measures', align: 'right', kind: 'number', value: (i) => i.measures.length },
+]
 const ci = computed(() => insights.value.find((i) => i.name === route.params.name) || null)
 const meta = computed(() => catalog.objects.find((o) => o.name === ci.value?.name) || null)
 const variants = computed(() => (ci.value ? catalog.objects.filter((o) => o.name === ci.value.name || o.name.startsWith(`${ci.value.name}_`)).map((o) => o.name) : []))
@@ -130,31 +142,11 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
     </div>
     <p class="text-xs text-muted-foreground">{{ list.length }} {{ list.length === 1 ? 'item' : 'items' }}</p>
     <p v-if="error" class="text-sm text-destructive">{{ error }}</p>
-    <div class="border rounded-md bg-card overflow-auto">
-      <table class="w-full text-sm">
-        <thead class="text-left text-muted-foreground border-b bg-muted/40">
-          <tr>
-            <th class="p-2 font-normal">Calculated Insight Name</th><th class="p-2 font-normal">Data Space</th><th class="p-2 font-normal">Status</th>
-            <th class="p-2 font-normal">Last Run Time</th><th class="p-2 font-normal">Last Run Status</th><th class="p-2 font-normal">Schedule</th>
-            <th class="p-2 font-normal">Insight Type</th><th class="p-2 font-normal text-right">Dimensions</th><th class="p-2 font-normal text-right">Measures</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="i in list" :key="i.name" class="border-b last:border-0 hover:bg-accent">
-            <td class="p-2"><RouterLink :to="`/insights/${i.name}`" class="text-link hover:underline">{{ i.label }}</RouterLink><div class="font-mono text-xs text-muted-foreground">{{ i.name }}</div></td>
-            <td class="p-2">{{ i.dataSpace }}</td>
-            <td class="p-2">{{ cap(i.status) }}</td>
-            <td class="p-2 whitespace-nowrap">{{ when(i.lastRun) }}</td>
-            <td class="p-2"><span :class="['inline-block w-2 h-2 rounded-full mr-1.5', DOT[i.health.level]]" />{{ cap(i.lastRunStatus) || 'Never' }}</td>
-            <td class="p-2">{{ cap(i.schedule) }}</td>
-            <td class="p-2">{{ insightType(i.type) }}</td>
-            <td class="p-2 text-right">{{ i.dimensions.length }}</td>
-            <td class="p-2 text-right">{{ i.measures.length }}</td>
-          </tr>
-          <tr v-if="!loading && !list.length"><td colspan="9" class="p-3 text-muted-foreground">No calculated insights{{ search || status ? ' match' : ' in this data space' }}.</td></tr>
-        </tbody>
-      </table>
-    </div>
+    <DataTable :columns="listCols" :rows="list" row-key="name" row-class="hover:bg-accent" box-class="max-h-[calc(100vh-12rem)]" :empty="loading ? 'Loading…' : `No calculated insights${search || status ? ' match' : ' in this data space'}.`">
+      <template #cell-label="{ row: i }"><RouterLink :to="`/insights/${i.name}`" class="text-link hover:underline">{{ i.label }}</RouterLink><div class="font-mono text-xs text-muted-foreground">{{ i.name }}</div></template>
+      <template #cell-lastRun="{ value }"><span class="whitespace-nowrap">{{ value }}</span></template>
+      <template #cell-lastRunStatus="{ row: i, value }"><span :class="['inline-block w-2 h-2 rounded-full mr-1.5', DOT[i.health.level]]" />{{ value }}</template>
+    </DataTable>
   </section>
 
   <!-- Record page -->

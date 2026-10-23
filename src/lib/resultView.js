@@ -22,11 +22,23 @@ export function compareCells(a, b, kind) {
   return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' })
 }
 
-/** Row indexes in display order: filtered by `text` (any cell contains it), sorted by `sort`. */
-export function viewOrder(rows, columns, { text = '', sort = null } = {}) {
+/**
+ * Row indexes in display order: filtered by `text` (any cell contains it) and by `filters`
+ * per column index ({ [col]: { text, values } }, values null = all), sorted by `sort`.
+ */
+export function viewOrder(rows, columns, { text = '', sort = null, filters = {} } = {}) {
   const t = text.trim().toLowerCase()
   let idx = rows.map((_, i) => i)
   if (t) idx = idx.filter((i) => rows[i].some((v) => v != null && cellText(v).toLowerCase().includes(t)))
+  for (const [col, f] of Object.entries(filters)) {
+    const ft = f?.text?.trim().toLowerCase()
+    const picked = Array.isArray(f?.values) ? new Set(f.values) : null
+    if (!ft && !picked) continue
+    idx = idx.filter((i) => {
+      const s = cellText(rows[i][col])
+      return (!picked || picked.has(s)) && (!ft || s.toLowerCase().includes(ft))
+    })
+  }
   if (sort && sort.col != null) {
     const kind = kindOf(columns[sort.col]?.type)
     const dir = sort.dir === 'desc' ? -1 : 1

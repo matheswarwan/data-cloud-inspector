@@ -1,4 +1,5 @@
 <script setup>
+import DataTable from '../components/DataTable.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { RefreshCw } from 'lucide-vue-next'
@@ -53,6 +54,48 @@ const num = (n) => (n == null || n === '' ? '' : Number(n).toLocaleString())
 const card = 'border rounded-md bg-card'
 const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'border-primary font-medium' : 'border-transparent text-muted-foreground hover:text-foreground']
 const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+const decisionCols = [
+  { key: 'Priority', label: 'Priority', kind: 'number' },
+  { key: 'Name', label: 'Decision' },
+  { key: 'State', label: 'State' },
+  { key: 'personalizerName', label: 'Recommender' },
+  { key: 'experimentName', label: 'Experiment' },
+]
+const recommenderCols = [
+  { key: 'Name', label: 'Recommender', value: (r) => `${r.Name} ${r.Description || ''}`, sortValue: (r) => r.Name },
+  { key: 'status', label: 'Status', value: (r) => [r.Status, r.State].filter(Boolean).join(', ') },
+  { key: 'LastRefresh', label: 'Last refresh', kind: 'date', value: (r) => when(r.LastRefresh), sortValue: (r) => r.LastRefresh || '', filter: false },
+  { key: 'LastSuccessfulRefresh', label: 'Last success', kind: 'date', value: (r) => when(r.LastSuccessfulRefresh), sortValue: (r) => r.LastSuccessfulRefresh || '', filter: false },
+  { key: 'Goal', label: 'Goal' },
+  { key: 'every', label: 'Every', kind: 'number', value: (r) => (r.ScheduleFrequencyInMinutes ? `${r.ScheduleFrequencyInMinutes} min` : ''), sortValue: (r) => r.ScheduleFrequencyInMinutes },
+]
+const schemaCols = [
+  { key: 'Name', label: 'Content schema', value: (x) => `${x.Name} ${x.DeveloperName || ''}`, sortValue: (x) => x.Name },
+  { key: 'PersonalizationType', label: 'Type' },
+  { key: 'Description', label: 'Description' },
+]
+const objectiveCols = [
+  { key: 'Name', label: 'Objective' },
+  { key: 'Description', label: 'Description' },
+]
+const byDecisionCols = computed(() => [
+  { key: 'point', label: 'Point', value: (r) => nameOf(setup.value, r.point) },
+  { key: 'decision', label: 'Decision', value: (r) => nameOf(setup.value, r.decision) },
+  { key: 'personalizer', label: 'Recommender', value: (r) => nameOf(setup.value, r.personalizer) },
+  { key: 'requests', label: 'Requests', align: 'right', kind: 'number', value: (r) => num(r.requests), sortValue: (r) => Number(r.requests) },
+  { key: 'people', label: 'People', align: 'right', kind: 'number', value: (r) => num(r.people), sortValue: (r) => Number(r.people) },
+])
+const statusCols = [
+  { key: 'status', label: 'Status code', value: (r) => String(r.status || 'none') },
+  { key: 'n', label: 'Requests', align: 'right', kind: 'number', value: (r) => num(r.n), sortValue: (r) => Number(r.n) },
+]
+const recentCols = computed(() => [
+  { key: 'at', label: 'When', kind: 'date', value: (r) => when(r.at), sortValue: (r) => r.at || '', filter: false },
+  { key: 'point', label: 'Point', value: (r) => `${nameOf(setup.value, r.point)} ${nameOf(setup.value, r.decision)}` },
+  { key: 'individual', label: 'Person' },
+  { key: 'details', label: 'Details', value: (r) => [r.channel, r.content, r.items != null ? `${r.items} items` : ''].filter(Boolean).join(' · ') },
+  { key: 'status', label: 'Status', align: 'right', value: (r) => `${r.status} · ${Math.round(r.ms || 0)} ms`, sortValue: (r) => r.ms },
+])
 </script>
 
 <template>
@@ -91,18 +134,9 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
               {{ [p.schemaName && `schema ${p.schemaName}`, p.Source && `source ${p.Source}`, p.MaxItemsCount && `up to ${p.MaxItemsCount} items`, p.IsAuthenticationRequired && 'known people only', p.experimentName && `experiment ${p.experimentName}`].filter(Boolean).join(' · ') }}
             </div>
             <p v-if="!p.decisions.length" class="text-muted-foreground">No decisions.</p>
-            <table v-else class="w-full text-sm">
-              <thead class="text-left text-muted-foreground"><tr><th class="py-1 font-normal">Priority</th><th class="py-1 font-normal">Decision</th><th class="py-1 font-normal">State</th><th class="py-1 font-normal">Recommender</th><th class="py-1 font-normal">Experiment</th></tr></thead>
-              <tbody>
-                <tr v-for="d in p.decisions" :key="d.Id" class="border-t">
-                  <td class="py-1">{{ d.Priority }}</td>
-                  <td class="py-1"><a :href="sf(d.Id)" target="_blank" rel="noopener" class="text-link hover:underline">{{ d.Name }}</a></td>
-                  <td class="py-1">{{ d.State }}</td>
-                  <td class="py-1">{{ d.personalizerName }}</td>
-                  <td class="py-1">{{ d.experimentName }}</td>
-                </tr>
-              </tbody>
-            </table>
+            <DataTable v-else :columns="decisionCols" :rows="p.decisions" row-key="Id" :bordered="false">
+              <template #cell-Name="{ row: d }"><a :href="sf(d.Id)" target="_blank" rel="noopener" class="text-link hover:underline">{{ d.Name }}</a></template>
+            </DataTable>
           </div>
         </div>
       </div>
@@ -111,19 +145,10 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
       <div v-else-if="tab === 'recommenders'">
         <p v-if="errors('recommenders')" class="text-sm text-destructive">{{ errors('recommenders') }}</p>
         <p v-else-if="!setup.recommenders.length" class="text-sm text-muted-foreground">No recommenders in this org.</p>
-        <table v-else :class="[card, 'w-full text-sm']">
-          <thead class="text-left text-muted-foreground border-b"><tr><th class="p-2 font-normal">Recommender</th><th class="p-2 font-normal">Status</th><th class="p-2 font-normal">Last refresh</th><th class="p-2 font-normal">Last success</th><th class="p-2 font-normal">Goal</th><th class="p-2 font-normal">Every</th></tr></thead>
-          <tbody>
-            <tr v-for="r in setup.recommenders" :key="r.Id" class="border-b last:border-0">
-              <td class="p-2"><a :href="sf(r.Id)" target="_blank" rel="noopener" class="text-link hover:underline">{{ r.Name }}</a><div class="text-xs text-muted-foreground">{{ r.Description }}</div></td>
-              <td class="p-2">{{ [r.Status, r.State].filter(Boolean).join(', ') }}</td>
-              <td class="p-2">{{ when(r.LastRefresh) }}<div class="text-xs" :class="/fail|error/i.test(r.LatestRefreshedStatus || '') ? 'text-destructive' : 'text-muted-foreground'">{{ r.LatestRefreshedStatus }}</div></td>
-              <td class="p-2">{{ when(r.LastSuccessfulRefresh) }}</td>
-              <td class="p-2">{{ r.Goal }}</td>
-              <td class="p-2">{{ r.ScheduleFrequencyInMinutes ? `${r.ScheduleFrequencyInMinutes} min` : '' }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <DataTable v-else :columns="recommenderCols" :rows="setup.recommenders" row-key="Id">
+          <template #cell-Name="{ row: r }"><a :href="sf(r.Id)" target="_blank" rel="noopener" class="text-link hover:underline">{{ r.Name }}</a><div class="text-xs text-muted-foreground">{{ r.Description }}</div></template>
+          <template #cell-LastRefresh="{ row: r, value }">{{ value }}<div class="text-xs" :class="/fail|error/i.test(r.LatestRefreshedStatus || '') ? 'text-destructive' : 'text-muted-foreground'">{{ r.LatestRefreshedStatus }}</div></template>
+        </DataTable>
       </div>
 
       <!-- Experiments -->
@@ -146,21 +171,14 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
 
       <!-- Schemas and objectives -->
       <div v-else-if="tab === 'schemas'" class="space-y-3">
-        <table v-if="setup.schemas.length" :class="[card, 'w-full text-sm']">
-          <thead class="text-left text-muted-foreground border-b"><tr><th class="p-2 font-normal">Content schema</th><th class="p-2 font-normal">Type</th><th class="p-2 font-normal">Description</th></tr></thead>
-          <tbody>
-            <tr v-for="s in setup.schemas" :key="s.Id" class="border-b last:border-0">
-              <td class="p-2"><a :href="sf(s.Id)" target="_blank" rel="noopener" class="text-link hover:underline">{{ s.Name }}</a><div class="font-mono text-xs text-muted-foreground">{{ s.DeveloperName }}</div></td>
-              <td class="p-2">{{ s.PersonalizationType }}</td>
-              <td class="p-2 text-muted-foreground">{{ s.Description }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <DataTable v-if="setup.schemas.length" :columns="schemaCols" :rows="setup.schemas" row-key="Id">
+          <template #cell-Name="{ row: x }"><a :href="sf(x.Id)" target="_blank" rel="noopener" class="text-link hover:underline">{{ x.Name }}</a><div class="font-mono text-xs text-muted-foreground">{{ x.DeveloperName }}</div></template>
+          <template #cell-Description="{ value }"><span class="text-muted-foreground">{{ value }}</span></template>
+        </DataTable>
         <p v-else class="text-sm text-muted-foreground">No content schemas.</p>
-        <table v-if="setup.objectives.length" :class="[card, 'w-full text-sm']">
-          <thead class="text-left text-muted-foreground border-b"><tr><th class="p-2 font-normal">Objective</th><th class="p-2 font-normal">Description</th></tr></thead>
-          <tbody><tr v-for="o in setup.objectives" :key="o.Id" class="border-b last:border-0"><td class="p-2">{{ o.Name }}</td><td class="p-2 text-muted-foreground">{{ o.Description }}</td></tr></tbody>
-        </table>
+        <DataTable v-if="setup.objectives.length" :columns="objectiveCols" :rows="setup.objectives" row-key="Id">
+          <template #cell-Description="{ value }"><span class="text-muted-foreground">{{ value }}</span></template>
+        </DataTable>
         <p v-else class="text-sm text-muted-foreground">No objectives.</p>
       </div>
 
@@ -207,33 +225,18 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
             </div>
           </div>
           <div class="grid md:grid-cols-[2fr_1fr] gap-4">
-            <table :class="[card, 'w-full text-sm']">
-              <thead class="text-left text-muted-foreground border-b"><tr><th class="p-2 font-normal">Point</th><th class="p-2 font-normal">Decision</th><th class="p-2 font-normal">Recommender</th><th class="p-2 font-normal text-right">Requests</th><th class="p-2 font-normal text-right">People</th></tr></thead>
-              <tbody>
-                <tr v-for="(r, i) in activity.byDecision" :key="i" class="border-b last:border-0">
-                  <td class="p-2">{{ nameOf(setup, r.point) }}</td><td class="p-2">{{ nameOf(setup, r.decision) }}</td><td class="p-2">{{ nameOf(setup, r.personalizer) }}</td>
-                  <td class="p-2 text-right">{{ num(r.requests) }}</td><td class="p-2 text-right">{{ num(r.people) }}</td>
-                </tr>
-              </tbody>
-            </table>
-            <table :class="[card, 'w-full text-sm']">
-              <thead class="text-left text-muted-foreground border-b"><tr><th class="p-2 font-normal">Status code</th><th class="p-2 font-normal text-right">Requests</th></tr></thead>
-              <tbody><tr v-for="r in activity.byStatus" :key="r.status" class="border-b last:border-0"><td class="p-2">{{ r.status || 'none' }}</td><td class="p-2 text-right">{{ num(r.n) }}</td></tr></tbody>
-            </table>
+            <DataTable :columns="byDecisionCols" :rows="activity.byDecision" />
+            <DataTable :columns="statusCols" :rows="activity.byStatus" row-key="status" />
           </div>
           <div :class="card">
             <h3 class="p-3 border-b font-medium">Latest requests</h3>
-            <table class="w-full text-sm">
-              <tbody>
-                <tr v-for="(r, i) in activity.recent" :key="i" class="border-b last:border-0">
-                  <td class="p-2 whitespace-nowrap">{{ when(r.at) }}</td>
-                  <td class="p-2">{{ nameOf(setup, r.point) }}<div class="text-xs text-muted-foreground">{{ nameOf(setup, r.decision) }}</div></td>
-                  <td class="p-2"><RouterLink v-if="r.individual" :to="`/profile/s/${r.individual}`" class="text-link hover:underline font-mono text-xs">{{ r.individual }}</RouterLink></td>
-                  <td class="p-2 text-xs">{{ [r.channel, r.content, r.items != null ? `${r.items} items` : ''].filter(Boolean).join(' · ') }}</td>
-                  <td class="p-2 text-right whitespace-nowrap">{{ r.status }} · {{ Math.round(r.ms || 0) }} ms</td>
-                </tr>
-              </tbody>
-            </table>
+            <DataTable :columns="recentCols" :rows="activity.recent" :bordered="false" box-class="max-h-[60vh]">
+              <template #cell-at="{ value }"><span class="whitespace-nowrap">{{ value }}</span></template>
+              <template #cell-point="{ row: r }">{{ nameOf(setup, r.point) }}<div class="text-xs text-muted-foreground">{{ nameOf(setup, r.decision) }}</div></template>
+              <template #cell-individual="{ value }"><RouterLink v-if="value" :to="`/profile/s/${value}`" class="text-link hover:underline font-mono text-xs">{{ value }}</RouterLink></template>
+              <template #cell-details="{ value }"><span class="text-xs">{{ value }}</span></template>
+              <template #cell-status="{ value }"><span class="whitespace-nowrap">{{ value }}</span></template>
+            </DataTable>
           </div>
         </template>
       </div>

@@ -1,5 +1,7 @@
 <script setup>
 import DownloadMenu from '../components/DownloadMenu.vue'
+import ListPanel from '../components/ListPanel.vue'
+import DataTable from '../components/DataTable.vue'
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { RefreshCw, Copy, Key, ExternalLink } from 'lucide-vue-next'
@@ -54,6 +56,23 @@ const fields = computed(() => {
 })
 const used = computed(() => (selected.value ? usageOf(selected.value.name, catalog.usage) : null))
 const usedCount = computed(() => (used.value ? used.value.insights.length + used.value.segments.length : null))
+const fieldCols = computed(() => [
+  { key: 'name', label: 'API name', sortValue: (f) => f.name },
+  { key: 'label', label: 'Label' },
+  { key: 'type', label: 'Type', value: (f) => f.businessType || f.type },
+  ...(selected.value?.kind === 'CI' ? [{ key: 'role', label: 'Role' }] : []),
+  { key: 'keyQualifier', label: 'Key qualifier' },
+  { key: 'usedBy', label: 'Used by', value: (f) => fieldUses.value.get(f.name) || [] },
+])
+const relCols = [
+  { key: 'from', label: 'From', value: (r) => `${r.from}${r.fromField ? `.${r.fromField}` : ''}` },
+  { key: 'to', label: 'To', value: (r) => `${r.to}${r.toField ? `.${r.toField}` : ''}` },
+  { key: 'cardinality', label: 'Cardinality' },
+]
+const mapCols = [
+  { key: 'source', label: 'Source field', headerClass: 'w-1/2' },
+  { key: 'target', label: 'DMO field' },
+]
 const fieldUses = computed(() => (selected.value ? fieldUsage(selected.value.name, catalog.usage) : new Map()))
 // Export the data model as one document.
 const exporting = ref(false)
@@ -174,7 +193,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
 
 <template>
   <section class="flex gap-4 min-h-0">
-    <aside class="w-80 shrink-0 space-y-2">
+    <ListPanel name="objects" label="objects list">
       <div class="flex gap-2">
         <input v-model="text" placeholder="Search objects" class="flex-1 border rounded-md px-2 py-1 bg-background text-sm" />
         <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the metadata again" @click="ensureCatalog({ refresh: true }).then(() => ensureUsage({ refresh: true }))">
@@ -226,7 +245,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
           <div class="font-mono text-[11px] text-muted-foreground truncate">{{ o.name }}</div>
         </li>
       </ul>
-    </aside>
+    </ListPanel>
 
     <div class="flex-1 min-w-0 space-y-3">
       <div v-if="notice" class="text-sm text-muted-foreground">{{ notice }}</div>
@@ -269,47 +288,31 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
         <!-- Fields -->
         <div v-if="tab === 'fields'" class="space-y-2">
           <input v-model="fieldText" placeholder="Filter fields" class="border rounded-md px-2 py-1 bg-background text-sm w-72" />
-          <table class="w-full text-sm border rounded-md bg-card">
-            <thead class="text-left text-muted-foreground border-b">
-              <tr>
-                <th class="p-2">API name</th><th class="p-2">Label</th><th class="p-2">Type</th>
-                <th v-if="selected.kind === 'CI'" class="p-2">Role</th><th class="p-2">Key qualifier</th><th class="p-2">Used by</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="f in fields" :key="f.name" class="border-b last:border-0 hover:bg-accent">
-                <td class="p-2 font-mono text-xs">
-                  <button class="inline-flex items-center gap-1 hover:underline" title="Copy the API name" @click="copy(f.name, f.name)">
-                    <Key v-if="f.primaryKey" class="w-3.5 h-3.5 text-muted-foreground" />{{ f.name }}
-                  </button>
-                </td>
-                <td class="p-2">{{ f.label }}</td>
-                <td class="p-2 text-xs">{{ f.businessType || f.type }}</td>
-                <td v-if="selected.kind === 'CI'" class="p-2 text-xs">{{ f.role }}</td>
-                <td class="p-2 font-mono text-xs text-muted-foreground">{{ f.keyQualifier }}</td>
-                <td class="p-2 text-xs text-muted-foreground">{{ (fieldUses.get(f.name) || []).join(', ') }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <DataTable :columns="fieldCols" :rows="fields" row-key="name" row-class="hover:bg-accent">
+            <template #cell-name="{ row: f }">
+              <button class="inline-flex items-center gap-1 hover:underline font-mono text-xs" title="Copy the API name" @click="copy(f.name, f.name)">
+                <Key v-if="f.primaryKey" class="w-3.5 h-3.5 text-muted-foreground" />{{ f.name }}
+              </button>
+            </template>
+            <template #cell-type="{ value }"><span class="text-xs">{{ value }}</span></template>
+            <template #cell-role="{ value }"><span class="text-xs">{{ value }}</span></template>
+            <template #cell-keyQualifier="{ value }"><span class="font-mono text-xs text-muted-foreground">{{ value }}</span></template>
+            <template #cell-usedBy="{ value }"><span class="text-xs text-muted-foreground">{{ value.join(', ') }}</span></template>
+          </DataTable>
         </div>
 
         <!-- Relationships -->
         <div v-else-if="tab === 'relationships'">
           <p v-if="!selected.relationships.length" class="text-sm text-muted-foreground">No relationships in the metadata.</p>
-          <table v-else class="w-full text-sm border rounded-md bg-card">
-            <thead class="text-left text-muted-foreground border-b">
-              <tr><th class="p-2">From</th><th class="p-2">To</th><th class="p-2">Cardinality</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="(r, i) in selected.relationships" :key="i" class="border-b last:border-0">
-                <td v-for="side in [{ obj: r.from, field: r.fromField }, { obj: r.to, field: r.toField }]" :key="side.obj + side.field" class="p-2 font-mono text-xs">
-                  <button v-if="side.obj !== selected.name && byName.has(side.obj)" class="text-link hover:underline" @click="pick(side.obj)">{{ side.obj }}</button>
-                  <span v-else>{{ side.obj }}</span><span v-if="side.field" class="text-muted-foreground">.{{ side.field }}</span>
-                </td>
-                <td class="p-2 text-xs">{{ r.cardinality }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <DataTable v-else :columns="relCols" :rows="selected.relationships">
+            <template v-for="k in ['from', 'to']" :key="k" #[`cell-${k}`]="{ row: r }">
+              <span class="font-mono text-xs">
+                <button v-if="r[k] !== selected.name && byName.has(r[k])" class="text-link hover:underline" @click="pick(r[k])">{{ r[k] }}</button>
+                <span v-else>{{ r[k] }}</span><span v-if="r[`${k}Field`]" class="text-muted-foreground">.{{ r[`${k}Field`] }}</span>
+              </span>
+            </template>
+            <template #cell-cardinality="{ value }"><span class="text-xs">{{ value }}</span></template>
+          </DataTable>
         </div>
 
         <!-- Used by: insights, segments, activations -->
@@ -357,12 +360,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
                 <a :href="recordUrl(currentOrg()?.host, s.recordId)" target="_blank" rel="noopener" class="text-xs px-1.5 rounded bg-muted hover:underline">stream {{ s.label }}: {{ ran(s) }}{{ s.lastRefreshDate ? `, ${time(s.lastRefreshDate)}` : '' }}</a>
               </template>
             </div>
-            <table class="w-full text-xs font-mono">
-              <tr class="border-b text-muted-foreground font-sans"><th class="px-2 py-1 text-left font-normal">Source field</th><th class="px-2 py-1 text-left font-normal">DMO field</th></tr>
-              <tr v-for="f in m.fields" :key="f.source + f.target" class="border-b last:border-0">
-                <td class="px-2 py-1 w-1/2">{{ f.source }}</td><td class="px-2 py-1">{{ f.target }}</td>
-              </tr>
-            </table>
+            <DataTable :columns="mapCols" :rows="m.fields" :row-key="(f) => f.source + f.target" :bordered="false" text-size="text-xs font-mono" />
           </div>
         </div>
 

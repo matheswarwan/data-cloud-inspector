@@ -1,5 +1,6 @@
 <script setup>
 import DownloadMenu from '../components/DownloadMenu.vue'
+import DataTable from '../components/DataTable.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useOrg } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall, cachedRulesets } from '../app/useCatalog.js'
@@ -69,6 +70,16 @@ const FILTERS = [
   ['notMember', 'Not in the segment', (r) => r.member === false],
   ['unknown', 'Not an email, phone or ID', (r) => r.kind === 'unknown'],
 ]
+const bulkCols = computed(() => [
+  { key: 'input', label: 'Input', value: (r) => `${r.input} ${r.kind}`, sortValue: (r) => r.input },
+  { key: 'sources', label: 'Source records', value: (r) => r.sourceIds, sortValue: (r) => r.sourceIds.length, kind: 'number' },
+  { key: 'unified', label: 'Unified profile', value: (r) => r.unifiedIds, sortValue: (r) => r.unifiedIds.length, kind: 'number' },
+  ...(ran.value.segment ? [
+    { key: 'member', label: 'In segment', value: (r) => yn(r.member) },
+    { key: 'matchesNow', label: 'Matches now', value: (r) => yn(r.matchesNow) },
+  ] : []),
+  { key: 'note', label: 'Note', value: (r) => `${r.note || ''}${r.unifiedIds.length > 1 ? `${r.note ? '; ' : ''}in ${r.unifiedIds.length} profiles` : ''}` },
+])
 const shown = computed(() => rows.value.filter(FILTERS.find((f) => f[0] === show.value)[2]))
 
 function download() {
@@ -136,29 +147,22 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
         </span>
       </div>
       <p v-if="notice" class="text-xs text-muted-foreground">{{ notice }}</p>
-      <div :class="[card, 'overflow-auto max-h-[60vh]']">
-        <table class="w-full text-sm">
-          <thead class="text-left text-muted-foreground border-b sticky top-0 bg-card">
-            <tr><th class="p-2 font-normal">Input</th><th class="p-2 font-normal">Source records</th><th class="p-2 font-normal">Unified profile</th><th v-if="ran.segment" class="p-2 font-normal">In segment</th><th v-if="ran.segment" class="p-2 font-normal">Matches now</th><th class="p-2 font-normal">Note</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="r in shown" :key="r.input" class="border-b last:border-0 align-top">
-              <td class="p-2 font-mono text-xs">{{ r.input }} <span class="text-muted-foreground">{{ r.kind }}</span></td>
-              <td class="p-2 text-xs">
-                <RouterLink v-for="s in r.sourceIds.slice(0, 3)" :key="s" :to="{ path: `/profile/s/${s}`, query: { rs: ran.rulesetId || undefined } }" class="block font-mono text-link hover:underline">{{ s }}</RouterLink>
-                <span v-if="r.sourceIds.length > 3" class="text-muted-foreground">and {{ r.sourceIds.length - 3 }} more</span>
-              </td>
-              <td class="p-2 text-xs">
-                <RouterLink v-for="u in r.unifiedIds.slice(0, 3)" :key="u" :to="{ path: `/profile/u/${u}`, query: { rs: ran.rulesetId } }" class="block font-mono text-link hover:underline">{{ u }}</RouterLink>
-                <span v-if="r.unifiedIds.length > 3" class="text-muted-foreground">and {{ r.unifiedIds.length - 3 }} more</span>
-              </td>
-              <td v-if="ran.segment" class="p-2">{{ yn(r.member) }}</td>
-              <td v-if="ran.segment" class="p-2">{{ yn(r.matchesNow) }}</td>
-              <td class="p-2 text-xs text-muted-foreground">{{ r.note }}{{ r.unifiedIds.length > 1 ? `${r.note ? '; ' : ''}in ${r.unifiedIds.length} profiles` : '' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <DataTable :columns="bulkCols" :rows="shown" row-key="input" box-class="max-h-[60vh]">
+        <template #cell-input="{ row: r }"><span class="font-mono text-xs">{{ r.input }}</span> <span class="text-xs text-muted-foreground">{{ r.kind }}</span></template>
+        <template #cell-sources="{ row: r }">
+          <div class="text-xs">
+            <RouterLink v-for="s in r.sourceIds.slice(0, 3)" :key="s" :to="{ path: `/profile/s/${s}`, query: { rs: ran.rulesetId || undefined } }" class="block font-mono text-link hover:underline">{{ s }}</RouterLink>
+            <span v-if="r.sourceIds.length > 3" class="text-muted-foreground">and {{ r.sourceIds.length - 3 }} more</span>
+          </div>
+        </template>
+        <template #cell-unified="{ row: r }">
+          <div class="text-xs">
+            <RouterLink v-for="u in r.unifiedIds.slice(0, 3)" :key="u" :to="{ path: `/profile/u/${u}`, query: { rs: ran.rulesetId } }" class="block font-mono text-link hover:underline">{{ u }}</RouterLink>
+            <span v-if="r.unifiedIds.length > 3" class="text-muted-foreground">and {{ r.unifiedIds.length - 3 }} more</span>
+          </div>
+        </template>
+        <template #cell-note="{ value }"><span class="text-xs text-muted-foreground">{{ value }}</span></template>
+      </DataTable>
     </template>
   </section>
 </template>

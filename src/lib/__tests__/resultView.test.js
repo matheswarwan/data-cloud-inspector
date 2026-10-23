@@ -31,3 +31,16 @@ describe('results view', () => {
     expect(columnValues(rows, [3, 0], 1)).toBe('cherry 10\nbanana')
   })
 })
+
+describe('column filters', () => {
+  const cols = [{ name: 'name', type: 'varchar' }, { name: 'n', type: 'integer' }]
+  const rows = [['Ann', 3], ['Bob', null], ['ann b', 1]]
+  it('filters by text and by picked values per column', () => {
+    expect(viewOrder(rows, cols, { filters: { 0: { text: 'ANN', values: null } } })).toEqual([0, 2])
+    expect(viewOrder(rows, cols, { filters: { 1: { text: '', values: ['', '1'] } } })).toEqual([1, 2])
+    expect(viewOrder(rows, cols, { filters: { 1: { values: [] } } })).toEqual([])
+  })
+  it('combines with the text filter and the sort', () => {
+    expect(viewOrder(rows, cols, { text: 'a', filters: { 1: { values: ['1', '3'] } }, sort: { col: 1, dir: 'asc' } })).toEqual([2, 0])
+  })
+})

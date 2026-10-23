@@ -111,6 +111,8 @@ OBJECTS
 - Row counts, a ready-made SELECT, and the object as Markdown, Word, PDF, HTML or Excel.
 
 ALSO
+- Every table sorts by column and filters per column (text, or tick the values you want).
+- Resize or hide the list on the left of each page.
 - Pages in a left sidebar, grouped. Ctrl+K to search pages, objects, fields, segments and saved queries, or find a person.
 - Compare two orgs, for example a sandbox and production: objects, fields, segments, calculated insights and data streams that differ.
 - Data models: the DMOs with something mapped into them, or all of them, with their sources and what uses them; download as Markdown, Word, PDF, HTML or Excel.

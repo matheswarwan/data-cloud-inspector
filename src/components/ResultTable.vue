@@ -2,10 +2,12 @@
 // Query results: sort by a column, filter the loaded rows, click a cell for its full value,
 // copy a column. Shows at most `limit` rows (rendering more makes the page slow); Download
 // CSV still has every row.
-import { ref, computed, watch } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { ArrowUp, ArrowDown, Copy, X } from 'lucide-vue-next'
 import RecordLink from './RecordLink.vue'
+import ColumnFilter from './ColumnFilter.vue'
 import { viewOrder, cellText, prettyCell, columnValues } from '../lib/resultView.js'
+import { filterActive } from '../lib/tableView.js'
 import { recordKind } from '../lib/links.js'
 
 const props = defineProps({
@@ -15,14 +17,19 @@ const props = defineProps({
 })
 
 const filter = ref('')
+const colFilters = reactive({}) // { [column index]: { text, values } }
+const filterOf = (j) => (colFilters[j] ||= { text: '', values: null })
+const colDef = (j) => ({ key: j, value: (row) => cellText(row[j]) })
+const anyColFilter = computed(() => Object.values(colFilters).some(filterActive))
+function clearColFilters() { for (const k of Object.keys(colFilters)) delete colFilters[k] }
 const sort = ref(null) // { col, dir }
 const wrap = ref(false)
 const cell = ref(null) // { row, col }
 const copied = ref('')
 
-watch(() => props.columns, () => { sort.value = null; cell.value = null; filter.value = '' })
+watch(() => props.columns, () => { sort.value = null; cell.value = null; filter.value = ''; clearColFilters() })
 
-const order = computed(() => viewOrder(props.rows, props.columns, { text: filter.value, sort: sort.value }))
+const order = computed(() => viewOrder(props.rows, props.columns, { text: filter.value, sort: sort.value, filters: colFilters }))
 const shown = computed(() => order.value.slice(0, props.limit))
 
 function sortBy(col) {
@@ -43,7 +50,8 @@ const selected = computed(() => (cell.value ? props.rows[cell.value.row]?.[cell.
   <div class="space-y-1.5">
     <div class="flex flex-wrap items-center gap-2 text-xs">
       <input v-model="filter" placeholder="Filter loaded rows" class="border rounded-md px-2 py-1 bg-background w-60" />
-      <span v-if="filter.trim()" class="text-muted-foreground">{{ order.length.toLocaleString() }} of {{ rows.length.toLocaleString() }} loaded rows match</span>
+      <span v-if="filter.trim() || anyColFilter" class="text-muted-foreground">{{ order.length.toLocaleString() }} of {{ rows.length.toLocaleString() }} loaded rows match</span>
+      <button v-if="anyColFilter" class="text-link hover:underline" @click="clearColFilters">Clear column filters</button>
       <span v-if="sort" class="text-muted-foreground">sorted by {{ columns[sort.col]?.name }} {{ sort.dir === 'asc' ? 'ascending' : 'descending' }} <button class="text-link hover:underline" @click="sort = null">clear</button></span>
       <label class="ml-auto flex items-center gap-1.5"><input v-model="wrap" type="checkbox" /> Wrap long text</label>
       <span v-if="copied" class="text-muted-foreground">Copied {{ copied }}.</span>
@@ -59,6 +67,7 @@ const selected = computed(() => (cell.value ? props.rows[cell.value.row]?.[cell.
                   <button class="font-semibold hover:underline" :title="`Sort by ${c.name}`" @click="sortBy(j)">{{ c.name }}</button>
                   <ArrowUp v-if="sort?.col === j && sort.dir === 'asc'" class="w-3 h-3" />
                   <ArrowDown v-else-if="sort?.col === j && sort.dir === 'desc'" class="w-3 h-3" />
+                  <ColumnFilter :label="c.name" :rows="rows" :col="colDef(j)" :filter="filterOf(j)" />
                   <button class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-accent" :title="`Copy the ${c.name} values`" :aria-label="`Copy the ${c.name} values`" @click="copy(columnValues(rows, order, j), `${order.length.toLocaleString()} ${c.name} values`)"><Copy class="w-3 h-3" /></button>
                 </div>
                 <div class="text-muted-foreground font-normal">{{ c.type }}</div>

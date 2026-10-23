@@ -1,5 +1,6 @@
 <script setup>
 import DownloadMenu from '../components/DownloadMenu.vue'
+import ListPanel from '../components/ListPanel.vue'
 import { ref, reactive, markRaw, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { formatDialect, postgresql } from 'sql-formatter'
@@ -22,8 +23,8 @@ const org = useOrg()
 const catalog = useCatalog()
 const queries = useQueries()
 
-// Editor height and side panel width can be dragged (feedback #87) and are remembered.
-const DEFAULT_LAYOUT = { editor: 224, panel: 288 }
+// Editor height can be dragged (feedback #87) and is remembered; the side panel is a ListPanel.
+const DEFAULT_LAYOUT = { editor: 224 }
 function readLayout() {
   try { return { ...DEFAULT_LAYOUT, ...JSON.parse(localStorage.getItem(LAYOUT) || '{}') } } catch { return { ...DEFAULT_LAYOUT } }
 }
@@ -44,7 +45,6 @@ function drag(e, key, axis, min, max) {
   window.addEventListener('pointerup', up)
 }
 const dragEditor = (e) => drag(e, 'editor', 'y', 100, () => window.innerHeight * 0.85)
-const dragPanel = (e) => drag(e, 'panel', 'x', 200, () => window.innerWidth * 0.5)
 function resetLayout(key) { layout.value[key] = DEFAULT_LAYOUT[key] }
 
 // Query tabs (feedback #92): each tab has its own SQL, editor, result and saved-query link,
@@ -255,7 +255,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
 
 <template>
   <section class="flex gap-4 min-h-0">
-    <aside class="shrink-0 space-y-2" :style="{ width: `${layout.panel}px` }">
+    <ListPanel name="sql" label="objects, saved and history panel" :width="288">
       <div class="flex gap-1 text-sm">
         <button :class="['px-2 py-1 rounded-md', panel === 'objects' ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="panel = 'objects'">Objects</button>
         <button :class="['px-2 py-1 rounded-md', panel === 'saved' ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="panel = 'saved'">Saved</button>
@@ -280,12 +280,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
           <div class="text-muted-foreground">{{ when(h.at) }} · {{ h.error ? 'failed' : `${(h.rows ?? 0).toLocaleString()} rows` }}</div>
         </li>
       </ul>
-    </aside>
-    <div
-      class="w-1.5 -mx-2.5 shrink-0 cursor-col-resize rounded hover:bg-border active:bg-border"
-      role="separator" aria-orientation="vertical" title="Drag to resize; double-click to reset"
-      @pointerdown="dragPanel" @dblclick="resetLayout('panel')"
-    />
+    </ListPanel>
 
     <div class="flex-1 min-w-0 space-y-3">
       <div>

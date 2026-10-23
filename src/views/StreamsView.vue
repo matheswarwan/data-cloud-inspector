@@ -1,5 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import ListPanel from '../components/ListPanel.vue'
+import DataTable from '../components/DataTable.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { RefreshCw } from 'lucide-vue-next'
 import { useOrg, currentOrg } from '../app/useOrg.js'
@@ -64,11 +66,16 @@ const DOT = { fail: 'bg-red-500', warn: 'bg-amber-400', running: 'bg-sky-500', i
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : 'never')
 const num = (n) => (n == null ? '—' : Number(n).toLocaleString())
 const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+const fieldCols = [
+  { key: 'name', label: 'Source field' },
+  { key: 'type', label: 'Type' },
+  { key: 'dloField', label: 'DLO field', value: (f) => [f.dloField, f.dloField && f.dloLabel !== f.dloField ? f.dloLabel : ''].filter(Boolean).join(' ') },
+]
 </script>
 
 <template>
   <section class="flex gap-4 min-h-0">
-    <aside class="w-80 shrink-0 space-y-2">
+    <ListPanel name="streams" label="data streams list">
       <div class="flex gap-2">
         <input v-model="filter" placeholder="Search streams or source objects" class="flex-1 border rounded-md px-2 py-1 bg-background text-sm" />
         <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the streams again" @click="catalog.streams = null; loadList()"><RefreshCw class="w-4 h-4" /></button>
@@ -82,7 +89,7 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
           </RouterLink>
         </li>
       </ul>
-    </aside>
+    </ListPanel>
 
     <div class="flex-1 min-w-0 space-y-4">
       <p v-if="!route.params.name" class="text-sm text-muted-foreground p-4">{{ catalog.streams ? 'Pick a data stream to see its source, schedule, records and fields.' : 'Loading data streams…' }}</p>
@@ -125,17 +132,10 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
             <span class="font-medium">Source fields ({{ stream.sourceFields.length }})</span>
             <input v-model="fieldText" placeholder="Filter fields" class="ml-auto border rounded-md px-2 py-0.5 bg-background text-xs w-56" />
           </div>
-          <div class="max-h-[50vh] overflow-auto">
-            <table class="w-full text-xs">
-              <thead class="text-left text-muted-foreground sticky top-0 bg-card"><tr><th class="p-2 font-normal">Source field</th><th class="p-2 font-normal">Type</th><th class="p-2 font-normal">DLO field</th></tr></thead>
-              <tbody>
-                <tr v-for="f in fields" :key="f.name" class="border-t">
-                  <td class="p-2 font-mono">{{ f.name }}</td><td class="p-2">{{ f.type }}</td>
-                  <td class="p-2"><span class="font-mono">{{ f.dloField }}</span> <span class="text-muted-foreground">{{ f.dloField && f.dloLabel !== f.dloField ? f.dloLabel : '' }}</span></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <DataTable :columns="fieldCols" :rows="fields" row-key="name" :bordered="false" text-size="text-xs" box-class="max-h-[50vh]">
+            <template #cell-name="{ value }"><span class="font-mono">{{ value }}</span></template>
+            <template #cell-dloField="{ row: f }"><span class="font-mono">{{ f.dloField }}</span> <span class="text-muted-foreground">{{ f.dloField && f.dloLabel !== f.dloField ? f.dloLabel : '' }}</span></template>
+          </DataTable>
         </div>
       </template>
     </div>

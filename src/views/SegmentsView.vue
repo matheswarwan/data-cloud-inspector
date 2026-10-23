@@ -1,5 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import ListPanel from '../components/ListPanel.vue'
+import DataTable from '../components/DataTable.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { RefreshCw } from 'lucide-vue-next'
 import { useOrg, currentOrg } from '../app/useOrg.js'
@@ -124,11 +126,18 @@ const when = (iso) => (iso ? new Date(iso).toLocaleString() : '')
 const num = (n) => (typeof n === 'number' ? n.toLocaleString() : '')
 const card = 'border rounded-md bg-card'
 const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+const versionCols = [
+  { key: 'at', label: 'Published', kind: 'date', value: (v) => when(v.at), sortValue: (v) => v.at, filter: false },
+  { key: 'size', label: 'Members', align: 'right', kind: 'number' },
+  { key: 'members', label: 'Rows', align: 'right', kind: 'number' },
+  { key: 'changes', label: 'Changes', value: (v) => `${v.snapshot === 'F' ? 'full, ' : v.snapshot ? 'incremental, ' : ''}${Object.entries(v.deltas).map(([k, n]) => `${num(n)} ${k}`).join(', ')}` },
+  { key: 'version', label: 'Version' },
+]
 </script>
 
 <template>
   <section class="flex gap-4 min-h-0">
-    <aside class="w-80 shrink-0 space-y-2">
+    <ListPanel name="segments" label="segments list">
       <div class="flex gap-2">
         <input v-model="filter" placeholder="Search segments" class="flex-1 border rounded-md px-2 py-1 bg-background text-sm" />
         <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the segments again" @click="load">
@@ -147,7 +156,7 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
           <div class="text-xs text-muted-foreground truncate">{{ num(s.lastCount) }} members · {{ s.publishStatus.toLowerCase() || 'not published' }} · {{ s.on.replace(/^ssot__|__dlm$/g, '') }}</div>
         </li>
       </ul>
-    </aside>
+    </ListPanel>
 
     <div class="flex-1 min-w-0 space-y-4">
       <p v-if="!seg" class="text-sm text-muted-foreground p-4">
@@ -259,20 +268,12 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
             </div>
             <div class="flex justify-between text-xs text-muted-foreground mt-1"><span>{{ when(detail.versions.at(-1).at) }}</span><span>{{ when(detail.versions[0].at) }}</span></div>
           </div>
-          <table v-if="detail?.versions?.length" class="w-full text-sm">
-            <thead class="text-left text-muted-foreground border-b">
-              <tr><th class="p-2 font-normal">Published</th><th class="p-2 font-normal text-right">Members</th><th class="p-2 font-normal text-right">Rows</th><th class="p-2 font-normal">Changes</th><th class="p-2 font-normal">Version</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="v in detail.versions" :key="v.version" class="border-b last:border-0">
-                <td class="p-2">{{ when(v.at) }}</td>
-                <td class="p-2 text-right font-medium">{{ num(v.size) }}</td>
-                <td class="p-2 text-right">{{ num(v.members) }}</td>
-                <td class="p-2 text-xs">{{ v.snapshot === 'F' ? 'full, ' : v.snapshot ? 'incremental, ' : '' }}{{ Object.entries(v.deltas).map(([k, n]) => `${num(n)} ${k}`).join(', ') }}</td>
-                <td class="p-2 font-mono text-xs text-muted-foreground">{{ v.version }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <DataTable v-if="detail?.versions?.length" :columns="versionCols" :rows="detail.versions" row-key="version" :bordered="false" box-class="max-h-[60vh]">
+            <template #cell-size="{ value }"><span class="font-medium">{{ num(value) }}</span></template>
+            <template #cell-members="{ value }">{{ num(value) }}</template>
+            <template #cell-changes="{ value }"><span class="text-xs">{{ value }}</span></template>
+            <template #cell-version="{ value }"><span class="font-mono text-xs text-muted-foreground">{{ value }}</span></template>
+          </DataTable>
           <p v-if="detail?.history" class="px-3 pb-3 pt-1 text-xs text-muted-foreground">From <RouterLink :to="`/objects/${detail.history}`" class="text-link hover:underline font-mono">{{ detail.history }}</RouterLink>.</p>
         </div>
       </template>

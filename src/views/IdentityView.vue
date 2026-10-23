@@ -1,5 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import ListPanel from '../components/ListPanel.vue'
+import DataTable from '../components/DataTable.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { RefreshCw } from 'lucide-vue-next'
 import PersonPicker from '../components/PersonPicker.vue'
@@ -81,11 +83,16 @@ const when = (iso) => (iso ? new Date(iso).toLocaleString() : 'never')
 const name = (p) => [p?.ssot__FirstName__c, p?.ssot__LastName__c].filter(Boolean).join(' ') || p?.ssot__PersonName__c || p?.ssot__Id__c
 const card = 'border rounded-md bg-card'
 const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+const sourceCols = [
+  { key: 'source', label: 'Data source' },
+  { key: 'object', label: 'Object' },
+  { key: 'n', label: 'Source records', align: 'right', kind: 'number' },
+]
 </script>
 
 <template>
   <section class="flex gap-4 min-h-0">
-    <aside class="w-72 shrink-0 space-y-2">
+    <ListPanel name="identity" label="rulesets list" :width="288">
       <div class="flex items-center gap-2">
         <h2 class="font-semibold">Identity resolution</h2>
         <button class="ml-auto p-1.5 rounded-md border hover:bg-accent" title="Load the rulesets again" @click="load({ refresh: true })"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
@@ -100,7 +107,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
           </RouterLink>
         </li>
       </ul>
-    </aside>
+    </ListPanel>
 
     <div class="flex-1 min-w-0 space-y-4">
       <p v-if="!ruleset" class="text-sm text-muted-foreground p-4">{{ loading ? 'Loading rulesets…' : 'Pick a ruleset.' }}</p>
@@ -181,13 +188,9 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
 
         <div :class="card">
           <h3 class="p-3 border-b font-medium">Where the source records come from</h3>
-          <table class="w-full text-sm">
-            <tbody>
-              <tr v-for="s in detail?.sources || []" :key="s.source + s.object" class="border-b last:border-0">
-                <td class="p-2">{{ s.source }}</td><td class="p-2">{{ s.object }}</td><td class="p-2 text-right">{{ num(s.n) }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <DataTable :columns="sourceCols" :rows="detail?.sources || []" :row-key="(s) => s.source + s.object" :bordered="false" :empty="detailLoading ? 'Counting…' : 'None.'">
+            <template #cell-n="{ value }">{{ num(value) }}</template>
+          </DataTable>
         </div>
 
         <!-- Compare two people -->

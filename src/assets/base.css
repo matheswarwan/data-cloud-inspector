@@ -1,5 +1,9 @@
 /* In a layer, so Tailwind 4's utilities (also layered) win over these resets. */
 @layer base {
+  /* Grid items may shrink below their content (a wide table scrolls in its card instead of
+     pushing the next column over it, feedback #97). */
+  .grid > * { min-width: 0; }
+
   *,
   *::before,
   *::after {

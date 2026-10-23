@@ -1,4 +1,5 @@
 <script setup>
+import DataTable from '../components/DataTable.vue'
 import { ref, computed, watch } from 'vue'
 import { Check, X, Copy } from 'lucide-vue-next'
 import RecordLink from '../components/RecordLink.vue'
@@ -59,6 +60,14 @@ const pretty = (data) => {
   const text = typeof data === 'string' ? data : JSON.stringify(data, null, 2)
   return text.length > 200000 ? text.substring(0, 200000) + '\n… (cut at 200,000 characters)' : text
 }
+const checkCols = [
+  { key: 'ok', label: 'OK', value: (r) => (r.ok ? 'yes' : 'no'), headerClass: 'w-8' },
+  { key: 'label', label: 'Check' },
+  { key: 'request', label: 'Request', value: (r) => `${r.method} ${r.path}` },
+  { key: 'status', label: 'Status', value: (r) => String(r.status || 'none') },
+  { key: 'ms', label: 'ms', align: 'right', kind: 'number', filter: false },
+  { key: 'result', label: 'Result', value: (r) => (r.ok ? r.summary : r.error) },
+]
 </script>
 
 <template>
@@ -129,44 +138,25 @@ const pretty = (data) => {
       </button>
     </div>
 
-    <table v-if="results.length" class="w-full text-sm border rounded-md bg-card">
-      <thead class="text-left text-muted-foreground border-b">
-        <tr>
-          <th class="p-2 w-8"></th>
-          <th class="p-2">Check</th>
-          <th class="p-2">Request</th>
-          <th class="p-2">Status</th>
-          <th class="p-2 text-right">ms</th>
-          <th class="p-2">Result</th>
+    <DataTable v-if="results.length" :columns="checkCols" :rows="results" row-key="id" :row-class="() => 'hover:bg-accent cursor-pointer'" @row-click="(r) => (open = open === r.id ? null : r.id)">
+      <template #cell-ok="{ row: r }"><Check v-if="r.ok" class="w-4 h-4 text-green-600" /><X v-else class="w-4 h-4 text-destructive" /></template>
+      <template #cell-label="{ value }"><span class="whitespace-nowrap">{{ value }}</span></template>
+      <template #cell-request="{ value }"><span class="font-mono text-xs break-all">{{ value }}</span></template>
+      <template #cell-result="{ row: r, value }"><span :class="{ 'text-destructive': !r.ok }">{{ value }}</span></template>
+      <template #after-row="{ row: r, colspan }">
+        <tr v-if="open === r.id" class="border-t">
+          <td :colspan="colspan" class="p-3 space-y-2 bg-background">
+            <div v-if="r.shape">
+              <div class="text-xs text-muted-foreground mb-1">Shape (keys and types)</div>
+              <pre class="text-xs font-mono whitespace-pre-wrap break-all">{{ r.shape }}</pre>
+            </div>
+            <div v-if="r.data != null">
+              <div class="text-xs text-muted-foreground mb-1">Response (contains org data; not part of the report)</div>
+              <pre class="text-xs font-mono max-h-96 overflow-auto border rounded p-2">{{ pretty(r.data) }}</pre>
+            </div>
+          </td>
         </tr>
-      </thead>
-      <tbody>
-        <template v-for="r in results" :key="r.id">
-          <tr class="border-b hover:bg-accent cursor-pointer align-top" @click="open = open === r.id ? null : r.id">
-            <td class="p-2">
-              <Check v-if="r.ok" class="w-4 h-4 text-green-600" />
-              <X v-else class="w-4 h-4 text-destructive" />
-            </td>
-            <td class="p-2 whitespace-nowrap">{{ r.label }}</td>
-            <td class="p-2 font-mono text-xs break-all">{{ r.method }} {{ r.path }}</td>
-            <td class="p-2">{{ r.status || 'none' }}</td>
-            <td class="p-2 text-right">{{ r.ms }}</td>
-            <td class="p-2" :class="{ 'text-destructive': !r.ok }">{{ r.ok ? r.summary : r.error }}</td>
-          </tr>
-          <tr v-if="open === r.id" class="border-b">
-            <td colspan="6" class="p-3 space-y-2 bg-background">
-              <div v-if="r.shape">
-                <div class="text-xs text-muted-foreground mb-1">Shape (keys and types)</div>
-                <pre class="text-xs font-mono whitespace-pre-wrap break-all">{{ r.shape }}</pre>
-              </div>
-              <div v-if="r.data != null">
-                <div class="text-xs text-muted-foreground mb-1">Response (contains org data; not part of the report)</div>
-                <pre class="text-xs font-mono max-h-96 overflow-auto border rounded p-2">{{ pretty(r.data) }}</pre>
-              </div>
-            </td>
-          </tr>
-        </template>
-      </tbody>
-    </table>
+      </template>
+    </DataTable>
   </section>
 </template>

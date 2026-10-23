@@ -1,5 +1,6 @@
 <script setup>
 import DownloadMenu from '../components/DownloadMenu.vue'
+import DataTable from '../components/DataTable.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { RefreshCw } from 'lucide-vue-next'
 import { useOrg, currentOrg } from '../app/useOrg.js'
@@ -40,6 +41,12 @@ watch(() => [job.value?.status, jobId.value], () => { if (job.value && job.value
 
 const all = computed(() => sections.value.flatMap((s) => s.items))
 const totals = computed(() => countLevels(all.value))
+const itemCols = [
+  { key: 'level', label: 'Status', value: (i) => LEVEL_TEXT[i.level], sortValue: (i) => LEVELS.indexOf(i.level), kind: 'number', headerClass: 'w-32' },
+  { key: 'name', label: 'Name', value: (i) => `${i.label} ${i.details || ''}`, sortValue: (i) => i.label },
+  { key: 'reason', label: 'Reason' },
+  { key: 'lastRun', label: 'Last run', align: 'right', kind: 'date', headerClass: 'w-32', value: (i) => ago(i.lastRun), sortValue: (i) => i.lastRun || '' },
+]
 const shown = (items) => (problemsOnly.value ? items.filter((i) => i.level === 'fail' || i.level === 'warn') : items)
 
 // Where a row opens: our own page when there is one, else the record in Salesforce.
@@ -116,22 +123,17 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
       <p v-if="s.error" class="p-3 text-sm text-destructive">Could not load: {{ s.error }}</p>
       <p v-else-if="!s.items.length" class="p-3 text-sm text-muted-foreground">None in this org.</p>
       <p v-else-if="!shown(s.items).length" class="p-3 text-sm text-muted-foreground">No problems.</p>
-      <table v-else class="w-full text-sm">
-        <tbody>
-          <tr v-for="i in shown(s.items)" :key="i.name" class="border-b last:border-0 align-top">
-            <td class="p-2 w-32 whitespace-nowrap"><span :class="['inline-block w-2 h-2 rounded-full mr-2', DOT[i.level]]" />{{ LEVEL_TEXT[i.level] }}</td>
-            <td class="p-2">
-              <RouterLink v-if="inside(i)" :to="inside(i)" class="text-link hover:underline">{{ i.label }}</RouterLink>
-              <span v-else>{{ i.label }}</span>
-              <a v-if="i.recordId" :href="recordUrl(currentOrg()?.host, i.recordId)" target="_blank" rel="noopener" class="ml-2 text-xs text-link hover:underline">Open in Salesforce</a>
-              <div class="text-xs text-muted-foreground">{{ i.details }}</div>
-              <button v-if="i.problems?.count" class="text-xs text-link hover:underline" @click="router.push({ path: '/sql', query: { sql: latestProblemsSql(i.problemDlo) } })">See the problem records in SQL</button>
-            </td>
-            <td class="p-2">{{ i.reason }}</td>
-            <td class="p-2 w-32 whitespace-nowrap text-right" :title="i.lastRun ? new Date(i.lastRun).toLocaleString() : ''">{{ ago(i.lastRun) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <DataTable v-else :columns="itemCols" :rows="shown(s.items)" row-key="name" :bordered="false">
+        <template #cell-level="{ row: i }"><span class="whitespace-nowrap"><span :class="['inline-block w-2 h-2 rounded-full mr-2', DOT[i.level]]" />{{ LEVEL_TEXT[i.level] }}</span></template>
+        <template #cell-name="{ row: i }">
+          <RouterLink v-if="inside(i)" :to="inside(i)" class="text-link hover:underline">{{ i.label }}</RouterLink>
+          <span v-else>{{ i.label }}</span>
+          <a v-if="i.recordId" :href="recordUrl(currentOrg()?.host, i.recordId)" target="_blank" rel="noopener" class="ml-2 text-xs text-link hover:underline">Open in Salesforce</a>
+          <div class="text-xs text-muted-foreground">{{ i.details }}</div>
+          <button v-if="i.problems?.count" class="text-xs text-link hover:underline" @click="router.push({ path: '/sql', query: { sql: latestProblemsSql(i.problemDlo) } })">See the problem records in SQL</button>
+        </template>
+        <template #cell-lastRun="{ row: i }"><span class="whitespace-nowrap" :title="i.lastRun ? new Date(i.lastRun).toLocaleString() : ''">{{ ago(i.lastRun) }}</span></template>
+      </DataTable>
     </div>
   </section>
 </template>
