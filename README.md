@@ -3,7 +3,7 @@
 A read-only Chrome extension for Salesforce Data Cloud (Data 360). It uses the Salesforce
 login you already have in the browser, so there is nothing to install in the org.
 
-Status: 1.7.0, the first store release. Zips are in `releases/`.
+Status: 1.0.0, the first store release (submitted from `releases/data-cloud-inspector-1.0.0.zip`). Zips are in `releases/`.
 
 ## What it does
 
@@ -39,6 +39,8 @@ Status: 1.7.0, the first store release. Zips are in `releases/`.
   and its source fields with the DLO field each lands in.
 - Activations (More): segment, target, refresh, last publish, attributes sent with output
   names, contact points, filters, latest and history audience with row counts.
+- Insights: calculated insights as Data Cloud shows them: a list view, and a record page with
+  Details, Expression (SQL), Output (dimensions and measures), Data (a preview) and Used by.
 - Segments: every segment with status, schedule and member count; the criteria in plain
   words and as raw JSON; counts at the last publish, in the membership table and matching
   the criteria now; the equivalent SQL; publish history; and "is this person in the

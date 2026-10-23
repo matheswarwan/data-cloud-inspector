@@ -12,52 +12,24 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 - **Privacy policy URL:** https://data-cloud-inspector.mathes.dev/privacy (Worker
   `data-cloud-inspector-site`, source in `site/`; deploy steps in `site/wrangler.jsonc`).
 - **Publisher:** CloudKettle's developer account (same as SFMC Query Saver).
-- **Version:** 1.7.0, `releases/data-cloud-inspector-1.7.0.zip` (GitHub release `v1.7.0`). Earlier versions were never submitted; submit 1.7.0 as the first store version.
+- **Version:** 1.0.0, `releases/data-cloud-inspector-1.0.0.zip` (GitHub release `v1.0.0`). The first store version. Builds numbered 1.1.0 to 1.7.0 were never published; they are folded into this 1.0.0 (GitHub pre-releases, zips in `releases/archive/`).
 
 ## Submitting (CloudKettle developer account)
 
 1. Chrome Web Store Developer Dashboard, signed in to the CloudKettle publisher, then New item.
-2. Upload `releases/data-cloud-inspector-1.7.0.zip`.
+2. Upload `releases/data-cloud-inspector-1.0.0.zip`.
 3. Store listing tab: name, summary (from the manifest), description, category Developer Tools,
-   language English, the five screenshots from `docs/store/` (the store takes at most five), and the 128 px icon
-   (`public/images/icon128.png`). Optional: a 440x280 promo tile.
+   language English, the five screenshots from `docs/store/` (the store takes at most five), the
+   128 px icon (`public/images/icon128.png`) and the small promo tile `docs/store/promo-440x280.png`.
 4. Privacy practices tab: single purpose, the permission justifications, data usage and the
    certifications below; privacy policy URL https://data-cloud-inspector.mathes.dev/privacy.
 5. Distribution: Visibility **Unlisted** first (only people with the link can install), all
    regions. Switch to Public after it has been tried on a few real orgs.
 6. Submit for review. Tell Claude when it is published, so the release can be recorded.
 
-## What's new
+## What's new (version notes)
 
-1.7.0: Bulk lookup (paste up to 1,000 emails, phones or IDs: found, unified, in a segment), Data
-streams page (source, schedule, records, problem records, fields), Activations page (segment,
-target, attributes sent, contact points, audience); less-used pages move to a More menu.
-
-1.6.0: the SQL results table sorts by any column, filters the loaded rows, shows a cell's full
-value (JSON pretty-printed) with Copy, copies a column, and can wrap long text.
-
-1.5.0: Query Builder (fields, related objects joined from the org's relationships, filters, sort,
-count, open in SQL); calculated insight definitions (SQL, formulas, schedule, last run); segment
-size over time.
-
-1.4.0: Identity page (rulesets in plain words, stats, profile sizes, largest profiles, where
-records come from, compare two people against the rules).
-
-1.3.0: query tabs in SQL (several queries, each with its own results, running at the same time);
-saving, deleting and closing use in-page dialogs instead of browser pop-ups.
-
-1.2.0: Health and Compare run in the background (use other pages meanwhile; results wait, also
-after reopening, until the browser closes); Settings, Storage shows what is kept with sizes and
-a Delete for each part.
-
-1.1.0: data spaces, problem records on Health, Export data model (HTML or Markdown), Compare
-two orgs, Ctrl+K search, Data graphs.
-
-1.0.0: first release. Profiles (unified profile, source records, match rules, missed matches,
-contact points, engagement, segments), Segments (criteria, counts, equivalent SQL, publish
-history, is this person in the segment), Personalization (setup and activity), Health, SQL with
-an objects panel, Objects with mappings and Used by, REST explore, data spaces, Log in with
-OAuth for orgs that block browser sessions, light and dark themes, feedback.
+1.0.0: first release.
 
 ## Name
 
@@ -100,6 +72,10 @@ SEGMENTS
 - Publish history and size over time.
 - Check whether a person is in a segment, and which condition keeps them out.
 
+CALCULATED INSIGHTS
+- Every calculated insight as Data Cloud lists it: data space, status, last run time and status, schedule.
+- Its details, its SQL (expression) formatted, its dimensions and measures with formulas, a preview of its data, and what it reads and which segments use it.
+
 HEALTH
 - One page for data streams, identity resolution, calculated insights, segments and activations, problems first.
 - Why each one needs a look: never ran, last run failed, rows rejected (problem records), no source profiles, overdue publish.
@@ -123,7 +99,6 @@ OBJECTS
 - Relationships between objects.
 - For a DMO: what is mapped into it, field by field, and the state of each data stream.
 - For a DLO: its data stream and the DMOs it maps to.
-- For a calculated insight: its SQL, formulas, schedule, last run and errors.
 - Used by: the calculated insights, segments and activations that depend on an object, field by field, so you can see what a change would affect.
 - Row counts, a ready-made SELECT, and Copy as Markdown.
 
@@ -154,7 +129,7 @@ English
 
 ## Single purpose (Privacy practices tab)
 
-Data Cloud Inspector lets Salesforce Data Cloud users inspect their own org, read only: look up unified profiles, debug segments, inspect Personalization, run Data Cloud SQL, and view the data model, its health and how data flows into it.
+Data Cloud Inspector lets Salesforce Data Cloud users inspect their own org, read only: look up unified profiles, check identity resolution and segments, inspect calculated insights and Personalization, run Data Cloud SQL, and view the data model, its health and how data flows into it.
 
 ## Permission justifications (Privacy practices tab)
 
@@ -187,7 +162,7 @@ Taken on a developer org with sample data. The org domain and org ID are replace
 
 ## Store icon
 
-`public/images/icon128.png` (a magnifier over a cloud). The store also wants a 440x280 small promo tile (optional).
+`public/images/icon128.png` (a magnifier over a cloud). Small promo tile: `docs/store/promo-440x280.png` (drawn by `scripts/make-promo.py`).
 
 ## Privacy policy (published at the URL above; `site/public/privacy.html` is the source)
 
