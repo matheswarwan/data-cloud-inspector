@@ -43,6 +43,10 @@ double-click to reset) or hidden; both are remembered per page.
 - Data models: the DMOs with something mapped into them, or all of them, with category,
   field count, the DLOs and streams mapped into each and what uses them; download as
   Markdown, Word, PDF, HTML or Excel (sheets for DMOs, fields and mappings).
+  Diagram view: the same DMOs as an interactive entity diagram (keys and join fields,
+  relationships with cardinality, optionally the DLOs mapped in; pan, zoom, move boxes, click
+  a box for its connections), exported as SVG, PNG, Markdown with Mermaid, Mermaid, draw.io
+  or Graphviz. Laid out with dagre (`@dagrejs/dagre`, bundled, loaded with the diagram).
 - Identity: every ruleset with match and reconciliation rules in plain words, stats
   (consolidation rate), source records per unified profile, the largest profiles, where records
   come from, and Compare two people criterion by criterion.

@@ -116,6 +116,7 @@ ALSO
 - Pages in a left sidebar, grouped. Ctrl+K to search pages, objects, fields, segments and saved queries, or find a person.
 - Compare two orgs, for example a sandbox and production: objects, fields, segments, calculated insights and data streams that differ.
 - Data models: the DMOs with something mapped into them, or all of them, with their sources and what uses them; download as Markdown, Word, PDF, HTML or Excel.
+- Data model diagram: the DMOs and their relationships as an interactive diagram (pan, zoom, move, click for connections); export as SVG, PNG, Mermaid, draw.io or Graphviz.
 - Data spaces: pick the data space in the connection menu.
 - Open records in Salesforce: segments, data streams, DLOs, calculated insights, rulesets and CRM records link to their page in the org.
 - REST explore with ready-made examples for the Data Cloud API.
