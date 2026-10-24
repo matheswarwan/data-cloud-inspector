@@ -8,6 +8,8 @@ import FeedbackModal from '../components/feedback/FeedbackModal.vue'
 import CommandPalette from '../components/CommandPalette.vue'
 import DialogHost from '../components/DialogHost.vue'
 import FeatureTips from '../components/FeatureTips.vue'
+import ApiConsole from '../components/ApiConsole.vue'
+import { useApiConsole } from './useApiConsole.js'
 import { NAV } from './router.js'
 import { recordVisit } from '../lib/visits.js'
 import { useOrg, loadOrgs } from './useOrg.js'
@@ -17,6 +19,7 @@ const route = useRoute()
 // Pages opened, for Home's Most used (feedback #106).
 const NAV_PATHS = NAV.map((n) => n.path)
 useRouter().afterEach((to) => recordVisit(to.path, NAV_PATHS))
+const apiConsoleOn = useApiConsole().enabled
 const feedback = ref(false)
 const palette = ref(null)
 onMounted(loadOrgs)
@@ -50,7 +53,7 @@ onMounted(loadOrgs)
       Could not reach the org: {{ org.error }}
     </div>
 
-    <main class="flex-1 p-4 min-w-0">
+    <main :class="['flex-1 p-4 min-w-0', apiConsoleOn ? 'pb-12' : '']">
       <RouterView />
     </main>
     </div>
@@ -58,6 +61,7 @@ onMounted(loadOrgs)
     <CommandPalette ref="palette" />
     <DialogHost />
     <FeatureTips />
+    <ApiConsole />
     <FeedbackModal v-if="feedback" :screen="route.path" @close="feedback = false" />
   </div>
 </template>

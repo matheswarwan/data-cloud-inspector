@@ -1,5 +1,6 @@
 <script setup>
 import SqlBlock from '../components/SqlBlock.vue'
+import JsonViewer from '../components/JsonViewer.vue'
 import HelpTip from '../components/HelpTip.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import ListPanel from '../components/ListPanel.vue'
@@ -197,7 +198,7 @@ const versionCols = [
               <span class="font-mono text-xs">{{ l.text }}</span>
               <pre v-if="l.raw" class="text-xs text-muted-foreground whitespace-pre-wrap">{{ l.raw }}</pre>
             </div>
-            <pre v-if="showRaw" class="mt-2 text-xs border rounded p-2 overflow-auto max-h-80">{{ JSON.stringify({ include: seg.criteria, exclude: seg.excludeCriteria }, null, 2) }}</pre>
+            <div v-if="showRaw" class="mt-2"><JsonViewer :value="{ include: seg.criteria, exclude: seg.excludeCriteria }" :file-name="`segment-${seg.apiName || seg.label}-criteria`" :open-depth="4" box-class="max-h-96" /></div>
           </div>
         </div>
 

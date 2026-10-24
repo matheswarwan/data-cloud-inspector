@@ -116,6 +116,8 @@ OBJECTS
 - Row counts, a ready-made SELECT, and the object as Markdown, Word, PDF, HTML or Excel.
 
 ALSO
+- A JSON viewer everywhere JSON appears: tree, graph and text.
+- An API console (Settings) listing every call with its request and response.
 - A Home page with the connection, the pages you use most and your recent queries.
 - Help for every page, and tips that point out features that are easy to miss.
 - Every table sorts by column and filters per column (text, or tick the values you want).

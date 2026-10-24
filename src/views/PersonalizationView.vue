@@ -1,5 +1,6 @@
 <script setup>
 import DataTable from '../components/DataTable.vue'
+import JsonViewer from '../components/JsonViewer.vue'
 import HelpTip from '../components/HelpTip.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -214,7 +215,7 @@ const recentCols = computed(() => [
             <div class="text-xs text-muted-foreground mb-1">Objects</div>
             <GraphTree :nodes="objectTree(g)" />
           </div>
-          <pre v-if="rawGraph === g" class="text-xs border rounded p-2 overflow-auto max-h-96">{{ JSON.stringify(g, null, 2) }}</pre>
+          <JsonViewer v-if="rawGraph === g" :value="g" :file-name="`data-graph-${graphName(g)}`" box-class="max-h-96" />
         </div>
       </div>
 

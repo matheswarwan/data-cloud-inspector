@@ -3,6 +3,8 @@ import { ref, computed, watch, onMounted } from 'vue'
 import HelpTip from '../components/HelpTip.vue'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
+import DownloadMenu from '../components/DownloadMenu.vue'
+import JsonViewer from '../components/JsonViewer.vue'
 import { useRoute } from 'vue-router'
 import { RefreshCw } from 'lucide-vue-next'
 import { useOrg, currentOrg } from '../app/useOrg.js'
@@ -10,7 +12,7 @@ import { orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
 import { recordUrl } from '../lib/links.js'
 import { toObjects } from '../lib/profile.js'
-import { loadActivations, loadActivation } from '../lib/activations.js'
+import { loadActivations, loadActivation, describeActivationFilter, activationMarkdown } from '../lib/activations.js'
 import { activationHealth } from '../lib/health.js'
 import { loadSegments } from '../lib/segments.js'
 
@@ -93,6 +95,7 @@ const attrCols = [
         <div class="flex flex-wrap items-start gap-3">
           <div><h2 class="text-lg font-semibold">{{ act.name }}</h2><div class="font-mono text-sm text-muted-foreground">{{ act.developerName }}</div></div>
           <div class="ml-auto flex gap-2">
+            <DownloadMenu :get-markdown="() => activationMarkdown(act, { counts, host: currentOrg()?.host })" :get-sheets="() => [{ name: 'Attributes', columns: ['Object', 'Field', 'Label', 'Sent as', 'Type'], rows: act.attributes.map((x) => [x.entity, x.name, x.label, x.output, x.type]) }]" :file-name="`activation-${act.developerName}`" />
             <a :class="btn" :href="recordUrl(currentOrg()?.host, act.id)" target="_blank" rel="noopener">Open in Salesforce</a>
           </div>
         </div>
@@ -118,10 +121,18 @@ const attrCols = [
               <p v-if="!act.contactPoints.length" class="text-muted-foreground">None.</p>
               <div v-for="c in act.contactPoints" :key="c.entity"><RouterLink :to="`/objects/${c.entity}`" class="font-mono text-xs text-link hover:underline">{{ c.entity }}</RouterLink><div v-if="c.path.length" class="text-xs text-muted-foreground">through {{ c.path.join(' → ') }}</div></div>
             </div>
-            <div class="border rounded-md bg-card p-3 text-sm space-y-1">
+            <div class="border rounded-md bg-card p-3 text-sm space-y-2">
               <div class="font-medium">Filters</div>
               <p v-if="!act.filters.length" class="text-muted-foreground">None: every segment member is activated.</p>
-              <pre v-for="(f, i) in act.filters" :key="i" class="text-xs font-mono whitespace-pre-wrap">{{ f }}</pre>
+              <div v-for="(f, i) in act.filters" :key="i" class="space-y-1 border-t pt-2 first-of-type:border-0">
+                <ul v-if="describeActivationFilter(f)" class="text-xs space-y-0.5">
+                  <li v-for="(l, j) in describeActivationFilter(f)" :key="j" :style="{ paddingLeft: `${l.depth * 1}rem` }">{{ l.text }}</li>
+                </ul>
+                <details class="text-xs">
+                  <summary class="cursor-pointer text-muted-foreground">Filter {{ i + 1 }} as JSON</summary>
+                  <div class="mt-1"><JsonViewer :value="f" :file-name="`${act.developerName}-filter-${i + 1}`" :open-depth="3" box-class="max-h-96" compact /></div>
+                </details>
+              </div>
             </div>
             <div class="border rounded-md bg-card p-3 text-sm space-y-1">
               <div class="font-medium">Audience</div>

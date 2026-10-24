@@ -55,3 +55,20 @@ describe('report', () => {
     expect(sections[0].error).toBe('')
   })
 })
+
+import { streamHealth as sh, isZeroCopy } from '../health.js'
+
+describe('zero copy streams (feedback #116)', () => {
+  const base = { name: 'BQ_Location', label: 'BQ_Location', status: 'ACTIVE', lastRunStatus: 'NONE', dlo: 'X__dll' }
+  it('counts a federated stream that never ran as healthy', () => {
+    expect(isZeroCopy({ connector: 'BIGQUERY' })).toBe(true)
+    expect(isZeroCopy({ connector: 'SalesforceDotCom' })).toBe(false)
+    expect(sh({ ...base, connector: 'BIGQUERY' })).toMatchObject({ level: 'ok', reason: 'Zero copy: queried live from the source, no refresh runs' })
+    expect(sh({ ...base, connector: 'SNOWFLAKE', frequency: 'NONE' }).level).toBe('ok')
+  })
+  it('still flags accelerated federated streams and normal streams that never ran', () => {
+    expect(sh({ ...base, connector: 'BIGQUERY', frequency: 'DAILY' })).toMatchObject({ level: 'warn', reason: 'Zero copy with acceleration: has never refreshed' })
+    expect(sh({ ...base, connector: 'SalesforceDotCom' })).toMatchObject({ level: 'warn', reason: 'Has never run' })
+    expect(sh({ ...base, connector: 'BIGQUERY', lastRunStatus: 'FAILURE' }).level).toBe('fail')
+  })
+})

@@ -1,5 +1,6 @@
 <script setup>
 import DataTable from '../components/DataTable.vue'
+import JsonViewer from '../components/JsonViewer.vue'
 import HelpTip from '../components/HelpTip.vue'
 import { ref, computed, watch } from 'vue'
 import { Check, X, Copy } from 'lucide-vue-next'
@@ -153,7 +154,7 @@ const checkCols = [
             </div>
             <div v-if="r.data != null">
               <div class="text-xs text-muted-foreground mb-1">Response (contains org data; not part of the report)</div>
-              <pre class="text-xs font-mono max-h-96 overflow-auto border rounded p-2">{{ pretty(r.data) }}</pre>
+              <JsonViewer :value="r.data" :file-name="`connection-${r.id}`" box-class="max-h-96" />
             </div>
           </td>
         </tr>

@@ -20,6 +20,7 @@ import { problemCounts, withProblems } from './problems.js'
 export const LEVELS = ['fail', 'warn', 'running', 'idle', 'ok']
 export const LEVEL_TEXT = { fail: 'Failed', warn: 'Needs a look', running: 'Running', idle: 'Inactive', ok: 'OK' }
 
+const NOT_SET_UP = /sObject type '[^']*' is not supported/i
 const RUNNING = /progress|processing|running|pending|queued|publishing/i
 const FAILED = /fail|error|abort|cancel/i
 
@@ -41,12 +42,19 @@ export function intervalHours(interval) {
   return n > 0 && /\d/.test(s) ? n : null
 }
 
+const ZERO_COPY = /bigquery|snowflake|databricks|redshift|federat|zero.?copy|external.?data/i
+export const isZeroCopy = (s) => ZERO_COPY.test(`${s.connector || ''} ${s.dataSource || ''}`)
+const hasSchedule = (s) => !!s.frequency && !/^(none|no_?refresh|manual)$/i.test(s.frequency)
+
 export function streamHealth(s) {
   const base = { kind: 'Data stream', name: s.name, label: s.label, recordId: s.recordId, lastRun: s.lastRefreshDate || null, dlo: s.dlo, problemDlo: s.problemDlo || '' }
   const details = [`${s.connector || 'stream'}${s.sourceObject ? `: ${s.sourceObject}` : ''}`, s.totalRecords != null ? `${s.totalRecords.toLocaleString()} records` : null, s.lastProcessedRecords != null ? `last run processed ${s.lastProcessedRecords.toLocaleString()}` : null].filter(Boolean).join(', ')
   if (s.status && s.status !== 'ACTIVE') return { ...base, level: 'idle', reason: `Stream is ${s.status.toLowerCase()}`, details }
   const level = runLevel(s.lastRunStatus)
-  if (!level) return { ...base, level: 'warn', reason: 'Has never run', details }
+  // Zero copy (feedback #116): a federated stream (BigQuery, Snowflake, Databricks, Redshift)
+  // is queried live, so it never "runs". Only with acceleration (a refresh schedule) does it.
+  if (!level && isZeroCopy(s) && !hasSchedule(s)) return { ...base, level: 'ok', reason: 'Zero copy: queried live from the source, no refresh runs', details }
+  if (!level) return { ...base, level: 'warn', reason: isZeroCopy(s) ? 'Zero copy with acceleration: has never refreshed' : 'Has never run', details }
   return { ...base, level, reason: level === 'ok' ? 'Last run succeeded' : `Last run: ${s.lastRunStatus.toLowerCase()}`, details }
 }
 
@@ -142,7 +150,10 @@ export async function loadHealth(call, version, { now = Date.now(), onProgress =
   const TOTAL = 6
   const section = async (title, fn) => {
     let out
-    try { out = { title, items: sortItems(await fn()), error: '' } } catch (err) { out = { title, items: [], error: err.message } }
+    try { out = { title, items: sortItems(await fn()), error: '' } } catch (err) {
+      // An org without Personalization answers "sObject type ... is not supported" (feedback #114).
+      out = NOT_SET_UP.test(err.message) ? { title, items: [], error: '', notice: 'Not set up in this org.' } : { title, items: [], error: err.message }
+    }
     onProgress(`${++done} of ${TOTAL} areas checked (last: ${title})`)
     return out
   }
@@ -192,6 +203,7 @@ export function healthMarkdown(sections, { host, at = new Date() } = {}) {
   for (const s of sections) {
     lines.push(`## ${s.title}`, '')
     if (s.error) { lines.push(`Could not load: ${s.error}`, ''); continue }
+    if (s.notice) { lines.push(s.notice, ''); continue }
     if (!s.items.length) { lines.push('None.', ''); continue }
     lines.push('| Status | Name | Why | Last run | Details |', '| --- | --- | --- | --- | --- |')
     for (const i of s.items) lines.push(`| ${LEVEL_TEXT[i.level]} | ${i.label} | ${i.reason} | ${i.lastRun || ''} | ${(i.details || '').replace(/\|/g, '\\|')} |`)

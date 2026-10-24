@@ -3,6 +3,7 @@
 // copy a column. Shows at most `limit` rows (rendering more makes the page slow); Download
 // CSV still has every row.
 import { ref, reactive, computed, watch } from 'vue'
+import JsonViewer from './JsonViewer.vue'
 import { ArrowUp, ArrowDown, Copy, X } from 'lucide-vue-next'
 import RecordLink from './RecordLink.vue'
 import ColumnFilter from './ColumnFilter.vue'
@@ -43,6 +44,13 @@ async function copy(text, what) {
   setTimeout(() => { if (copied.value === what) copied.value = '' }, 1500)
 }
 
+// A cell that holds JSON (an object, or text holding one) opens in the JSON viewer.
+const cellJson = computed(() => {
+  const v = selected.value
+  if (v != null && typeof v === 'object') return v
+  if (typeof v !== 'string' || !/^\s*[[{]/.test(v)) return undefined
+  try { return JSON.parse(v) } catch { return undefined }
+})
 const selected = computed(() => (cell.value ? props.rows[cell.value.row]?.[cell.value.col] : undefined))
 </script>
 
@@ -97,7 +105,8 @@ const selected = computed(() => (cell.value ? props.rows[cell.value.row]?.[cell.
           <span class="text-muted-foreground">{{ columns[cell.col]?.type }}</span>
           <button class="ml-auto p-0.5 rounded hover:bg-accent" aria-label="Close" @click="cell = null"><X class="w-3.5 h-3.5" /></button>
         </div>
-        <pre class="p-2 font-mono whitespace-pre-wrap break-all overflow-auto flex-1">{{ selected == null ? 'null' : prettyCell(selected) }}</pre>
+        <div v-if="cellJson !== undefined" class="p-2 overflow-auto flex-1"><JsonViewer :value="cellJson" :file-name="columns[cell.col]?.name || 'cell'" compact box-class="max-h-[40vh]" /></div>
+        <pre v-else class="p-2 font-mono whitespace-pre-wrap break-all overflow-auto flex-1">{{ selected == null ? 'null' : prettyCell(selected) }}</pre>
         <div class="p-2 border-t flex flex-wrap items-center gap-2">
           <button class="px-2 py-1 rounded border hover:bg-accent" :disabled="selected == null" @click="copy(cellText(selected), 'the value')">Copy value</button>
           <RecordLink v-if="recordKind(selected)" :value="selected" />

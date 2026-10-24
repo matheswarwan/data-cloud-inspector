@@ -107,7 +107,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
       </thead>
       <tbody>
         <tr v-for="s in sections" :key="s.title" class="border-b last:border-0">
-          <td class="p-2">{{ s.title }}<span v-if="s.error" class="text-destructive text-xs ml-2">could not load</span></td>
+          <td class="p-2">{{ s.title }}<span v-if="s.error" class="text-destructive text-xs ml-2">could not load</span><span v-else-if="s.notice" class="text-muted-foreground text-xs ml-2">not set up</span></td>
           <td v-for="l in LEVELS" :key="l" class="p-2 text-right" :class="{ 'font-semibold': (l === 'fail' || l === 'warn') && countLevels(s.items)[l] }">
             {{ countLevels(s.items)[l] || '' }}
           </td>
@@ -122,6 +122,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
     <div v-for="s in sections" :key="s.title" :class="card">
       <h3 class="p-3 border-b font-medium">{{ s.title }} <span class="text-muted-foreground font-normal text-sm">({{ s.items.length }})</span></h3>
       <p v-if="s.error" class="p-3 text-sm text-destructive">Could not load: {{ s.error }}</p>
+      <p v-else-if="s.notice" class="p-3 text-sm text-muted-foreground">{{ s.notice }}</p>
       <p v-else-if="!s.items.length" class="p-3 text-sm text-muted-foreground">None in this org.</p>
       <p v-else-if="!shown(s.items).length" class="p-3 text-sm text-muted-foreground">No problems.</p>
       <DataTable v-else :columns="itemCols" :rows="shown(s.items)" row-key="name" :bordered="false">

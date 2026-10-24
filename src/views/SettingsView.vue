@@ -1,5 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useApiConsole, setApiConsole } from '../app/useApiConsole.js'
+import { tipsOn, setTipsOn, resetTips } from '../lib/tips.js'
 import { Monitor, Sun, Moon } from 'lucide-vue-next'
 import { useSettings } from '../app/useSettings.js'
 import { useOrg, currentOrg, recheckOrg } from '../app/useOrg.js'
@@ -132,6 +134,10 @@ const when = (iso) => (iso ? new Date(iso).toLocaleString() : '')
 const card = 'border rounded-md bg-card p-4 space-y-3'
 const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
 const savedCount = computed(() => queries.saved.length)
+const apiConsole = useApiConsole()
+const tips = ref(tipsOn())
+function toggleTips(on) { setTipsOn(on); tips.value = on }
+function showTipsAgain() { setTipsOn(true); resetTips(); tips.value = true }
 </script>
 
 <template>
@@ -149,6 +155,18 @@ const savedCount = computed(() => queries.saved.length)
         ><component :is="t.icon" class="w-4 h-4" /> {{ t.label }}</button>
       </div>
       <p class="text-xs text-muted-foreground">System follows your computer's light or dark setting.</p>
+    </div>
+
+    <div :class="card">
+      <h3 class="font-medium">Tools</h3>
+      <label class="flex items-start gap-2 text-sm">
+        <input type="checkbox" class="mt-1" :checked="apiConsole.enabled.value" @change="setApiConsole($event.target.checked)" />
+        <span>API console<span class="block text-xs text-muted-foreground">A drawer at the bottom of the window that lists every call to Salesforce with its request and response, to see what a page reads or to report a problem. Kept in memory only, cleared when the tab closes.</span></span>
+      </label>
+      <label class="flex items-start gap-2 text-sm">
+        <input type="checkbox" class="mt-1" :checked="tips" @change="toggleTips($event.target.checked)" />
+        <span>Tips on first visits<span class="block text-xs text-muted-foreground">Point out features that are easy to miss the first time a page opens. <button class="text-link hover:underline" @click.prevent="showTipsAgain">Show all tips again</button></span></span>
+      </label>
     </div>
 
     <div :class="card">

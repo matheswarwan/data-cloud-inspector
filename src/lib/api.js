@@ -24,8 +24,17 @@ export function recentCalls() {
   return callLog.slice()
 }
 
+// The API console (feedback #115) listens here while it is on; it sees full requests and
+// responses, kept in memory only.
+let consoleListener = null
+export function setApiListener(fn) { consoleListener = fn }
+
 export async function sf(orgId, path, { method = 'GET', body } = {}) {
+  const started = Date.now()
   const res = await send({ type: 'SF_FETCH', orgId, path, method, body })
+  if (consoleListener) {
+    try { consoleListener({ at: started, method, path, body: body ?? null, status: res?.status || 0, ms: res?.ms ?? Date.now() - started, ok: !!res?.ok, error: res?.ok ? '' : String(res?.error || ''), data: res?.data }) } catch { /* the console must never break a call */ }
+  }
   callLog.unshift({
     method,
     path: safePath(path),

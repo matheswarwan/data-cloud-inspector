@@ -12,6 +12,10 @@ pages and recent queries. Help (bottom of the sidebar, next to Settings) explain
 question marks next to headings explain that part, and pages with easy-to-miss features show
 a tip on the first visit (off in Help or from the tip). SQL anywhere in the tool (calculated
 insights, segments, Query builder, data graphs) is shown in a read-only editor with highlighting.
+JSON anywhere (REST explorer, activation filters, segment criteria, connection check, data graph
+records, SQL result cells) opens in a viewer: a searchable Tree (click a key to copy its path), a
+Graph of the objects inside, and Text, with Copy and Download. Settings, Tools: an API console at
+the bottom lists every call with its request and response (memory only), downloadable as Markdown.
 
 Pages are in a left sidebar (collapsible), grouped: Objects and SQL; Bulk lookup and
 Profiles; Data streams, Data models, Identity, Segments, Activations and Insights;
@@ -67,7 +71,7 @@ double-click to reset) or hidden; both are remembered per page.
   CSV and Markdown; runs in the background.
 - Data streams: a table of every stream or a lineage diagram (stream, DLO, DMOs); per stream: source, schedule, record counts, problem records, the DMOs it maps into,
   and its source fields with the DLO field each lands in.
-- Activations: segment, target, refresh, last publish, attributes sent with output
+- Activations (with a Download menu; filters in plain words): segment, target, refresh, last publish, attributes sent with output
   names, contact points, filters, latest and history audience with row counts.
 - Insights: calculated insights as Data Cloud shows them: a list view, and a record page with
   Details, Expression (SQL), Output (dimensions and measures), Data (a preview) and Used by.

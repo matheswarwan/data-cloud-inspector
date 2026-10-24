@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
+import JsonViewer from '../components/JsonViewer.vue'
 import HelpTip from '../components/HelpTip.vue'
 import { Send } from 'lucide-vue-next'
 import { useOrg } from '../app/useOrg.js'
@@ -112,7 +113,7 @@ const text = computed(() => {
         </label>
       </div>
       <div v-if="!result.ok" class="text-sm text-destructive whitespace-pre-wrap">{{ result.error }}</div>
-      <pre v-if="text" class="text-xs font-mono border rounded p-2 max-h-[70vh] overflow-auto bg-card whitespace-pre-wrap break-all">{{ text }}</pre>
+      <JsonViewer v-if="text" :value="text" file-name="rest-response" box-class="max-h-[70vh]" />
     </div>
   </section>
 </template>

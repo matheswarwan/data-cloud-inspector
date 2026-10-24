@@ -3,6 +3,7 @@
 // its objects joined as SQL, the built graph as SQL, and one record's graph fetched by ID
 // (GET, read only) the way Personalization and Agentforce get it.
 import { ref, computed, watch, onMounted, defineAsyncComponent } from 'vue'
+import JsonViewer from '../components/JsonViewer.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { RefreshCw } from 'lucide-vue-next'
 import ListPanel from '../components/ListPanel.vue'
@@ -80,7 +81,6 @@ async function fetchRecord() {
     ? { data: JSON.stringify(expandJson(res.data), null, 2) }
     : { error: res.status === 404 ? `No graph for ${id}. Use the ${g.primaryObjectLabel || 'primary object'} record ID; a graph that has not finished building has no records yet.` : res.error || `HTTP ${res.status}` }
 }
-async function copyRecord() { if (record.value?.data) await navigator.clipboard.writeText(record.value.data) }
 const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2 -mb-px', tab.value === t ? 'border-foreground font-medium' : 'border-transparent text-muted-foreground hover:text-foreground']
 const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent'
 </script>
@@ -194,8 +194,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
           <p v-if="record?.loading" class="text-sm text-muted-foreground">Fetching…</p>
           <p v-else-if="record?.error" class="text-sm text-destructive">{{ record.error }}</p>
           <template v-else-if="record?.data">
-            <div class="flex justify-end"><button class="text-xs text-link hover:underline" @click="copyRecord">Copy JSON</button></div>
-            <pre class="text-xs font-mono whitespace-pre-wrap break-all border rounded p-2 max-h-[60vh] overflow-auto">{{ record.data }}</pre>
+            <JsonViewer :value="record.data" :file-name="`data-graph-${nameOf(graph)}-${recordId.trim()}`" :open-depth="3" />
           </template>
         </div>
       </template>
