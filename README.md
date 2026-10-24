@@ -3,7 +3,7 @@
 A read-only Chrome extension for Salesforce Data Cloud (Data 360). It uses the Salesforce
 login you already have in the browser, so there is nothing to install in the org.
 
-Status: 1.0.4 (`releases/data-cloud-inspector-1.0.4.zip`), an update to 1.0.0, the first store release. Zips are in `releases/`.
+Status: 1.0.5 (`releases/data-cloud-inspector-1.0.5.zip`), an update to 1.0.0, the first store release. Zips are in `releases/`.
 
 ## What it does
 
