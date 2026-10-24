@@ -16,6 +16,9 @@ stack and conventions as `../sfmc-toolkit`. Plan and status log: `../data-cloud-
   `profile.js` (rulesets, search, profile, related objects through relationships, match
   explanation with an approximate fuzzy check, missed matches, Markdown).
 - `src/app/useCatalog.js`: metadata cached per org in chrome.storage.local until Refresh.
+- Query builder layout (feedback #124): `lib/builderLayout.js` (sizes and step heights in
+  `dci_builderLayout`, clamped), `components/Splitter.vue` (drag handle, v-model px, `invert` for
+  panes after the handle). The SQL panel width is capped in CSS so the middle keeps 26rem.
 - `src/views/`: pages. `src/app/useOrg.js`: selected org and API version.
 
 ## API facts (checked live 2026-10-22, API v68.0)
