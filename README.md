@@ -44,10 +44,13 @@ double-click to reset) or hidden; both are remembered per page.
   record count; Objects joined as SQL (a SELECT joining the graph's objects along the graph's
   own join fields), The built graph as SQL (its values table, one JSON document per record),
   and Fetch one record's graph (GET `ssot/data-graphs/data/<name>/<id>`, JSON expanded).
-- Query builder (own page, under SQL): a starting object, ticked fields, related objects joined
-  from the metadata relationships (inner or left), or any other object joined on fields you pick
-  (a guess is filled in), filters, sort, DISTINCT, limit, Count rows, Open in a
-  SQL tab.
+- Query builder (own page, under SQL; after the Marketing Cloud Toolkit's): objects on the left
+  (searchable, grouped DMO, DLO, calculated insight); Step 1 the tables, each joined to an earlier
+  one (left or inner, one or more conditions with AND or OR, suggested from the org's
+  relationships or a shared field, move up or down); Step 2 output fields and computed columns;
+  Step 3 filters; Step 4 DISTINCT, LIMIT, ORDER BY, GROUP BY. List or Visual (a canvas of the
+  tables and joins). The SQL on the right or below: Copy, Save as query, Count rows, Run (results
+  inline), Open in a SQL tab. The draft is kept per org and data space.
 - Objects: every DLO, DMO and calculated insight with fields, API names, types, primary keys
   and key qualifiers; relationships; for a DMO, the objects mapped to it field by field and
   their data streams; for a DLO, its data stream and the DMOs it maps to; Used by: the

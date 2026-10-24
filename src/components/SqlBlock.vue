@@ -43,5 +43,5 @@ watch(() => settings.dark, () => view?.dispatch({ effects: theme.reconfigure(the
 </script>
 
 <template>
-  <div ref="host" :class="['dci-sql-block border rounded-md overflow-auto bg-card text-left', boxClass]" data-sql-block />
+  <div ref="host" :class="['dci-sql-block border rounded-md overflow-auto bg-card text-left', boxClass]" data-sql-block :data-code="code" />
 </template>
