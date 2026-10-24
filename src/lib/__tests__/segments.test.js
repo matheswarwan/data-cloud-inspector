@@ -89,3 +89,31 @@ describe('segment', () => {
     ])
   })
 })
+
+import { loadSegments as load2, sortSegments } from '../segments.js'
+
+describe('every segment and sorting (feedback #121)', () => {
+  const seg = (i) => ({ apiName: `S${i}`, displayName: `Segment ${String(i).padStart(3, '0')}`, createdDate: `2026-01-${String((i % 28) + 1).padStart(2, '0')}T00:00:00Z`, lastSegmentMemberCount: i })
+  it('reads pages of 20 when 100 were asked for, until the total', async () => {
+    const all = Array.from({ length: 53 }, (_, i) => seg(i))
+    const offsets = []
+    const call = async (path) => {
+      const offset = Number(new URL(`https://x${path}`).searchParams.get('offset'))
+      offsets.push(offset)
+      return { ok: true, data: { segments: all.slice(offset, offset + 20), totalSize: 53 } }
+    }
+    const list = await load2(call, '68.0')
+    expect(list).toHaveLength(53)
+    expect(offsets).toEqual([0, 20, 40])
+  })
+  it('stops when the API ignores the offset', async () => {
+    const call = async () => ({ ok: true, data: { segments: [seg(1), seg(2)] } })
+    expect(await load2(call, '68.0')).toHaveLength(2)
+  })
+  it('sorts by created, members, name', () => {
+    const list = [{ label: 'B', created: '2026-01-02', lastCount: 5 }, { label: 'A', created: '2026-03-01', lastCount: 1 }, { label: 'C', created: '', lastCount: null }]
+    expect(sortSegments(list, 'created').map((x) => x.label)).toEqual(['A', 'B', 'C'])
+    expect(sortSegments(list, 'members').map((x) => x.label)).toEqual(['B', 'A', 'C'])
+    expect(sortSegments(list, 'name').map((x) => x.label)).toEqual(['A', 'B', 'C'])
+  })
+})

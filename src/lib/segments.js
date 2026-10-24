@@ -11,16 +11,41 @@
 
 import { lit, inList, toObjects } from './profile.js'
 
-export async function loadSegments(call, version) {
+// Pages are read by what came back, not what was asked for: an org answered 20 a page to
+// limit=100, and stopping at the first short page showed only 20 of 500+ (feedback #121).
+export async function loadSegments(call, version, { max = 10000 } = {}) {
   const out = []
-  for (let offset = 0; offset < 5000; offset += 100) {
+  const seen = new Set()
+  let offset = 0
+  while (offset < max) {
     const res = await call(`/services/data/v${version}/ssot/segments?limit=100&offset=${offset}`)
     if (!res.ok) { if (!out.length) throw new Error(res.error || `HTTP ${res.status}`); break }
     const page = res.data?.segments || []
-    out.push(...page.map(normalizeSegment))
-    if (page.length < 100 || out.length >= (res.data?.totalSize ?? Infinity)) break
+    const fresh = page.filter((x) => !seen.has(x.apiName))
+    if (!fresh.length) break // empty, or the API ignored the offset
+    for (const x of fresh) seen.add(x.apiName)
+    out.push(...fresh.map(normalizeSegment))
+    const total = res.data?.totalSize
+    if (total != null && out.length >= total) break
+    offset += page.length
   }
   return out.sort((a, b) => a.label.localeCompare(b.label))
+}
+
+/** Sorts for the segment list: by name, newest created, latest publish, latest change, most members. */
+export const SEGMENT_SORTS = [
+  { id: 'name', label: 'Name' },
+  { id: 'created', label: 'Newest created' },
+  { id: 'published', label: 'Latest refreshed' },
+  { id: 'modified', label: 'Latest changed' },
+  { id: 'members', label: 'Most members' },
+]
+export function sortSegments(list, by = 'name') {
+  const time = (v) => (v ? Date.parse(v) || 0 : 0)
+  const key = { created: (x) => time(x.created), published: (x) => time(x.lastPublished), modified: (x) => time(x.modified), members: (x) => x.lastCount ?? -1 }[by]
+  const out = [...list]
+  if (!key) return out.sort((a, b) => a.label.localeCompare(b.label))
+  return out.sort((a, b) => key(b) - key(a) || a.label.localeCompare(b.label))
 }
 
 export function decodeHtml(s) {

@@ -16,6 +16,7 @@ import { inSpace } from '../lib/dataSpace.js'
 import { parseRulesets, search, INDIVIDUAL } from '../lib/profile.js'
 import {
   loadSegments, describeCriteria, topConditions, segmentSql, membershipTables, membershipCount, publishHistory, checkMembers,
+  SEGMENT_SORTS, sortSegments,
 } from '../lib/segments.js'
 
 const route = useRoute()
@@ -46,9 +47,17 @@ async function load() {
 onMounted(() => { ensureCatalog(); load() })
 watch(() => [org.orgId, org.version, org.dataSpace], load)
 
+// Sort (feedback #121), remembered in this browser.
+const sortBy = ref((() => { try { return localStorage.getItem('dci_segmentSort') || 'name' } catch { return 'name' } })())
+watch(sortBy, (v) => { try { localStorage.setItem('dci_segmentSort', v) } catch { /* private window */ } })
+const sortDate = (s) => {
+  const v = { created: s.created, published: s.lastPublished, modified: s.modified }[sortBy.value]
+  return v ? new Date(v).toLocaleDateString() : sortBy.value === 'name' || sortBy.value === 'members' ? '' : 'never'
+}
 const list = computed(() => {
   const t = filter.value.trim().toLowerCase()
-  return t ? segments.value.filter((s) => s.label.toLowerCase().includes(t) || s.apiName.toLowerCase().includes(t)) : segments.value
+  const found = t ? segments.value.filter((s) => s.label.toLowerCase().includes(t) || s.apiName.toLowerCase().includes(t)) : segments.value
+  return sortSegments(found, sortBy.value)
 })
 const seg = computed(() => segments.value.find((s) => s.apiName === route.params.name) || null)
 const lines = computed(() => (seg.value ? describeCriteria(seg.value.criteria) : []))
@@ -148,7 +157,11 @@ const versionCols = [
           <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" />
         </button>
       </div>
-      <p class="text-xs text-muted-foreground">{{ list.length }} of {{ segments.length }} segments</p>
+      <div class="flex items-center gap-2 text-xs">
+        <span class="text-muted-foreground">{{ list.length.toLocaleString() }} of {{ segments.length.toLocaleString() }} segments</span>
+        <label class="ml-auto text-muted-foreground" for="seg-sort">Sort</label>
+        <select id="seg-sort" v-model="sortBy" class="border rounded px-1 py-0.5 bg-background"><option v-for="o in SEGMENT_SORTS" :key="o.id" :value="o.id">{{ o.label }}</option></select>
+      </div>
       <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
       <ul class="max-h-[75vh] overflow-auto text-sm">
         <li
@@ -156,7 +169,7 @@ const versionCols = [
           :class="['px-2 py-1.5 rounded-md cursor-pointer hover:bg-accent', { 'bg-accent': s.apiName === seg?.apiName }]"
           @click="router.push(`/segments/${s.apiName}`)"
         >
-          <div class="truncate">{{ s.label }}</div>
+          <div class="flex gap-2"><span class="truncate">{{ s.label }}</span><span v-if="sortDate(s)" class="ml-auto shrink-0 text-xs text-muted-foreground">{{ sortDate(s) }}</span></div>
           <div class="text-xs text-muted-foreground truncate">{{ num(s.lastCount) }} members · {{ s.publishStatus.toLowerCase() || 'not published' }} · {{ s.on.replace(/^ssot__|__dlm$/g, '') }}</div>
         </li>
       </ul>
