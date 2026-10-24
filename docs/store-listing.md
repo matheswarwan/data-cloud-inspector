@@ -12,11 +12,11 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 - **Privacy policy URL:** https://data-cloud-inspector.mathes.dev/privacy (Worker
   `data-cloud-inspector-site`, source in `site/`; deploy steps in `site/wrangler.jsonc`).
 - **Publisher:** CloudKettle's developer account (same as SFMC Query Saver).
-- **Version:** 1.0.3, `releases/data-cloud-inspector-1.0.3.zip` (GitHub release `v1.0.3`), an update to the item submitted as 1.0.0 on 2026-10-23. No permission changes. 1.0.0 was the first store version; builds numbered 1.1.0 to 1.7.0 were never published and are folded into it (GitHub pre-releases, zips in `releases/archive/`), which is why updates are numbered 1.0.x.
+- **Version:** 1.0.4, `releases/data-cloud-inspector-1.0.4.zip` (GitHub release `v1.0.4`), an update to the item submitted as 1.0.0 on 2026-10-23. No permission changes. 1.0.0 was the first store version; builds numbered 1.1.0 to 1.7.0 were never published and are folded into it (GitHub pre-releases, zips in `releases/archive/`), which is why updates are numbered 1.0.x.
 
 ## Updating (1.0.1 and later)
 
-1. Developer Dashboard, the Data Cloud Inspector item, Package tab, Upload new package: the latest zip, now `releases/data-cloud-inspector-1.0.3.zip`.
+1. Developer Dashboard, the Data Cloud Inspector item, Package tab, Upload new package: the latest zip, now `releases/data-cloud-inspector-1.0.4.zip`.
 2. Store listing tab: replace the five screenshots with the new ones from `docs/store/` (they show the left sidebar) and paste the description below (it mentions the Download menu and Data models).
 3. Submit for review. If 1.0.0 is still in review, the dashboard may ask to cancel that review first; uploading 1.0.1 then replaces it.
 
@@ -34,6 +34,8 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 6. Submit for review. Tell Claude when it is published, so the release can be recorded.
 
 ## What's new (version notes)
+
+1.0.4: your orgs on Home, with log in buttons for production, sandbox or a My Domain; a new Query builder with joins on several conditions, a visual mode and inline results; a JSON viewer (tree, graph, text) and an optional API console; compare up to 10 people in Identity; every segment listed (not only the first page), sortable by date or members; zero-copy streams (BigQuery, Snowflake and others) no longer flagged on Health; Bulk lookup takes long numeric IDs, external IDs and any chosen field; Copy for AI on SQL errors; a plain notice when Personalization is not set up; progress bars while the org is read.
 
 1.0.3: a Home page; Help, with explanations on every page and tips for features that are easy to miss; Data graphs and Query builder get their own pages; join any object in Query builder; Data streams as a table or a lineage diagram; SQL shown with highlighting everywhere; random examples for an empty search.
 
