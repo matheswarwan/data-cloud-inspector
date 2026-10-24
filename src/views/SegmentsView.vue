@@ -1,5 +1,6 @@
 <script setup>
 import SqlBlock from '../components/SqlBlock.vue'
+import Loading from '../components/Loading.vue'
 import JsonViewer from '../components/JsonViewer.vue'
 import HelpTip from '../components/HelpTip.vue'
 import { ref, computed, watch, onMounted } from 'vue'
@@ -257,7 +258,7 @@ const versionCols = [
 
         <div :class="card">
           <h3 class="p-3 border-b font-medium">Publish history</h3>
-          <p v-if="detail?.loading" class="p-3 text-sm text-muted-foreground">Loading…</p>
+          <Loading v-if="detail?.loading" text="Loading…" />
           <p v-else-if="!detail?.history" class="p-3 text-sm text-muted-foreground">No history table found for {{ seg.on }}.</p>
           <p v-else-if="!detail.versions?.length" class="p-3 text-sm text-muted-foreground">No publishes recorded in {{ detail.history }}.</p>
           <div v-else-if="detail.versions.length > 1" class="p-3">

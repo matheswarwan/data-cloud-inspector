@@ -29,9 +29,17 @@ export function recentCalls() {
 let consoleListener = null
 export function setApiListener(fn) { consoleListener = fn }
 
+// Calls in flight, for the progress bar under the header (feedback #119).
+let inflight = 0
+let activityListener = null
+export function onActivity(fn) { activityListener = fn; fn(inflight) }
+const bump = (d) => { inflight = Math.max(0, inflight + d); activityListener?.(inflight) }
+
 export async function sf(orgId, path, { method = 'GET', body } = {}) {
   const started = Date.now()
-  const res = await send({ type: 'SF_FETCH', orgId, path, method, body })
+  bump(1)
+  let res
+  try { res = await send({ type: 'SF_FETCH', orgId, path, method, body }) } finally { bump(-1) }
   if (consoleListener) {
     try { consoleListener({ at: started, method, path, body: body ?? null, status: res?.status || 0, ms: res?.ms ?? Date.now() - started, ok: !!res?.ok, error: res?.ok ? '' : String(res?.error || ''), data: res?.data }) } catch { /* the console must never break a call */ }
   }

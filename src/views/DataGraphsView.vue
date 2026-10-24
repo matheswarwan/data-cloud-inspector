@@ -3,6 +3,7 @@
 // its objects joined as SQL, the built graph as SQL, and one record's graph fetched by ID
 // (GET, read only) the way Personalization and Agentforce get it.
 import { ref, computed, watch, onMounted, defineAsyncComponent } from 'vue'
+import Loading from '../components/Loading.vue'
 import JsonViewer from '../components/JsonViewer.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { RefreshCw } from 'lucide-vue-next'
@@ -109,7 +110,8 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
     <div class="flex-1 min-w-0 space-y-4">
       <div v-if="!route.params.name" class="text-sm text-muted-foreground p-4 space-y-2">
         <p v-if="graphs && !graphs.length">No data graphs in this data space. A data graph puts a person's data from several objects into one JSON document, which Personalization and Agentforce read in one call.</p>
-        <p v-else>{{ graphs ? 'Pick a data graph to see its objects, query it in SQL or fetch one record.' : 'Loading data graphs…' }}</p>
+        <p v-else-if="graphs">Pick a data graph to see its objects, query it in SQL or fetch one record.</p>
+        <Loading v-else text="Loading data graphs" />
       </div>
       <p v-else-if="graphs && !graph" class="text-sm text-muted-foreground">This data graph is not in the selected data space.</p>
       <template v-if="graph">
@@ -191,7 +193,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
             <button class="px-3 py-1 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="!recordId.trim() || record?.loading">Fetch</button>
           </form>
           <p class="text-xs text-muted-foreground font-mono break-all">GET {{ graphRecordPath(org.version, nameOf(graph), recordId.trim() || '<id>') }}</p>
-          <p v-if="record?.loading" class="text-sm text-muted-foreground">Fetching…</p>
+          <Loading v-if="record?.loading" text="Fetching…" />
           <p v-else-if="record?.error" class="text-sm text-destructive">{{ record.error }}</p>
           <template v-else-if="record?.data">
             <JsonViewer :value="record.data" :file-name="`data-graph-${nameOf(graph)}-${recordId.trim()}`" :open-depth="3" />

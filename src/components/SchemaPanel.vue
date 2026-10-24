@@ -2,6 +2,7 @@
 // Objects to pick from in the SQL page (feedback #86): search DLOs, DMOs and calculated
 // insights, expand one to see its fields, and insert the object, a field or a SELECT.
 import { ref, computed } from 'vue'
+import Loading from './Loading.vue'
 import { ChevronRight, ChevronDown } from 'lucide-vue-next'
 import { useCatalog } from '../app/useCatalog.js'
 import { filterObjects } from '../lib/catalog.js'
@@ -36,7 +37,7 @@ function selectSql(o) {
 <template>
   <div class="space-y-2 text-sm">
     <input v-model="text" placeholder="Search objects" class="w-full border rounded-md px-2 py-1 bg-background" />
-    <p v-if="catalog.loading" class="text-xs text-muted-foreground">Loading objects…</p>
+    <Loading v-if="catalog.loading" text="Loading objects…" />
     <ul class="max-h-[70vh] overflow-auto">
       <li v-for="o in list" :key="o.name">
         <button class="w-full text-left px-1 py-1 rounded hover:bg-accent flex items-start gap-1" :title="o.name" @click="toggle(o.name)">

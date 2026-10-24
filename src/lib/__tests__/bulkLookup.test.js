@@ -41,3 +41,40 @@ describe('bulk lookup', () => {
     expect(bulkCsv(rows, { segment: seg }).split('\r\n')[1]).toBe('a@x.com,email,yes,s1 s2,u1,yes,yes,')
   })
 })
+
+import { detectKind, parseInputs as parse2, kindCounts, lookupTargets, bulkLookup as bulk2 } from '../bulkLookup.js'
+
+describe('what the values are (feedback #120)', () => {
+  it('takes short digit runs for IDs, formatted numbers for phones', () => {
+    expect(detectKind('10000012')).toBe('id')
+    expect(detectKind('+1 415 555 0100')).toBe('phone')
+    expect(detectKind('4155550100')).toBe('phone')
+    expect(detectKind('jane@example.com')).toBe('email')
+    expect(detectKind('Jane Doe')).toBe('unknown')
+  })
+  it('uses the kind you choose and counts kinds', () => {
+    const items = parse2('10000012\n4155550100', { as: 'field' })
+    expect(items.map((i) => i.kind)).toEqual(['field', 'field'])
+    expect(kindCounts(parse2('a@b.c\n123\n456'))).toEqual({ email: 1, id: 2 })
+  })
+  it('lists Individual and the objects related to it, with the field that leads back', () => {
+    const cat = [
+      { name: 'ssot__Individual__dlm', label: 'Individual', fields: [{ name: 'ssot__Id__c', label: 'Id' }], relationships: [] },
+      { name: 'Account_Profile__dlm', label: 'Account Profile', fields: [{ name: 'ACCOUNT_ID__c', label: 'Account' }, { name: 'PARTY_ID__c', label: 'Party' }], relationships: [{ from: 'Account_Profile__dlm', fromField: 'PARTY_ID__c', to: 'ssot__Individual__dlm', toField: 'ssot__Id__c' }] },
+    ]
+    expect(lookupTargets(cat).map((t) => [t.object, t.link])).toEqual([['ssot__Individual__dlm', 'ssot__Id__c'], ['Account_Profile__dlm', 'PARTY_ID__c']])
+  })
+  it('finds IDs by external record ID and values of a chosen field', async () => {
+    const cat = [{ name: 'ssot__Individual__dlm', label: 'Individual', fields: [{ name: 'ssot__Id__c' }, { name: 'ssot__ExternalRecordId__c' }], relationships: [] }]
+    const sqls = []
+    const q = async (sql) => {
+      sqls.push(sql)
+      if (sql.includes('FROM ssot__Individual__dlm')) return { columns: [{ name: 'id' }, { name: 'ext' }], rows: [['003A', '10000012']] }
+      if (sql.includes('FROM Account_Profile__dlm')) return { columns: [{ name: 'v' }, { name: 'id' }], rows: [['77', '003B']] }
+      return { columns: [], rows: [] }
+    }
+    const rows = await bulk2(q, [...parse2('10000012\n99'), ...parse2('77', { as: 'field' })], { catalog: cat, field: { object: 'Account_Profile__dlm', field: 'ACCOUNT_ID__c', link: 'PARTY_ID__c' } })
+    expect(rows.map((r) => [r.input, r.sourceIds, r.note])).toEqual([['10000012', ['003A'], 'External record ID'], ['99', [], 'Not found'], ['77', ['003B'], '']])
+    expect(sqls[0]).toContain('OR ssot__ExternalRecordId__c IN')
+  })
+})

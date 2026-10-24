@@ -2,6 +2,7 @@
 // Query builder, left: every object to add, grouped (DMOs, DLOs, calculated insights) and
 // searchable; click one to add it to the query. Objects already in the query are marked.
 import { ref, computed } from 'vue'
+import Loading from '../Loading.vue'
 import { Search, ChevronDown, ChevronRight, Plus, Check } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -29,7 +30,7 @@ const isUsed = (name) => props.used.includes(name)
         <input v-model="text" placeholder="Search all objects" class="flex-1 bg-transparent text-sm outline-none min-w-0" aria-label="Search all objects" />
       </label>
     </div>
-    <p v-if="loading && !objects.length" class="p-3 text-xs text-muted-foreground">Reading the metadata…</p>
+    <Loading v-if="loading && !objects.length" text="Reading the metadata…" />
     <div class="flex-1 overflow-auto text-sm">
       <div v-for="g in groups" :key="g.kind">
         <button class="sticky top-0 z-[1] w-full flex items-center gap-1 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground bg-card border-b hover:bg-accent" :aria-expanded="!closed[g.kind] || !!text.trim()" @click="closed[g.kind] = !closed[g.kind]">

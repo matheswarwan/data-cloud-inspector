@@ -69,7 +69,10 @@ double-click to reset) or hidden; both are remembered per page.
   (consolidation rate), source records per unified profile, the largest profiles, where records
   come from, and Compare people (two to ten) criterion by criterion, with the groups the rules
   would form next to the unified profiles they are in.
-- Bulk lookup (also from Profiles): up to 1,000 emails, phones or IDs, checked 200 per query:
+- Bulk lookup (also from Profiles): up to 1,000 emails, phones or IDs (detected, short digit runs
+  count as IDs; or say what they are, including values of any field on Individual or an object
+  related to it; IDs also match external record IDs and party identification numbers), checked
+  200 per query:
   found, source records, unified profile, segment membership and whether the criteria match now;
   CSV and Markdown; runs in the background.
 - Data streams: a table of every stream or a lineage diagram (stream, DLO, DMOs); per stream: source, schedule, record counts, problem records, the DMOs it maps into,

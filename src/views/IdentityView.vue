@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import Loading from '../components/Loading.vue'
 import HelpTip from '../components/HelpTip.vue'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
@@ -115,7 +116,8 @@ const sourceCols = [
     </ListPanel>
 
     <div class="flex-1 min-w-0 space-y-4">
-      <p v-if="!ruleset" class="text-sm text-muted-foreground p-4">{{ loading ? 'Loading rulesets…' : 'Pick a ruleset.' }}</p>
+      <Loading v-if="!ruleset && loading" text="Loading rulesets" class="p-4" />
+      <p v-else-if="!ruleset" class="text-sm text-muted-foreground p-4">Pick a ruleset.</p>
       <template v-else>
         <div class="flex flex-wrap items-start gap-3">
           <div>
@@ -164,7 +166,7 @@ const sourceCols = [
         <div class="grid lg:grid-cols-2 gap-4">
           <div :class="card">
             <h3 class="p-3 border-b font-medium">Source records per unified profile</h3>
-            <p v-if="detailLoading" class="p-3 text-sm text-muted-foreground">Counting…</p>
+            <Loading v-if="detailLoading" text="Counting…" />
             <p v-else-if="detail?.errors.sizes" class="p-3 text-sm text-destructive">{{ detail.errors.sizes }}</p>
             <p v-else-if="!detail?.sizes.length" class="p-3 text-sm text-muted-foreground">No unified profiles yet.</p>
             <table v-else class="w-full text-sm">

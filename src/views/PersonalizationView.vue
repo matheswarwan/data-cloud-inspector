@@ -1,5 +1,6 @@
 <script setup>
 import DataTable from '../components/DataTable.vue'
+import Loading from '../components/Loading.vue'
 import JsonViewer from '../components/JsonViewer.vue'
 import HelpTip from '../components/HelpTip.vue'
 import { ref, computed, watch, onMounted } from 'vue'
@@ -111,7 +112,7 @@ const recentCols = computed(() => [
       </div>
       <button :class="[btn, 'ml-auto']" :disabled="loading" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /> Load again</button>
     </div>
-    <p v-if="loading && !setup" class="text-sm text-muted-foreground">Reading the setup and the log…</p>
+    <Loading v-if="loading && !setup" text="Reading the setup and the log…" />
 
     <div v-if="setup && (status.setupMissing || status.logMissing)" class="p-3 rounded-md border border-sky-300 bg-sky-50 dark:bg-sky-950/40 dark:border-sky-800 text-sm space-y-2">
       <p v-if="status.setupMissing"><strong>Personalization is not set up in this org.</strong> Salesforce answers that its setup objects (personalization points, decisions, recommenders) are not supported here, which means Personalization is not provisioned or not enabled. Data graphs, below, can still be used without it.</p>

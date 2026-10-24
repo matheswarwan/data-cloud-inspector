@@ -2,14 +2,29 @@
 // found or not, the source records, the unified profile under a ruleset, and (optionally)
 // membership of a segment and whether the person matches its criteria now.
 
-import { searchKind, toObjects, inList, INDIVIDUAL } from './profile.js'
+import { searchKind, toObjects, inList, INDIVIDUAL, relatedTo } from './profile.js'
 import { segmentSql, primaryKey } from './segments.js'
 
 const BATCH = 200
 export const MAX_INPUTS = 1000
 
-/** Unique values from pasted text (lines, commas, semicolons or tabs), with their kind. */
-export function parseInputs(text) {
+
+/**
+ * Short runs of digits with no + or separators (up to 9) are record numbers, not phones
+ * (feedback #120: '10000012' was taken for a phone).
+ */
+export function detectKind(v) {
+  const t = String(v).trim()
+  if (/^\d{1,9}$/.test(t)) return 'id'
+  const kind = searchKind(t)
+  return kind === 'name' ? 'unknown' : kind
+}
+
+/**
+ * The values, deduplicated, each with a kind: detected (`as = 'auto'`), or the one chosen
+ * ('email', 'phone', 'id', or 'field' for a field you pick).
+ */
+export function parseInputs(text, { as = 'auto' } = {}) {
   const seen = new Set()
   const out = []
   for (const raw of String(text || '').split(/[\n,;\t]+/)) {
@@ -18,10 +33,33 @@ export function parseInputs(text) {
     const key = v.toLowerCase()
     if (seen.has(key)) continue
     seen.add(key)
-    const kind = searchKind(v)
-    out.push({ input: v, kind: kind === 'name' ? 'unknown' : kind })
+    out.push({ input: v, kind: as === 'auto' ? detectKind(v) : as })
   }
   return out
+}
+
+/** How many values of each kind: `{ email: 3, id: 7 }`. */
+export function kindCounts(items) {
+  const out = {}
+  for (const i of items) out[i.kind] = (out[i.kind] || 0) + 1
+  return out
+}
+
+/**
+ * Fields you can look values up in (feedback #120): Individual's own fields, and the fields of
+ * objects related to Individual, with the field that leads to the Individual ID.
+ * `[{ object, label, link, fields: [{ name, label }] }]`
+ */
+export function lookupTargets(catalog) {
+  const ind = catalog.find((o) => o.name === INDIVIDUAL)
+  if (!ind) return []
+  const out = [{ object: INDIVIDUAL, label: ind.label, link: 'ssot__Id__c', fields: ind.fields.map((f) => ({ name: f.name, label: f.label })) }]
+  for (const r of relatedTo(INDIVIDUAL, catalog)) {
+    if (r.objectField !== 'ssot__Id__c' || out.some((t) => t.object === r.object)) continue
+    const o = catalog.find((x) => x.name === r.object)
+    if (o) out.push({ object: o.name, label: o.label, link: r.otherField, fields: o.fields.map((f) => ({ name: f.name, label: f.label })) })
+  }
+  return out.sort((a, b) => (a.object === INDIVIDUAL ? -1 : b.object === INDIVIDUAL ? 1 : a.label.localeCompare(b.label)))
 }
 
 /** The digit strings a phone may be stored as: as typed, and without a 1 to 3 digit country code. */
@@ -42,7 +80,7 @@ function chunks(list, n = BATCH) {
  * `[{ input, kind, sourceIds, unifiedIds, member, matchesNow, note }]` in input order.
  * `progress(text)` reports each step.
  */
-export async function bulkLookup(q, items, { ruleset = null, segment = null, catalog = [], latestTable = null, progress = () => {} } = {}) {
+export async function bulkLookup(q, items, { ruleset = null, segment = null, catalog = [], latestTable = null, field = null, progress = () => {} } = {}) {
   const rows = items.slice(0, MAX_INPUTS).map((i) => ({ ...i, sourceIds: [], unifiedIds: [], member: null, matchesNow: null, note: i.kind === 'unknown' ? 'Not an email, phone or ID' : '' }))
   const byKind = (k) => rows.filter((r) => r.kind === k)
 
@@ -68,19 +106,49 @@ export async function bulkLookup(q, items, { ruleset = null, segment = null, cat
     }
   }
 
-  // IDs: source Individual IDs, else unified IDs of the ruleset
+  // IDs: source Individual IDs (and external record IDs), party identification numbers,
+  // else unified IDs of the ruleset
   const ids = byKind('id')
+  const ind = catalog.find((o) => o.name === INDIVIDUAL)
+  const hasExternal = !!ind?.fields.some((f) => f.name === 'ssot__ExternalRecordId__c')
+  const partyIdent = catalog.find((o) => o.name === 'ssot__PartyIdentification__dlm')
+  const partyNumber = partyIdent?.fields.some((f) => f.name === 'ssot__IdentificationNumber__c') && partyIdent.fields.some((f) => f.name === 'ssot__PartyId__c')
   for (const [n, part] of chunks(ids).entries()) {
     progress(`IDs ${n * BATCH + 1} to ${n * BATCH + part.length} of ${ids.length}`)
-    const found = new Set(toObjects(await q(`SELECT ssot__Id__c AS id FROM ${INDIVIDUAL} WHERE ssot__Id__c IN ${inList(part.map((r) => r.input))}`)).map((f) => f.id))
-    for (const r of part) if (found.has(r.input)) r.sourceIds = [r.input]
-    const rest = part.filter((r) => !r.sourceIds.length)
+    const list = inList(part.map((r) => r.input))
+    const found = toObjects(await q(`SELECT ssot__Id__c AS id${hasExternal ? ', ssot__ExternalRecordId__c AS ext' : ''} FROM ${INDIVIDUAL} WHERE ssot__Id__c IN ${list}${hasExternal ? ` OR ssot__ExternalRecordId__c IN ${list}` : ''}`))
+    for (const r of part) {
+      if (found.some((f) => f.id === r.input)) r.sourceIds = [r.input]
+      else {
+        const ext = found.filter((f) => f.ext === r.input).map((f) => f.id)
+        if (ext.length) { r.sourceIds = [...new Set(ext)]; r.note = 'External record ID' }
+      }
+    }
+    let rest = part.filter((r) => !r.sourceIds.length)
+    if (rest.length && partyNumber) {
+      const nums = toObjects(await q(`SELECT ssot__IdentificationNumber__c AS v, ssot__PartyId__c AS id FROM ssot__PartyIdentification__dlm WHERE ssot__IdentificationNumber__c IN ${inList(rest.map((r) => r.input))}`))
+      for (const r of rest) {
+        const mine = nums.filter((x) => String(x.v) === r.input).map((x) => x.id)
+        if (mine.length) { r.sourceIds = [...new Set(mine)]; r.note = 'Party identification number' }
+      }
+      rest = rest.filter((r) => !r.sourceIds.length)
+    }
     if (rest.length && ruleset?.link) {
       const links = toObjects(await q(`SELECT UnifiedRecordId__c AS u, SourceRecordId__c AS s FROM ${ruleset.link} WHERE UnifiedRecordId__c IN ${inList(rest.map((r) => r.input))}`))
       for (const r of rest) {
         const mine = links.filter((l) => l.u === r.input)
         if (mine.length) { r.sourceIds = mine.map((l) => l.s); r.note = 'Unified ID' }
       }
+    }
+  }
+
+  // A field you picked (feedback #120): its value, and the field that leads to the Individual ID
+  const byField = byKind('field')
+  if (byField.length && field?.object && field?.field && field?.link) {
+    for (const [n, part] of chunks(byField).entries()) {
+      progress(`${field.field} ${n * BATCH + 1} to ${n * BATCH + part.length} of ${byField.length}`)
+      const found = toObjects(await q(`SELECT CAST(${field.field} AS VARCHAR) AS v, ${field.link} AS id FROM ${field.object} WHERE CAST(${field.field} AS VARCHAR) IN ${inList(part.map((r) => r.input))}`))
+      for (const r of part) r.sourceIds = [...new Set(found.filter((f) => String(f.v) === r.input).map((f) => f.id).filter(Boolean))]
     }
   }
 

@@ -1,5 +1,6 @@
 <script setup>
 import DataTable from '../components/DataTable.vue'
+import Loading from '../components/Loading.vue'
 import HelpTip from '../components/HelpTip.vue'
 // Calculated insights as Data Cloud shows them: a list view, and a record page with Details,
 // Dimensions and Measures, SQL, Data (a preview) and Used by.
@@ -153,7 +154,8 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
   <!-- Record page -->
   <section v-else class="max-w-7xl mx-auto space-y-3">
     <RouterLink to="/insights" class="text-xs text-link hover:underline">Calculated insights</RouterLink>
-    <p v-if="!ci" class="text-sm text-muted-foreground">{{ loading ? 'Loading…' : 'This calculated insight is not in the selected data space.' }}</p>
+    <Loading v-if="!ci && loading" text="Loading" />
+    <p v-else-if="!ci" class="text-sm text-muted-foreground">This calculated insight is not in the selected data space.</p>
     <template v-else>
       <div class="border rounded-md bg-card p-3 space-y-3">
         <div class="flex flex-wrap items-start gap-3">
@@ -198,7 +200,7 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
           <span class="text-xs text-muted-foreground">First 50 rows.</span>
           <button class="ml-auto text-xs text-link hover:underline" @click="router.push({ path: '/sql', query: { sql: querySql } })">Open in a SQL tab</button>
         </div>
-        <p v-if="previewing" class="text-sm text-muted-foreground">Loading rows…</p>
+        <Loading v-if="previewing" text="Loading rows…" />
         <p v-else-if="previewError" class="text-sm text-destructive">{{ previewError }}</p>
         <p v-else-if="preview && !preview.rows.length" class="text-sm text-muted-foreground">No rows yet: the insight has not produced data.</p>
         <ResultTable v-else-if="preview" :columns="preview.columns" :rows="preview.rows" />
@@ -215,7 +217,7 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
         </div>
         <div class="border rounded-md bg-card">
           <h3 class="p-3 border-b font-medium">Segments that use it</h3>
-          <p v-if="!catalog.usage" class="p-3 text-muted-foreground">Reading segments…</p>
+          <Loading v-if="!catalog.usage" text="Reading segments…" />
           <p v-else-if="!used?.segments.length" class="p-3 text-muted-foreground">No segment uses this insight.</p>
           <div v-for="s in used?.segments || []" :key="s.name" class="p-3 border-b last:border-0">
             <RouterLink :to="`/segments/${s.name}`" class="text-link hover:underline">{{ s.label }}</RouterLink>

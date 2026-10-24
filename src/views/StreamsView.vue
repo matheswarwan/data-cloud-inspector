@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, defineAsyncComponent } from 'vue'
+import Loading from '../components/Loading.vue'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
 import HelpTip from '../components/HelpTip.vue'
@@ -145,7 +146,7 @@ const fieldCols = [
           <p v-else class="text-sm text-muted-foreground">{{ catalog.mappingsProgress ? `Reading mappings: ${catalog.mappingsProgress}` : 'Reading data streams and mappings…' }}</p>
         </template>
       </template>
-      <p v-else-if="loading && !stream" class="text-sm text-muted-foreground">Loading…</p>
+      <Loading v-else-if="loading && !stream" text="Loading…" />
       <p v-if="error" class="text-sm text-destructive">{{ error }}</p>
       <RouterLink v-if="route.params.name" to="/streams" class="text-xs text-link hover:underline">All data streams</RouterLink>
       <template v-if="stream">

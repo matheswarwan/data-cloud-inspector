@@ -1,5 +1,6 @@
 <script setup>
 import DownloadMenu from '../components/DownloadMenu.vue'
+import Loading from '../components/Loading.vue'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
 import { ref, reactive, computed, watch, onMounted } from 'vue'
@@ -317,7 +318,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
 
         <!-- Used by: insights, segments, activations -->
         <div v-else-if="tab === 'usedby'" class="space-y-3 text-sm">
-          <p v-if="!catalog.usage" class="text-muted-foreground">Reading calculated insights, segments and activations…</p>
+          <Loading v-if="!catalog.usage" text="Reading calculated insights, segments and activations…" />
           <template v-else>
             <p v-if="!usedCount" class="text-muted-foreground">No calculated insight or segment uses this object.</p>
             <div v-if="used.insights.length" class="border rounded-md bg-card">
@@ -347,7 +348,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
 
         <!-- DMO: mapped from -->
         <div v-else-if="selected.kind === 'DMO'" class="space-y-3">
-          <p v-if="mappings.loading" class="text-sm text-muted-foreground">Loading mappings…</p>
+          <Loading v-if="mappings.loading" text="Loading mappings…" />
           <p v-else-if="mappings.error" class="text-sm text-destructive">{{ mappings.error }}</p>
           <p v-else-if="mappings.list && !mappings.list.length" class="text-sm text-muted-foreground">Nothing is mapped to this DMO.</p>
           <div v-for="m in mappings.list || []" :key="m.name" class="border rounded-md bg-card">
@@ -366,7 +367,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
 
         <!-- DLO: stream and the DMOs it feeds -->
         <div v-else-if="selected.kind === 'DLO'" class="space-y-3">
-          <p v-if="!catalog.streams" class="text-sm text-muted-foreground">Loading data streams…</p>
+          <Loading v-if="!catalog.streams" text="Loading data streams…" />
           <p v-else-if="!streamsFor.length" class="text-sm text-muted-foreground">No data stream writes to this DLO (it may be filled by a transform or a system process).</p>
           <div v-for="s in streamsFor" :key="s.name" class="border rounded-md bg-card p-3 text-sm grid grid-cols-[10rem_1fr] gap-x-3 gap-y-1">
             <span class="text-muted-foreground">Stream</span><span>{{ s.label }} <span class="font-mono text-xs text-muted-foreground">{{ s.name }}</span>
@@ -401,7 +402,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
 
         <!-- CI: definition -->
         <div v-else class="space-y-3 text-sm">
-          <p v-if="insight.loading" class="text-muted-foreground">Loading the definition…</p>
+          <Loading v-if="insight.loading" text="Loading the definition…" />
           <p v-else-if="insight.error" class="text-destructive">{{ insight.error }}</p>
           <InsightDefinition v-else-if="insight.data" :ci="insight.data" :partition-by="selected.partitionBy" />
         </div>

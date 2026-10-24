@@ -1,5 +1,6 @@
 <script setup>
 import DataTable from '../components/DataTable.vue'
+import Loading from '../components/Loading.vue'
 import JsonViewer from '../components/JsonViewer.vue'
 import HelpTip from '../components/HelpTip.vue'
 import { ref, computed, watch } from 'vue'
@@ -85,7 +86,7 @@ const checkCols = [
     <div class="border rounded-md bg-card">
       <h3 class="p-3 border-b font-medium flex items-center gap-2">How this tool connects</h3>
       <p v-if="ctxError" class="p-3 text-sm text-destructive">{{ ctxError }}</p>
-      <p v-else-if="!ctx" class="p-3 text-sm text-muted-foreground">Loading…</p>
+      <Loading v-else-if="!ctx" text="Loading…" />
       <div v-else class="p-3 grid md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
         <dl class="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1">
           <dt class="text-muted-foreground">Running as</dt><dd><strong>{{ ctx.name }}</strong></dd>

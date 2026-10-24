@@ -10,6 +10,7 @@ import DialogHost from '../components/DialogHost.vue'
 import FeatureTips from '../components/FeatureTips.vue'
 import ApiConsole from '../components/ApiConsole.vue'
 import { useApiConsole } from './useApiConsole.js'
+import { useActivity } from './useActivity.js'
 import { NAV } from './router.js'
 import { recordVisit } from '../lib/visits.js'
 import { useOrg, loadOrgs } from './useOrg.js'
@@ -20,6 +21,7 @@ const route = useRoute()
 const NAV_PATHS = NAV.map((n) => n.path)
 useRouter().afterEach((to) => recordVisit(to.path, NAV_PATHS))
 const apiConsoleOn = useApiConsole().enabled
+const busy = useActivity()
 const feedback = ref(false)
 const palette = ref(null)
 onMounted(loadOrgs)
@@ -36,6 +38,7 @@ onMounted(loadOrgs)
           Feedback
         </button>
       </div>
+      <div v-if="busy" class="absolute left-0 right-0 bottom-0 h-0.5 overflow-hidden" role="progressbar" aria-label="Loading from Salesforce"><div class="dci-progress h-full w-1/3 bg-primary/70" /></div>
     </header>
 
     <div class="flex flex-1 min-h-0">

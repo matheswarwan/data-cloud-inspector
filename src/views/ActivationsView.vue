@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import Loading from '../components/Loading.vue'
 import HelpTip from '../components/HelpTip.vue'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
@@ -89,7 +90,8 @@ const attrCols = [
     </ListPanel>
 
     <div class="flex-1 min-w-0 space-y-4">
-      <p v-if="!route.params.id" class="text-sm text-muted-foreground p-4">{{ loading ? 'Loading activations…' : 'Pick an activation to see what it sends, where, and when it last published.' }}</p>
+      <Loading v-if="!route.params.id && loading" text="Loading activations" class="p-4" />
+      <p v-else-if="!route.params.id" class="text-sm text-muted-foreground p-4">Pick an activation to see what it sends, where, and when it last published.</p>
       <p v-if="actError" class="text-sm text-destructive">{{ actError }}</p>
       <template v-if="act">
         <div class="flex flex-wrap items-start gap-3">

@@ -11,7 +11,7 @@ import { inSpace } from '../lib/dataSpace.js'
 import { parseRulesets } from '../lib/profile.js'
 import { loadSegments, membershipTables } from '../lib/segments.js'
 import { samplesSql, samplesFrom } from '../lib/samples.js'
-import { parseInputs, bulkLookup, bulkSummary, bulkCsv, MAX_INPUTS } from '../lib/bulkLookup.js'
+import { kindCounts, lookupTargets, parseInputs, bulkLookup, bulkSummary, bulkCsv, MAX_INPUTS } from '../lib/bulkLookup.js'
 
 const org = useOrg()
 const catalog = useCatalog()
@@ -45,7 +45,19 @@ const job = computed(() => (org.orgId ? useJob(jobId.value) : null))
 watch(() => [job.value?.status, jobId.value], () => { if (job.value && job.value.status !== 'running') markSeen(jobId.value) }, { immediate: true })
 watch(() => job.value?.params, (p) => { if (p && !text.value) { text.value = p.text; rulesetId.value = p.rulesetId; segmentName.value = p.segment || '' } }, { immediate: true })
 
-const items = computed(() => parseInputs(text.value))
+// What the values are (feedback #120): detected, or chosen, including a field you pick.
+const valuesAs = ref('auto')
+const fieldObject = ref('ssot__Individual__dlm')
+const fieldName = ref('')
+const targets = computed(() => lookupTargets(catalog.objects))
+const target = computed(() => targets.value.find((t) => t.object === fieldObject.value) || null)
+const items = computed(() => parseInputs(text.value, { as: valuesAs.value }))
+const KIND_WORDS = { email: ['email', 'emails'], phone: ['phone', 'phones'], id: ['ID', 'IDs'], field: ['value', 'values'], unknown: ['not recognised', 'not recognised'] }
+const detected = computed(() => Object.entries(kindCounts(items.value)).map(([k, n]) => `${n.toLocaleString()} ${KIND_WORDS[k]?.[n === 1 ? 0 : 1] || k}`).join(', '))
+// "and N more" opens the rest (feedback #118)
+const expanded = ref(new Set())
+const toggleMore = (key) => { const s = new Set(expanded.value); s.has(key) ? s.delete(key) : s.add(key); expanded.value = s }
+const upTo = (list, key) => (expanded.value.has(key) ? list : list.slice(0, 3))
 const tooMany = computed(() => items.value.length > MAX_INPUTS)
 
 // An empty box offers 10 random people to try (feedback #105).
@@ -70,7 +82,9 @@ async function run() {
   const latestTable = segment ? membershipTables(segment, catalog.objects).latest : null
   const list = items.value.slice(0, MAX_INPUTS)
   const objects = catalog.objects
-  startJob(jobId.value, (progress) => bulkLookup(q, list, { ruleset, segment, catalog: objects, latestTable, progress }), {
+  const field = valuesAs.value === 'field' && target.value && fieldName.value ? { object: target.value.object, field: fieldName.value, link: target.value.link } : null
+  expanded.value = new Set()
+  startJob(jobId.value, (progress) => bulkLookup(q, list, { ruleset, segment, catalog: objects, latestTable, field, progress }), {
     params: { text: text.value, rulesetId: rulesetId.value, segment: segmentName.value, segmentLabel: segment?.label || '' },
   })
 }
@@ -133,13 +147,21 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
     <div :class="[card, 'p-3 space-y-2']">
       <textarea v-model="text" rows="7" spellcheck="false" placeholder="jane@example.com&#10;+1 415 555 0100&#10;003..." class="w-full border rounded-md p-2 bg-background font-mono text-xs" />
       <div class="flex flex-wrap items-center gap-2 text-sm">
-        <span class="text-muted-foreground">{{ items.length.toLocaleString() }} unique values{{ tooMany ? `, only the first ${MAX_INPUTS.toLocaleString()} are checked` : '' }}</span>
+        <span class="text-muted-foreground">{{ items.length.toLocaleString() }} unique values{{ tooMany ? `, only the first ${MAX_INPUTS.toLocaleString()} are checked` : '' }}{{ items.length && valuesAs === 'auto' ? `: ${detected}` : '' }}</span>
+        <label class="text-muted-foreground" for="bulk-as">Values are</label>
+        <select id="bulk-as" v-model="valuesAs" class="border rounded-md px-2 py-1 bg-background">
+          <option value="auto">detected automatically</option><option value="email">emails</option><option value="phone">phone numbers</option><option value="id">record IDs</option><option value="field">values of a field…</option>
+        </select>
+        <template v-if="valuesAs === 'field'">
+          <select v-model="fieldObject" class="border rounded-md px-2 py-1 bg-background max-w-56" aria-label="Object to look in" @change="fieldName = ''"><option v-for="t in targets" :key="t.object" :value="t.object">{{ t.label }}</option></select>
+          <select v-model="fieldName" class="border rounded-md px-2 py-1 bg-background max-w-56 font-mono text-xs" aria-label="Field to look in"><option value="">Field…</option><option v-for="f in target?.fields || []" :key="f.name" :value="f.name">{{ f.name }}</option></select>
+        </template>
         <label class="ml-auto text-muted-foreground" for="bulk-rs">Ruleset</label>
         <select id="bulk-rs" v-model="rulesetId" class="border rounded-md px-2 py-1 bg-background"><option value="">none</option><option v-for="r in rulesets" :key="r.id" :value="r.id">{{ r.label }} ({{ r.id }})</option></select>
         <label class="text-muted-foreground" for="bulk-seg">Segment</label>
         <select id="bulk-seg" v-model="segmentName" class="border rounded-md px-2 py-1 bg-background"><option value="">none</option><option v-for="s in segments" :key="s.apiName" :value="s.apiName">{{ s.label }}</option></select>
         <button v-if="!items.length" class="text-link hover:underline disabled:opacity-50" :disabled="sampling || !org.version" @click="useSamples">{{ sampling ? 'Picking…' : 'Use 10 random examples' }}</button>
-        <button class="px-3 py-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50" :disabled="!items.length || job?.status === 'running' || !org.version" @click="run">{{ job?.status === 'running' ? 'Checking…' : 'Check' }}</button>
+        <button class="px-3 py-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50" :disabled="!items.length || job?.status === 'running' || !org.version || (valuesAs === 'field' && !fieldName)" @click="run">{{ job?.status === 'running' ? 'Checking…' : 'Check' }}</button>
       </div>
       <p v-if="job?.status === 'running'" class="text-sm text-muted-foreground">Checking {{ job.progress || '' }}. You can use other pages meanwhile.</p>
       <p v-if="job?.status === 'failed'" class="text-sm text-destructive">{{ job.error }}</p>
@@ -169,14 +191,14 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
         <template #cell-input="{ row: r }"><span class="font-mono text-xs">{{ r.input }}</span> <span class="text-xs text-muted-foreground">{{ r.kind }}</span></template>
         <template #cell-sources="{ row: r }">
           <div class="text-xs">
-            <RouterLink v-for="s in r.sourceIds.slice(0, 3)" :key="s" :to="{ path: `/profile/s/${s}`, query: { rs: ran.rulesetId || undefined } }" class="block font-mono text-link hover:underline">{{ s }}</RouterLink>
-            <span v-if="r.sourceIds.length > 3" class="text-muted-foreground">and {{ r.sourceIds.length - 3 }} more</span>
+            <RouterLink v-for="s in upTo(r.sourceIds, `s:${r.input}`)" :key="s" :to="{ path: `/profile/s/${s}`, query: { rs: ran.rulesetId || undefined } }" class="block font-mono text-link hover:underline">{{ s }}</RouterLink>
+            <button v-if="r.sourceIds.length > 3" class="text-link hover:underline" @click="toggleMore(`s:${r.input}`)">{{ expanded.has(`s:${r.input}`) ? 'Show fewer' : `and ${r.sourceIds.length - 3} more` }}</button>
           </div>
         </template>
         <template #cell-unified="{ row: r }">
           <div class="text-xs">
-            <RouterLink v-for="u in r.unifiedIds.slice(0, 3)" :key="u" :to="{ path: `/profile/u/${u}`, query: { rs: ran.rulesetId } }" class="block font-mono text-link hover:underline">{{ u }}</RouterLink>
-            <span v-if="r.unifiedIds.length > 3" class="text-muted-foreground">and {{ r.unifiedIds.length - 3 }} more</span>
+            <RouterLink v-for="u in upTo(r.unifiedIds, `u:${r.input}`)" :key="u" :to="{ path: `/profile/u/${u}`, query: { rs: ran.rulesetId } }" class="block font-mono text-link hover:underline">{{ u }}</RouterLink>
+            <button v-if="r.unifiedIds.length > 3" class="text-link hover:underline" @click="toggleMore(`u:${r.input}`)">{{ expanded.has(`u:${r.input}`) ? 'Show fewer' : `and ${r.unifiedIds.length - 3} more` }}</button>
           </div>
         </template>
         <template #cell-note="{ value }"><span class="text-xs text-muted-foreground">{{ value }}</span></template>

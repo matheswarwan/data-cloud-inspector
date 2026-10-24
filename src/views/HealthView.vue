@@ -1,5 +1,6 @@
 <script setup>
 import DownloadMenu from '../components/DownloadMenu.vue'
+import Loading from '../components/Loading.vue'
 import HelpTip from '../components/HelpTip.vue'
 import DataTable from '../components/DataTable.vue'
 import { ref, computed, watch, onMounted } from 'vue'
@@ -96,7 +97,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
       </div>
     </div>
     <p v-if="notice" class="text-sm text-muted-foreground">{{ notice }}</p>
-    <p v-if="loading && !sections.length" class="text-sm text-muted-foreground">Checking the org…</p>
+    <Loading v-if="loading && !sections.length" text="Checking the org…" />
 
     <table v-if="sections.length" :class="[card, 'w-full text-sm']">
       <thead class="text-left text-muted-foreground border-b">
