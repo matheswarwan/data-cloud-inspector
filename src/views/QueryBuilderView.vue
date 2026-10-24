@@ -2,13 +2,17 @@
 // Query builder (feedback #110, after the Marketing Cloud Toolkit's): objects on the left,
 // the steps in the middle (structure, output fields, filters, options) as a list or a visual
 // canvas, the generated SQL on the right or below with Copy, Count rows, Run and Open in a
-// SQL tab. The draft is kept per org and data space in this browser.
-import { ref, computed, watch, onMounted } from 'vue'
+// SQL tab. The draft is kept per org and data space in this browser. Feedback #124: every
+// pane and step can be resized (sizes in `lib/builderLayout.js`), the SQL panel and the
+// results open full screen, and results download like on the SQL page.
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { List, LayoutGrid, Code2, EyeOff, PanelRight, PanelBottom, ChevronDown, ChevronRight, Lock, X, Plus, FilePlus2 } from 'lucide-vue-next'
+import { List, LayoutGrid, Code2, EyeOff, PanelRight, PanelBottom, ChevronDown, ChevronRight, Lock, X, Plus, FilePlus2, Maximize2, Minimize2 } from 'lucide-vue-next'
 import HelpTip from '../components/HelpTip.vue'
 import SqlBlock from '../components/SqlBlock.vue'
 import ResultTable from '../components/ResultTable.vue'
+import DownloadMenu from '../components/DownloadMenu.vue'
+import Splitter from '../components/Splitter.vue'
 import BuilderBrowser from '../components/builder/BuilderBrowser.vue'
 import TableCard from '../components/builder/TableCard.vue'
 import BuilderCanvas from '../components/builder/BuilderCanvas.vue'
@@ -16,7 +20,9 @@ import { useOrg } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
 import { saveQuery } from '../app/useQueries.js'
 import { askText } from '../app/useDialog.js'
-import { runQuery } from '../lib/query.js'
+import { runQuery, fetchAllRows, toCsv, resultMarkdown } from '../lib/query.js'
+import { saveBlob } from '../lib/exportDoc.js'
+import { SIZES, readLayout, writeLayout } from '../lib/builderLayout.js'
 import { emptyQuery, addTable, aliasAt, buildQuery, countQuery, fieldOptions, problems, FILTER_OPS } from '../lib/builderModel.js'
 
 const router = useRouter()
@@ -30,13 +36,16 @@ const counting = ref(false)
 const running = ref(false)
 const result = ref(null)
 const runError = ref('')
+const downloading = ref('')
+let stopDownload = false
+const cancelDownload = () => { stopDownload = true }
 
 // The draft, per org and data space
 const draftKey = computed(() => `dci_builder_${org.orgId}_${org.dataSpace || 'default'}`)
 const q = ref(emptyQuery())
 function loadDraft() {
   try { const v = JSON.parse(localStorage.getItem(draftKey.value) || 'null'); q.value = v?.tables ? { ...emptyQuery(), ...v, options: { ...emptyQuery().options, ...v.options } } : emptyQuery() } catch { q.value = emptyQuery() }
-  result.value = null; count.value = null; runError.value = ''
+  result.value = null; count.value = null; runError.value = ''; downloading.value = ''
 }
 watch(draftKey, loadDraft, { immediate: true })
 const saved = ref(false)
@@ -48,10 +57,20 @@ watch(q, () => {
 }, { deep: true })
 function newQuery() { q.value = emptyQuery(); result.value = null; count.value = null; selected.value = null }
 
-// Layout: list or visual, SQL right, bottom or hidden (remembered)
-const LAYOUT = 'dci_builderLayout'
-const layout = ref((() => { try { return { visual: false, dock: 'right', ...JSON.parse(localStorage.getItem(LAYOUT) || '{}') } } catch { return { visual: false, dock: 'right' } } })())
-watch(layout, (v) => { try { localStorage.setItem(LAYOUT, JSON.stringify(v)) } catch { /* no storage */ } }, { deep: true })
+// Layout: list or visual, SQL right, bottom or hidden, and the dragged sizes (remembered)
+const layout = ref(readLayout())
+watch(layout, (v) => writeLayout(v), { deep: true })
+const sqlWidthMax = () => Math.max(SIZES.sqlWidth.min, window.innerWidth - layout.value.browser - 560)
+// A step's height: the dragged one, else its current height (where a drag starts from)
+const stepEls = {}
+const stepSize = (s) => layout.value.steps[s] ?? stepEls[s]?.offsetHeight ?? 200
+const stepStyle = (s) => (layout.value.steps[s] == null ? {} : { height: `${layout.value.steps[s]}px` })
+
+// Full screen: the SQL panel or the results (Esc closes)
+const expanded = ref(null) // null | 'sql' | 'results'
+const onKey = (e) => { if (e.key === 'Escape' && expanded.value) expanded.value = null }
+onMounted(() => document.addEventListener('keydown', onKey))
+onUnmounted(() => document.removeEventListener('keydown', onKey))
 
 const objects = computed(() => catalog.objects)
 const used = computed(() => q.value.tables.map((t) => t.name))
@@ -101,9 +120,36 @@ async function countRows() {
   try { const r = await runQuery(orgCall(), org.version, countQuery(q.value, objects.value), { rowLimit: 1 }); count.value = Number(r.rows[0]?.[0] ?? 0) } catch (err) { runError.value = err.message } finally { counting.value = false }
 }
 async function run() {
-  running.value = true; runError.value = ''; result.value = null
-  try { result.value = await runQuery(orgCall(), org.version, sql.value, { rowLimit: Math.min(Number(q.value.options.limit) || 1000, 1000) }) } catch (err) { runError.value = err.message } finally { running.value = false }
+  running.value = true; runError.value = ''; result.value = null; stopDownload = true
+  const text = sql.value
+  try { result.value = { ...(await runQuery(orgCall(), org.version, text, { rowLimit: Math.min(Number(q.value.options.limit) || 1000, 1000) })), sql: text } } catch (err) { runError.value = err.message } finally { running.value = false }
 }
+
+// Downloads: CSV fetches every row (up to 500,000); the menu has the rows shown
+async function downloadCsv() {
+  const r = result.value
+  let rows = r.rows
+  if (rows.length < r.total) {
+    stopDownload = false
+    downloading.value = `Fetching rows: ${rows.length.toLocaleString()} of ${r.total.toLocaleString()}`
+    try {
+      rows = rows.concat(await fetchAllRows(orgCall(), org.version, r.queryId, {
+        offset: rows.length, total: r.total, isCancelled: () => stopDownload,
+        onProgress: (n) => { downloading.value = `Fetching rows: ${n.toLocaleString()} of ${r.total.toLocaleString()}` },
+      }))
+    } catch (err) {
+      runError.value = `Download stopped: ${err.message}`
+      return
+    } finally {
+      downloading.value = ''
+    }
+    if (stopDownload || result.value !== r) return
+    if (r.total > 500000) flash('The CSV has the first 500,000 rows.')
+  }
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+  saveBlob(new Blob([toCsv(r.columns, rows)], { type: 'text/csv' }), `data-cloud-query-${stamp}.csv`)
+}
+const resultName = () => q.value.tables.map((t) => objects.value.find((o) => o.name === t.name)?.label || t.name).join(' + ') || 'query'
 
 const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs hover:bg-accent disabled:opacity-50'
 const sel = 'border rounded px-1.5 py-0.5 bg-background text-xs'
@@ -118,9 +164,10 @@ const stepHead = 'w-full flex items-center gap-1.5 px-3 py-2 text-[11px] font-se
       <span class="ml-auto flex flex-wrap items-center gap-1.5">
         <button :class="btn" @click="newQuery"><FilePlus2 class="w-3.5 h-3.5" /> New query</button>
         <button :class="btn" :disabled="!q.tables.length" @click="layout.dock = layout.dock === 'hidden' ? 'right' : 'hidden'"><component :is="layout.dock === 'hidden' ? Code2 : EyeOff" class="w-3.5 h-3.5" /> {{ layout.dock === 'hidden' ? 'Show SQL' : 'Hide SQL' }}</button>
-        <span class="inline-flex border rounded-md p-0.5" role="radiogroup" aria-label="Where the SQL is">
-          <button role="radio" :aria-checked="layout.dock === 'right'" :class="['p-1 rounded', layout.dock === 'right' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground']" title="SQL on the right" @click="layout.dock = 'right'"><PanelRight class="w-3.5 h-3.5" /></button>
-          <button role="radio" :aria-checked="layout.dock === 'bottom'" :class="['p-1 rounded', layout.dock === 'bottom' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground']" title="SQL below" @click="layout.dock = 'bottom'"><PanelBottom class="w-3.5 h-3.5" /></button>
+        <span class="inline-flex items-center border rounded-md p-0.5" role="radiogroup" aria-label="Where the SQL is">
+          <span class="px-1.5 text-xs text-muted-foreground">SQL</span>
+          <button role="radio" :aria-checked="layout.dock === 'right'" :class="['inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs', layout.dock === 'right' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground']" title="SQL on the right" @click="layout.dock = 'right'"><PanelRight class="w-3 h-3" /> Right</button>
+          <button role="radio" :aria-checked="layout.dock === 'bottom'" :class="['inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs', layout.dock === 'bottom' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground']" title="SQL below" @click="layout.dock = 'bottom'"><PanelBottom class="w-3 h-3" /> Bottom</button>
         </span>
         <span class="inline-flex border rounded-md p-0.5" role="radiogroup" aria-label="Show the query as">
           <button role="radio" :aria-checked="!layout.visual" :class="['inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs', !layout.visual ? 'bg-primary text-primary-foreground' : 'text-muted-foreground']" @click="layout.visual = false"><List class="w-3 h-3" /> List</button>
@@ -132,17 +179,19 @@ const stepHead = 'w-full flex items-center gap-1.5 px-3 py-2 text-[11px] font-se
 
     <div :class="['flex-1 min-h-0 flex gap-3', layout.dock === 'bottom' ? 'flex-col' : '']">
       <div class="flex-1 min-h-0 flex gap-3">
-        <div class="w-64 shrink-0 min-h-0"><BuilderBrowser :objects="objects" :used="used" :loading="catalog.loading" @add="add" /></div>
+        <div class="shrink-0 min-h-0" :style="{ width: `${layout.browser}px` }"><BuilderBrowser :objects="objects" :used="used" :loading="catalog.loading" @add="add" /></div>
+        <Splitter v-model="layout.browser" vertical v-bind="SIZES.browser" label="Resize the object list" @reset="layout.browser = SIZES.browser.def" />
 
         <!-- Middle: list of steps, or the canvas -->
-        <div class="flex-1 min-w-0 min-h-0 overflow-auto border rounded-md bg-card/40">
+        <div class="flex-1 min-w-[16rem] min-h-0 overflow-auto border rounded-md bg-card/40">
           <template v-if="!layout.visual">
             <div class="border-b">
               <button :class="stepHead" :aria-expanded="open.structure" @click="open.structure = !open.structure"><component :is="open.structure ? ChevronDown : ChevronRight" class="w-3.5 h-3.5" /> Step 1 · Query structure <span class="ml-auto font-normal normal-case">{{ q.tables.length }} {{ q.tables.length === 1 ? 'object' : 'objects' }}</span></button>
-              <div v-if="open.structure" class="px-3 pb-3 space-y-2">
+              <div v-if="open.structure" :ref="(el) => (stepEls.structure = el)" :class="['px-3 pb-3 space-y-2', layout.steps.structure != null && 'overflow-auto']" :style="stepStyle('structure')">
                 <p v-if="!q.tables.length" class="text-sm text-muted-foreground">Click objects on the left to add them. The first one is the starting object; each next one is joined to an earlier one, with the join filled in from your org's relationships when there is one.</p>
                 <TableCard v-for="t in q.tables" :key="t.id" :q="q" :table="t" :catalog="objects" @notice="flash" />
               </div>
+              <Splitter v-if="open.structure" :model-value="stepSize('structure')" v-bind="SIZES.step" :label="`Resize step: structure`" @update:model-value="(v) => (layout.steps.structure = v)" @reset="layout.steps.structure = null" />
             </div>
           </template>
           <div v-else class="h-[55%] min-h-72 p-2 flex gap-2">
@@ -156,7 +205,7 @@ const stepHead = 'w-full flex items-center gap-1.5 px-3 py-2 text-[11px] font-se
           <!-- Step 2: output fields -->
           <div class="border-b">
             <button :class="stepHead" :disabled="!q.tables.length" :aria-expanded="open.output" @click="open.output = !open.output"><component :is="!q.tables.length ? Lock : open.output ? ChevronDown : ChevronRight" class="w-3.5 h-3.5" /> Step 2 · Output fields <span class="ml-auto font-normal normal-case">{{ q.options.groupBy.length ? 'grouped' : `${q.tables.reduce((n, t) => n + picked(t).length, 0)} fields` }}{{ q.options.computed.length ? ` + ${q.options.computed.length} computed` : '' }}</span></button>
-            <div v-if="open.output && q.tables.length" class="px-3 pb-3 space-y-3 text-xs">
+            <div v-if="open.output && q.tables.length" :ref="(el) => (stepEls.output = el)" :class="['px-3 pb-3 space-y-3 text-xs', layout.steps.output != null && 'overflow-auto']" :style="stepStyle('output')">
               <p v-if="q.options.groupBy.length" class="text-amber-700 dark:text-amber-400">With GROUP BY (Step 4) the output is the grouped fields and the computed columns.</p>
               <div v-for="(t, i) in q.tables" :key="t.id" class="border rounded-md bg-card p-2 space-y-1.5">
                 <div class="flex items-center gap-2">
@@ -185,12 +234,13 @@ const stepHead = 'w-full flex items-center gap-1.5 px-3 py-2 text-[11px] font-se
                 <button class="inline-flex items-center gap-1 text-link hover:underline" @click="q.options.computed.push({ expression: '', alias: '' })"><Plus class="w-3 h-3" /> Add computed column</button>
               </div>
             </div>
+            <Splitter v-if="open.output && q.tables.length" :model-value="stepSize('output')" v-bind="SIZES.step" :label="`Resize step: output`" @update:model-value="(v) => (layout.steps.output = v)" @reset="layout.steps.output = null" />
           </div>
 
           <!-- Step 3: filters -->
           <div class="border-b">
             <button :class="stepHead" :disabled="!q.tables.length" :aria-expanded="open.filters" @click="open.filters = !open.filters"><component :is="!q.tables.length ? Lock : open.filters ? ChevronDown : ChevronRight" class="w-3.5 h-3.5" /> Step 3 · Filters (WHERE) <span class="ml-auto font-normal normal-case">{{ q.where.conditions.length }} {{ q.where.conditions.length === 1 ? 'filter' : 'filters' }}</span></button>
-            <div v-if="open.filters && q.tables.length" class="px-3 pb-3 space-y-1.5 text-xs">
+            <div v-if="open.filters && q.tables.length" :ref="(el) => (stepEls.filters = el)" :class="['px-3 pb-3 space-y-1.5 text-xs', layout.steps.filters != null && 'overflow-auto']" :style="stepStyle('filters')">
               <div v-if="q.where.conditions.length > 1" class="flex items-center gap-1.5">Rows must match <select v-model="q.where.combinator" :class="sel" aria-label="Filters combine with"><option value="AND">all filters (AND)</option><option value="OR">any filter (OR)</option></select></div>
               <div v-for="(c, k) in q.where.conditions" :key="k" class="flex flex-wrap items-center gap-1.5">
                 <select :value="pickValue(c)" :class="[sel, 'font-mono max-w-xs']" :aria-label="`Filter ${k + 1} field`" @change="setPick(c, $event.target.value)">
@@ -203,12 +253,13 @@ const stepHead = 'w-full flex items-center gap-1.5 px-3 py-2 text-[11px] font-se
               </div>
               <button class="inline-flex items-center gap-1 text-link hover:underline" @click="q.where.conditions.push({ alias: 't1', field: '', op: '=', value: '' })"><Plus class="w-3 h-3" /> Add filter</button>
             </div>
+            <Splitter v-if="open.filters && q.tables.length" :model-value="stepSize('filters')" v-bind="SIZES.step" :label="`Resize step: filters`" @update:model-value="(v) => (layout.steps.filters = v)" @reset="layout.steps.filters = null" />
           </div>
 
           <!-- Step 4: options -->
           <div>
             <button :class="stepHead" :disabled="!q.tables.length" :aria-expanded="open.options" @click="open.options = !open.options"><component :is="!q.tables.length ? Lock : open.options ? ChevronDown : ChevronRight" class="w-3.5 h-3.5" /> Step 4 · Options <span class="ml-auto font-normal normal-case">{{ [q.options.distinct && 'distinct', q.options.groupBy.length && 'grouped', q.options.orderBy.length && 'sorted', q.options.limit && `limit ${q.options.limit}`].filter(Boolean).join(', ') }}</span></button>
-            <div v-if="open.options && q.tables.length" class="px-3 pb-3 space-y-2 text-xs">
+            <div v-if="open.options && q.tables.length" :ref="(el) => (stepEls.options = el)" :class="['px-3 pb-3 space-y-2 text-xs', layout.steps.options != null && 'overflow-auto']" :style="stepStyle('options')">
               <div class="flex flex-wrap items-center gap-3">
                 <label class="flex items-center gap-1.5"><input v-model="q.options.distinct" type="checkbox" /> DISTINCT rows</label>
                 <label class="flex items-center gap-1.5">LIMIT <input v-model.number="q.options.limit" type="number" min="0" class="w-24 border rounded px-1.5 py-0.5 bg-background" /></label>
@@ -227,33 +278,60 @@ const stepHead = 'w-full flex items-center gap-1.5 px-3 py-2 text-[11px] font-se
                 <button class="inline-flex items-center gap-1 text-link hover:underline" @click="q.options[key].push(withDir ? { alias: 't1', field: '', dir: 'ASC' } : { alias: 't1', field: '' })"><Plus class="w-3 h-3" /> Add</button>
               </div>
             </div>
+            <Splitter v-if="open.options && q.tables.length" :model-value="stepSize('options')" v-bind="SIZES.step" :label="`Resize step: options`" @update:model-value="(v) => (layout.steps.options = v)" @reset="layout.steps.options = null" />
           </div>
         </div>
       </div>
 
-      <!-- SQL -->
-      <div v-if="layout.dock !== 'hidden' && q.tables.length" :class="['min-h-0 flex flex-col border rounded-md bg-card', layout.dock === 'right' ? 'w-[38%] shrink-0' : 'h-[42%] shrink-0']">
-        <div class="flex flex-wrap items-center gap-1.5 px-2 py-1.5 border-b">
-          <span class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Generated SQL</span>
-          <span class="ml-auto flex flex-wrap gap-1.5">
-            <button :class="btn" @click="copy">Copy</button>
-            <button :class="btn" @click="saveAs">Save as query</button>
-            <button :class="btn" :disabled="counting || issues.length" @click="countRows">{{ counting ? 'Counting…' : 'Count rows' }}</button>
-            <button :class="btn" @click="openInSql">Open in a SQL tab</button>
-            <button class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary text-primary-foreground text-xs disabled:opacity-50" :disabled="running || issues.length" @click="run">{{ running ? 'Running…' : 'Run' }}</button>
-          </span>
-        </div>
-        <div class="flex-1 min-h-0 overflow-auto p-2 space-y-2">
-          <p v-for="p in issues" :key="p.text" class="text-xs text-amber-700 dark:text-amber-400">{{ p.text }}.</p>
-          <p v-if="count != null" class="text-xs">{{ count.toLocaleString() }} rows without the limit.</p>
-          <p v-if="runError" class="text-xs text-destructive whitespace-pre-wrap">{{ runError }}</p>
-          <SqlBlock :code="sql" box-class="max-h-[50vh]" />
-          <div v-if="result" class="space-y-1">
-            <p class="text-xs text-muted-foreground">{{ result.rows.length.toLocaleString() }} of {{ (result.total ?? result.rows.length).toLocaleString() }} rows · {{ result.ms }} ms. Open in a SQL tab to load more or download.</p>
-            <ResultTable :columns="result.columns" :rows="result.rows" />
+      <!-- SQL: drag the edge to resize, or open it full screen -->
+      <template v-if="layout.dock !== 'hidden' && q.tables.length">
+        <Splitter v-if="layout.dock === 'right'" v-model="layout.sqlWidth" vertical invert :min="SIZES.sqlWidth.min" :max="sqlWidthMax()" label="Resize the SQL panel" @reset="layout.sqlWidth = SIZES.sqlWidth.def" />
+        <Splitter v-else v-model="layout.sqlHeight" invert v-bind="SIZES.sqlHeight" label="Resize the SQL panel" @reset="layout.sqlHeight = SIZES.sqlHeight.def" />
+        <div v-if="expanded" class="fixed inset-0 z-40 bg-black/40" @click="expanded = null" />
+        <div
+          :class="['min-h-0 flex flex-col border rounded-md bg-card', expanded === 'sql' ? 'fixed inset-3 z-50 shadow-2xl' : 'shrink-0']"
+          :style="expanded === 'sql' ? {} : layout.dock === 'right' ? { width: `min(${layout.sqlWidth}px, max(20rem, calc(100% - ${layout.browser}px - 26rem)))` } : { height: `min(${layout.sqlHeight}px, 75%)` }"
+          data-builder-sql
+        >
+          <div class="flex flex-wrap items-center gap-1.5 px-2 py-1.5 border-b">
+            <span class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Generated SQL</span>
+            <span class="ml-auto flex flex-wrap gap-1.5">
+              <button :class="btn" @click="copy">Copy</button>
+              <button :class="btn" @click="saveAs">Save as query</button>
+              <button :class="btn" :disabled="counting || issues.length" @click="countRows">{{ counting ? 'Counting…' : 'Count rows' }}</button>
+              <button :class="btn" @click="openInSql">Open in a SQL tab</button>
+              <button class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary text-primary-foreground text-xs disabled:opacity-50" :disabled="running || issues.length" @click="run">{{ running ? 'Running…' : 'Run' }}</button>
+              <button :class="btn" :title="expanded === 'sql' ? 'Exit full screen (Esc)' : 'Full screen'" :aria-label="expanded === 'sql' ? 'Exit full screen' : 'SQL panel full screen'" @click="expanded = expanded === 'sql' ? null : 'sql'"><component :is="expanded === 'sql' ? Minimize2 : Maximize2" class="w-3.5 h-3.5" /></button>
+            </span>
           </div>
+          <div v-if="issues.length || count != null || runError" class="px-2 pt-2 space-y-1">
+            <p v-for="p in issues" :key="p.text" class="text-xs text-amber-700 dark:text-amber-400">{{ p.text }}.</p>
+            <p v-if="count != null" class="text-xs">{{ count.toLocaleString() }} rows without the limit.</p>
+            <p v-if="runError" class="text-xs text-destructive whitespace-pre-wrap">{{ runError }}</p>
+          </div>
+          <div :class="['p-2 min-h-0', result ? 'shrink-0' : 'flex-1']" :style="result ? { height: `min(${layout.code}px, ${layout.dock === 'bottom' && expanded !== 'sql' ? 40 : 60}%)` } : {}">
+            <SqlBlock :code="sql" box-class="h-full" />
+          </div>
+          <template v-if="result">
+            <Splitter v-model="layout.code" v-bind="SIZES.code" label="Resize the SQL box" @reset="layout.code = SIZES.code.def" />
+            <div :class="['min-h-0 flex flex-col gap-1', expanded === 'results' ? 'fixed inset-3 z-50 bg-card border rounded-md shadow-2xl p-3' : 'flex-1 p-2']" data-builder-results>
+              <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                <span class="text-muted-foreground">{{ result.rows.length.toLocaleString() }} of {{ (result.total ?? result.rows.length).toLocaleString() }} rows · {{ result.ms }} ms</span>
+                <span class="ml-auto flex flex-wrap items-center gap-1.5">
+                  <span v-if="downloading" class="text-muted-foreground">{{ downloading }} <button class="underline" @click="cancelDownload">stop</button></span>
+                  <button :class="btn" :disabled="!!downloading || !result.columns.length" @click="downloadCsv">Download CSV</button>
+                  <DownloadMenu
+                    :get-markdown="() => resultMarkdown(result.sql, result.columns, result.rows, { total: result.total, max: 1000 })"
+                    :get-sheets="() => [{ name: 'Results', columns: result.columns.map((c) => c.name), rows: result.rows }]"
+                    :file-name="resultName()" :disabled="!result.columns.length" />
+                  <button :class="btn" :title="expanded === 'results' ? 'Exit full screen (Esc)' : 'Full screen'" :aria-label="expanded === 'results' ? 'Exit full screen' : 'Results full screen'" @click="expanded = expanded === 'results' ? null : 'results'"><component :is="expanded === 'results' ? Minimize2 : Maximize2" class="w-3.5 h-3.5" /></button>
+                </span>
+              </div>
+              <div class="flex-1 min-h-0 overflow-auto"><ResultTable :columns="result.columns" :rows="result.rows" /></div>
+            </div>
+          </template>
         </div>
-      </div>
+      </template>
     </div>
   </section>
 </template>
