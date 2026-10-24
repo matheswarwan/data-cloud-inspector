@@ -1,10 +1,11 @@
 <script setup>
 // Home (feedback #106, #108): whether the org is connected and as whom, a short read-only
 // promise, the most used pages, recent queries, and every section with what it does.
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { ShieldCheck, Plug, ArrowRight } from 'lucide-vue-next'
-import { useOrg, currentOrg } from '../app/useOrg.js'
+import { useOrg, currentOrg, loadOrgs } from '../app/useOrg.js'
+import SavedOrgs from '../components/SavedOrgs.vue'
 import { useCatalog, ensureCatalog } from '../app/useCatalog.js'
 import { useQueries, loadQueries } from '../app/useQueries.js'
 import { NAV } from '../app/router.js'
@@ -15,7 +16,10 @@ const router = useRouter()
 const org = useOrg()
 const catalog = useCatalog()
 const queries = useQueries()
-onMounted(() => { ensureCatalog(); loadQueries() })
+onMounted(() => { ensureCatalog(); loadQueries(); document.addEventListener('visibilitychange', onVisible) })
+onBeforeUnmount(() => document.removeEventListener('visibilitychange', onVisible))
+// Back from logging in to an org in another tab: look for its session again (feedback #109).
+function onVisible() { if (document.visibilityState === 'visible' && !connected.value && !org.loading) loadOrgs() }
 
 const host = computed(() => currentOrg()?.host || '')
 const connected = computed(() => !!org.orgId && !!org.version && !org.problem)
@@ -68,6 +72,8 @@ const short = (sql) => sql.replace(/\s+/g, ' ').slice(0, 120)
       </div>
     </div>
 
+    <SavedOrgs v-if="!connected && !org.loading" />
+
     <div class="space-y-2">
       <h3 class="font-medium">{{ most.length ? 'Most used' : 'Good places to start' }}</h3>
       <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -77,6 +83,8 @@ const short = (sql) => sql.replace(/\s+/g, ' ').slice(0, 120)
         </RouterLink>
       </div>
     </div>
+
+    <SavedOrgs v-if="connected" />
 
     <div v-if="recent.length" class="space-y-2">
       <h3 class="font-medium">Recent queries</h3>
@@ -92,7 +100,7 @@ const short = (sql) => sql.replace(/\s+/g, ' ').slice(0, 120)
 
     <div class="space-y-2">
       <div class="flex items-baseline gap-2"><h3 class="font-medium">Everything in the tool</h3><RouterLink to="/help" class="text-xs text-link hover:underline">Help</RouterLink></div>
-      <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+      <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
         <div v-for="(g, i) in groups" :key="i" class="border rounded-md bg-card divide-y">
           <RouterLink v-for="n in g" :key="n.path" :to="n.path" class="block px-3 py-2 hover:bg-accent">
             <div class="text-sm">{{ n.label }}</div>

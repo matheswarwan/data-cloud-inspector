@@ -4,18 +4,33 @@
 import { reactive } from 'vue'
 import { send, sf, latestVersion } from '../lib/api.js'
 import { sessionProblem, dataCloudProblem } from '../lib/orgStatus.js'
+import { storeGet, storeSet } from '../lib/store.js'
+import { rememberOrg, renameOrg, forgetOrgs } from '../lib/savedOrgs.js'
 
 const LAST_ORG = 'dci_lastOrg'
 
-const state = reactive({ orgs: [], orgId: null, version: null, loading: false, error: '', user: null, problem: null, dataSpaces: [], dataSpace: null })
+const state = reactive({ orgs: [], orgId: null, version: null, loading: false, error: '', user: null, problem: null, dataSpaces: [], dataSpace: null, saved: {} })
 const versions = new Map()
 
 function readLast() {
   try { return localStorage.getItem(LAST_ORG) } catch { return null }
 }
 
+// Orgs connected before (feedback #109): Home lists them when a session has expired.
+const SAVED = 'dci_savedOrgs'
+export async function loadSavedOrgs() {
+  state.saved = (await storeGet(SAVED, {})) || {}
+}
+async function writeSaved(next) {
+  state.saved = next
+  await storeSet(SAVED, JSON.parse(JSON.stringify(next)))
+}
+export const renameSavedOrg = (orgId, name) => writeSaved(renameOrg(state.saved, orgId, name))
+export const forgetSavedOrgs = (orgIds) => writeSaved(forgetOrgs(state.saved, orgIds))
+
 export async function loadOrgs() {
   state.loading = true
+  await loadSavedOrgs()
   state.error = ''
   const res = await send({ type: 'LIST_ORGS' })
   state.orgs = res?.orgs || []
@@ -53,6 +68,8 @@ export async function selectOrg(orgId) {
   state.version = v
   if (me.ok) state.user = { id: me.data?.id, name: me.data?.name, username: me.data?.username }
   state.problem = sessionProblem(me) || dataCloudProblem(spaces)
+  const host = state.orgs.find((o) => o.orgId === orgId)?.host
+  if (me.ok && !state.problem && host) writeSaved(rememberOrg(state.saved, { orgId, host, username: state.user?.username }))
 }
 
 /** Check the session and Data Cloud again (after logging in with OAuth). */
