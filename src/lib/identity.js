@@ -73,28 +73,66 @@ export async function loadRulesetDetail(call, q, version, ruleset) {
  * Two source Individuals side by side against a ruleset: per rule, per criterion, each
  * person's values and whether they match; plus whether the ruleset has them in one profile.
  */
-export async function comparePeople(q, ruleset, catalog, idA, idB) {
-  const people = toObjects(await q(`SELECT * FROM ${INDIVIDUAL} WHERE ssot__Id__c IN ${inList([idA, idB])}`))
-  const a = people.find((p) => p.ssot__Id__c === idA)
-  const b = people.find((p) => p.ssot__Id__c === idB)
-  if (!a || !b) throw new Error(`Could not read ${!a ? idA : idB} from ${INDIVIDUAL}.`)
+export const MAX_COMPARE = 10
+
+/**
+ * Compares 2 to MAX_COMPARE source records (feedback #111): every criterion's values per person,
+ * for each pair the rules that join them and whether they share a unified profile, and the
+ * groups the rules would form (joins follow chains: A~B and B~C put A, B, C together) next to
+ * the unified profiles they are in now.
+ */
+export async function compareMany(q, ruleset, catalog, ids) {
+  ids = [...new Set(ids)].slice(0, MAX_COMPARE)
+  if (ids.length < 2) throw new Error('Pick at least two people.')
+  const found = toObjects(await q(`SELECT * FROM ${INDIVIDUAL} WHERE ssot__Id__c IN ${inList(ids)}`))
+  const people = ids.map((id) => found.find((p) => p.ssot__Id__c === id))
+  const missing = ids.filter((_, k) => !people[k])
+  if (missing.length) throw new Error(`Could not read ${missing.join(', ')} from ${INDIVIDUAL}.`)
   const needed = new Set(ruleset.rules.flatMap((r) => r.criteria.map((c) => c.entity)).filter((e) => e !== INDIVIDUAL))
-  const related = await loadRelated(q, INDIVIDUAL, [a, b], catalog, { skip: (r) => !needed.has(r.object) || r.objectField !== 'ssot__Id__c' })
+  const related = await loadRelated(q, INDIVIDUAL, people, catalog, { skip: (r) => !needed.has(r.object) || r.objectField !== 'ssot__Id__c' })
+  const pairsOf = (n) => { const out = []; for (let x = 0; x < n; x++) for (let y = x + 1; y < n; y++) out.push([x, y]); return out }
+  const pairs = pairsOf(people.length)
   const rules = ruleset.rules.map((rule) => {
     const rows = rule.criteria.map((c) => {
-      const va = criterionValues(c, a, related)
-      const vb = criterionValues(c, b, related)
-      return { criterion: c, text: describeCriterion(c), a: va, b: vb, matches: criterionMatches(c, va, vb) }
+      const values = people.map((p) => criterionValues(c, p, related))
+      const pairMatch = pairs.map(([x, y]) => criterionMatches(c, values[x], values[y]))
+      // A person's value "matches" when it matches someone else's.
+      const matchesSomeone = people.map((_, k) => pairs.some(([x, y], n) => (x === k || y === k) && pairMatch[n]))
+      return { criterion: c, text: describeCriterion(c), values, pairMatch, matchesSomeone }
     })
-    return { label: rule.label, rows, matches: rows.length > 0 && rows.every((r) => r.matches) }
+    const pairRule = pairs.map((_, n) => rows.length > 0 && rows.every((r) => r.pairMatch[n]))
+    return { label: rule.label, rows, pairRule }
   })
-  let sameProfile = null
+  let unified = people.map(() => null)
   if (ruleset.link) {
-    const links = toObjects(await q(`SELECT SourceRecordId__c AS s, UnifiedRecordId__c AS u FROM ${ruleset.link} WHERE SourceRecordId__c IN ${inList([idA, idB])}`))
-    const ua = links.find((l) => l.s === idA)?.u
-    const ub = links.find((l) => l.s === idB)?.u
-    sameProfile = ua && ub ? { same: ua === ub, a: ua, b: ub } : { same: false, a: ua || null, b: ub || null }
+    const links = toObjects(await q(`SELECT SourceRecordId__c AS s, UnifiedRecordId__c AS u FROM ${ruleset.link} WHERE SourceRecordId__c IN ${inList(ids)}`))
+    unified = ids.map((id) => links.find((l) => l.s === id)?.u || null)
   }
-  return { a, b, rules, anyRuleMatches: rules.some((r) => r.matches), sameProfile }
+  const pairResults = pairs.map(([x, y], n) => ({
+    a: x, b: y,
+    rules: rules.map((r, k) => (r.pairRule[n] ? r.label || `Rule ${k + 1}` : null)).filter(Boolean),
+    sameProfile: unified[x] && unified[y] ? unified[x] === unified[y] : null,
+  }))
+  // Groups the rules would form: connected components over matching pairs.
+  const parent = people.map((_, k) => k)
+  const find = (k) => (parent[k] === k ? k : (parent[k] = find(parent[k])))
+  for (const p of pairResults) if (p.rules.length) parent[find(p.a)] = find(p.b)
+  const groupsBy = (keyOf) => {
+    const m = new Map()
+    people.forEach((_, k) => { const key = keyOf(k); (m.get(key) || m.set(key, []).get(key)).push(k) })
+    return [...m.values()]
+  }
+  const ruleGroups = groupsBy(find)
+  const profileGroups = ruleset.link ? groupsBy((k) => unified[k] || `none:${k}`) : null
+  const sig = (gs) => gs.map((g) => g.join(',')).sort().join('|')
+  return { people, unified, rules, pairs: pairResults, ruleGroups, profileGroups, agrees: profileGroups ? sig(ruleGroups) === sig(profileGroups) : null }
+}
+
+/** Two people: the shape the first version of this page used. */
+export async function comparePeople(q, ruleset, catalog, idA, idB) {
+  const m = await compareMany(q, ruleset, catalog, [idA, idB])
+  const rules = m.rules.map((r) => ({ label: r.label, rows: r.rows.map((row) => ({ criterion: row.criterion, text: row.text, a: row.values[0], b: row.values[1], matches: row.pairMatch[0] })), matches: r.pairRule[0] }))
+  const sameProfile = m.unified[0] || m.unified[1] || ruleset.link ? { same: !!m.unified[0] && m.unified[0] === m.unified[1], a: m.unified[0], b: m.unified[1] } : null
+  return { a: m.people[0], b: m.people[1], rules, anyRuleMatches: rules.some((r) => r.matches), sameProfile }
 }
 

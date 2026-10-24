@@ -107,3 +107,16 @@ export function resultMarkdown(sql, columns, rows, { total, max = 50 } = {}) {
     ...shown.map((r) => `| ${r.map(esc).join(' | ')} |`),
   ].join('\n')
 }
+
+/**
+ * A failed query as Markdown for an AI chat (feedback #112): the SQL, the error and the context
+ * that helps fix it. No org domain or data.
+ */
+export function errorMarkdown(sql, error, { version = '', dataSpace = '', at = new Date().toISOString() } = {}) {
+  return [
+    '# Data Cloud SQL query that failed', '',
+    `Data Cloud SQL (PostgreSQL-like dialect)${version ? `, API v${version}` : ''}${dataSpace ? `, data space ${dataSpace}` : ''}, run ${at.slice(0, 19).replace('T', ' ')} UTC.`, '',
+    '## SQL', '', '```sql', String(sql || '').trim(), '```', '',
+    '## Error', '', '```text', String(error || '').trim(), '```', '',
+  ].join('\n')
+}

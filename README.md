@@ -60,7 +60,8 @@ double-click to reset) or hidden; both are remembered per page.
   or Graphviz. Laid out with dagre (`@dagrejs/dagre`, bundled, loaded with the diagram).
 - Identity: every ruleset with match and reconciliation rules in plain words, stats
   (consolidation rate), source records per unified profile, the largest profiles, where records
-  come from, and Compare two people criterion by criterion.
+  come from, and Compare people (two to ten) criterion by criterion, with the groups the rules
+  would form next to the unified profiles they are in.
 - Bulk lookup (also from Profiles): up to 1,000 emails, phones or IDs, checked 200 per query:
   found, source records, unified profile, segment membership and whether the criteria match now;
   CSV and Markdown; runs in the background.

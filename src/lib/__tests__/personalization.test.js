@@ -56,3 +56,23 @@ describe('recommender health', () => {
     expect(recommenderHealth({ Id: 'r', Name: 'R', Status: 'Active', LatestRefreshedStatus: 'Success' }).level).toBe('ok')
   })
 })
+
+import { personalizationStatus } from '../personalization.js'
+
+describe('personalizationStatus (feedback #114)', () => {
+  const notSupported = "INVALID_TYPE: Description, DataSpaceId FROM PersonalizationRecommender ORDER ^ ERROR at Row:1:Column:231 sObject type 'PersonalizationRecommender' is not supported."
+  const noTable = 'INVALID_ARGUMENT: table "ssot__PersonalizationLog__dlm" does not exist'
+  it('recognises an org without Personalization', () => {
+    const s = personalizationStatus({ points: [], errors: { points: notSupported, recommenders: notSupported } }, { errors: { daily: noTable, recent: noTable } })
+    expect(s.setupMissing).toBe(true)
+    expect(s.logMissing).toBe(true)
+    expect(s.details.map((d) => d.area)).toEqual(['points', 'recommenders', 'log: daily', 'log: recent'])
+  })
+  it('keeps other errors as errors', () => {
+    const s = personalizationStatus({ points: [], errors: { points: 'REQUEST_LIMIT_EXCEEDED' } }, { errors: { daily: 'timeout' } })
+    expect(s).toEqual({ setupMissing: false, logMissing: false, details: [] })
+  })
+  it('is not missing when some setup records came back', () => {
+    expect(personalizationStatus({ schemas: [{ Id: 'x' }], errors: { points: notSupported } }, null).setupMissing).toBe(false)
+  })
+})

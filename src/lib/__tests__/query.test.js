@@ -76,3 +76,14 @@ describe('export', () => {
     expect(md).not.toContain('| z |')
   })
 })
+
+import { errorMarkdown } from '../query.js'
+
+describe('errorMarkdown (feedback #112)', () => {
+  it('has the SQL, the error and the context, in code blocks', () => {
+    const md = errorMarkdown(' SELECT x FROM y ', 'Column not found: x', { version: '68.0', dataSpace: 'default', at: '2026-10-23T19:00:00.000Z' })
+    expect(md).toContain('API v68.0, data space default, run 2026-10-23 19:00:00 UTC.')
+    expect(md).toContain('```sql\nSELECT x FROM y\n```')
+    expect(md).toContain('```text\nColumn not found: x\n```')
+  })
+})

@@ -4,7 +4,7 @@ import HelpTip from '../components/HelpTip.vue'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
 import { useRoute, useRouter } from 'vue-router'
-import { RefreshCw } from 'lucide-vue-next'
+import { RefreshCw, X, Check } from 'lucide-vue-next'
 import PersonPicker from '../components/PersonPicker.vue'
 import { useOrg, currentOrg } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall, cachedRulesets } from '../app/useCatalog.js'
@@ -12,7 +12,7 @@ import { runQuery } from '../lib/query.js'
 import { recordUrl } from '../lib/links.js'
 import { inSpace } from '../lib/dataSpace.js'
 import { parseRulesets, FUZZY_THRESHOLD } from '../lib/profile.js'
-import { loadRulesetDetail, comparePeople, describeCriterion, describeReconciliation, IDENTITY_SQL } from '../lib/identity.js'
+import { loadRulesetDetail, compareMany, MAX_COMPARE, describeCriterion, describeReconciliation, IDENTITY_SQL } from '../lib/identity.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -23,8 +23,11 @@ const loading = ref(false)
 const error = ref('')
 const detail = ref(null)
 const detailLoading = ref(false)
-const personA = ref(null)
-const personB = ref(null)
+// People to compare (feedback #111): 2 to MAX_COMPARE slots, each a picked source record or null.
+let slotSeq = 0
+const newSlot = () => ({ key: ++slotSeq, person: null })
+const slots = ref([newSlot(), newSlot()])
+const pickedIds = computed(() => [...new Set(slots.value.map((x) => x.person?.id).filter(Boolean))])
 const comparison = ref(null)
 const comparing = ref(false)
 const compareError = ref('')
@@ -64,19 +67,20 @@ watch(ruleset, async (rs) => {
 }, { immediate: true })
 
 async function compare() {
-  if (!personA.value || !personB.value || !ruleset.value) return
+  if (pickedIds.value.length < 2 || !ruleset.value) return
   comparing.value = true
   compareError.value = ''
   comparison.value = null
   try {
     await ensureCatalog()
-    comparison.value = await comparePeople(q, ruleset.value, catalog.objects, personA.value.id, personB.value.id)
+    comparison.value = await compareMany(q, ruleset.value, catalog.objects, pickedIds.value)
   } catch (err) {
     compareError.value = err.message
   } finally {
     comparing.value = false
   }
 }
+const groupText = (groups, people) => groups.map((g) => g.map((k) => name(people[k])).join(' + ')).join('; ')
 
 const maxSize = computed(() => Math.max(1, ...(detail.value?.sizes || []).map((s) => s.profiles)))
 const num = (n) => (n == null ? '—' : Number(n).toLocaleString())
@@ -194,40 +198,54 @@ const sourceCols = [
           </DataTable>
         </div>
 
-        <!-- Compare two people -->
+        <!-- Compare people -->
         <div :class="card">
-          <h3 class="p-3 border-b font-medium" data-help="identity-compare">Compare two people <HelpTip topic="identity-compare" /></h3>
+          <h3 class="p-3 border-b font-medium" data-help="identity-compare">Compare people <HelpTip topic="identity-compare" /></h3>
           <div class="p-3 space-y-3">
-            <p class="text-sm text-muted-foreground">Pick two source records to see, criterion by criterion, whether this ruleset would join them.</p>
-            <div class="grid md:grid-cols-2 gap-4">
-              <PersonPicker :q="q" :ruleset="ruleset" label="First person" @pick="(p) => { personA = p; comparison = null }" />
-              <PersonPicker :q="q" :ruleset="ruleset" label="Second person" @pick="(p) => { personB = p; comparison = null }" />
+            <p class="text-sm text-muted-foreground">Pick two or more source records (up to {{ MAX_COMPARE }}) to see, criterion by criterion, which of them this ruleset would join, and how that compares with the unified profiles they are in now.</p>
+            <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div v-for="(slot, k) in slots" :key="slot.key" class="relative">
+                <PersonPicker :q="q" :ruleset="ruleset" :label="`Person ${k + 1}`" @pick="(p) => { slot.person = p; comparison = null }" />
+                <button v-if="slots.length > 2" class="absolute right-0 top-0 p-0.5 rounded hover:bg-accent text-muted-foreground" :aria-label="`Remove person ${k + 1}`" @click="slots.splice(k, 1); comparison = null"><X class="w-3.5 h-3.5" /></button>
+              </div>
             </div>
-            <button class="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="!personA || !personB || comparing || personA?.id === personB?.id" @click="compare">{{ comparing ? 'Comparing…' : 'Compare' }}</button>
+            <div class="flex flex-wrap items-center gap-3">
+              <button class="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="pickedIds.length < 2 || comparing" @click="compare">{{ comparing ? 'Comparing…' : `Compare ${pickedIds.length || ''} ${pickedIds.length === 1 ? 'person' : 'people'}` }}</button>
+              <button v-if="slots.length < MAX_COMPARE" class="text-sm text-link hover:underline" @click="slots.push(newSlot())">Add a person</button>
+            </div>
             <p v-if="compareError" class="text-sm text-destructive">{{ compareError }}</p>
             <template v-if="comparison">
-              <p class="text-sm">
-                <strong>{{ comparison.anyRuleMatches ? 'The rules match these two records.' : 'No rule matches these two records.' }}</strong>
-                <template v-if="comparison.sameProfile">
-                  {{ comparison.sameProfile.same ? ' They are in the same unified profile.' : ' They are in different unified profiles.' }}
-                  <span v-if="comparison.anyRuleMatches && !comparison.sameProfile.same" class="text-muted-foreground">They may be joined at the next run, or a fuzzy match is weaker than this check assumes.</span>
-                </template>
-              </p>
-              <div v-for="(r, i) in comparison.rules" :key="i" class="overflow-auto">
-                <div class="text-sm font-medium mb-1">{{ r.label || `Rule ${i + 1}` }}: {{ r.matches ? 'matches' : 'does not match' }}</div>
+              <div class="text-sm space-y-1">
+                <p><strong>The rules would group them as:</strong> {{ groupText(comparison.ruleGroups, comparison.people) }}</p>
+                <p v-if="comparison.profileGroups"><strong>In unified profiles now:</strong> {{ groupText(comparison.profileGroups, comparison.people) }}</p>
+                <p v-if="comparison.agrees === true" class="text-muted-foreground">The two agree.</p>
+                <p v-else-if="comparison.agrees === false" class="text-amber-700 dark:text-amber-400">They differ: records may be joined at the next run, a fuzzy match may be weaker than this check assumes, or another rule (or a chain through records not shown) joined them.</p>
+              </div>
+              <div class="overflow-auto">
                 <table class="text-xs border-collapse">
-                  <thead><tr class="text-muted-foreground"><th class="px-2 py-1 text-left font-normal">Criterion</th><th class="px-2 py-1 text-left font-normal">{{ name(comparison.a) }}</th><th class="px-2 py-1 text-left font-normal">{{ name(comparison.b) }}</th><th class="px-2 py-1 text-left font-normal">Result</th></tr></thead>
+                  <thead><tr class="text-muted-foreground"><th class="px-2 py-1 text-left font-normal">Pair</th><th class="px-2 py-1 text-left font-normal">Rules that join them</th><th class="px-2 py-1 text-left font-normal">Same unified profile</th></tr></thead>
                   <tbody>
-                    <tr v-for="row in r.rows" :key="row.text" class="border-t">
-                      <td class="px-2 py-1">{{ row.text }}</td>
-                      <td class="px-2 py-1 font-mono">{{ row.a.join(', ') || 'blank' }}</td>
-                      <td class="px-2 py-1 font-mono">{{ row.b.join(', ') || 'blank' }}</td>
-                      <td class="px-2 py-1" :class="row.matches ? '' : 'text-destructive'">{{ row.matches ? 'match' : 'no match' }}</td>
+                    <tr v-for="p in comparison.pairs" :key="`${p.a}-${p.b}`" class="border-t">
+                      <td class="px-2 py-1">{{ name(comparison.people[p.a]) }} and {{ name(comparison.people[p.b]) }}</td>
+                      <td class="px-2 py-1" :class="p.rules.length ? 'font-medium' : 'text-muted-foreground'">{{ p.rules.join(', ') || 'none' }}</td>
+                      <td class="px-2 py-1">{{ p.sameProfile == null ? 'unknown' : p.sameProfile ? 'yes' : 'no' }}</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-              <p class="text-xs text-muted-foreground">Exact and normalized checks follow the rule settings; fuzzy is approximated (Jaro-Winkler at {{ FUZZY_THRESHOLD }}).</p>
+              <div v-for="(r, i) in comparison.rules" :key="i" class="overflow-auto">
+                <div class="text-sm font-medium mb-1">{{ r.label || `Rule ${i + 1}` }}</div>
+                <table class="text-xs border-collapse">
+                  <thead><tr class="text-muted-foreground"><th class="px-2 py-1 text-left font-normal">Criterion</th><th v-for="(pp, k) in comparison.people" :key="k" class="px-2 py-1 text-left font-normal">{{ name(pp) }}</th></tr></thead>
+                  <tbody>
+                    <tr v-for="row in r.rows" :key="row.text" class="border-t">
+                      <td class="px-2 py-1">{{ row.text }}</td>
+                      <td v-for="(v, k) in row.values" :key="k" class="px-2 py-1 font-mono" :class="row.matchesSomeone[k] ? '' : 'text-muted-foreground'" :title="row.matchesSomeone[k] ? 'Matches at least one other person' : 'Matches nobody else here'">{{ v.join(', ') || 'blank' }}<Check v-if="row.matchesSomeone[k]" class="inline w-3 h-3 ml-1 text-green-700 dark:text-green-400" /></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="text-xs text-muted-foreground">A tick means the value matches at least one other person for that criterion. Exact and normalized checks follow the rule settings; fuzzy is approximated (Jaro-Winkler at {{ FUZZY_THRESHOLD }}).</p>
             </template>
           </div>
         </div>

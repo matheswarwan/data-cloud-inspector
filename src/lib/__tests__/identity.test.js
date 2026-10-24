@@ -1,4 +1,4 @@
-import { describeCriterion, describeReconciliation, loadRulesetDetail, comparePeople, IDENTITY_SQL } from '../identity.js'
+import { describeCriterion, describeReconciliation, loadRulesetDetail, comparePeople, compareMany, IDENTITY_SQL } from '../identity.js'
 import { parseRulesets } from '../profile.js'
 
 const R = parseRulesets([{
@@ -60,5 +60,39 @@ describe('identity resolution', () => {
     const d = await comparePeople(q, R, catalog, 'a', 'b')
     expect(d.rules[0].rows.map((r) => r.matches)).toEqual([false, true, true])
     expect(d.anyRuleMatches).toBe(false)
+  })
+  it('compares many people: pairs, chains of matches and the profiles they are in', async () => {
+    const tables = {
+      ssot__Individual__dlm: [
+        { ssot__Id__c: 'a', ssot__FirstName__c: 'Jon', ssot__LastName__c: 'Smith' },
+        { ssot__Id__c: 'b', ssot__FirstName__c: 'Jon', ssot__LastName__c: 'Smith' },
+        { ssot__Id__c: 'c', ssot__FirstName__c: 'Jon', ssot__LastName__c: 'Smith' },
+        { ssot__Id__c: 'd', ssot__FirstName__c: 'Ann', ssot__LastName__c: 'Lee' },
+      ],
+      ssot__ContactPointEmail__dlm: [
+        { ssot__PartyId__c: 'a', ssot__EmailAddress__c: 'j@x.com' }, { ssot__PartyId__c: 'b', ssot__EmailAddress__c: 'J@X.com' },
+        { ssot__PartyId__c: 'c', ssot__EmailAddress__c: 'other@x.com' }, { ssot__PartyId__c: 'd', ssot__EmailAddress__c: 'ann@x.com' },
+      ],
+      L__dlm: [{ s: 'a', u: 'u1' }, { s: 'b', u: 'u1' }, { s: 'c', u: 'u2' }, { s: 'd', u: 'u3' }],
+    }
+    const q = async (sql) => {
+      const t = Object.keys(tables).find((k) => sql.includes(`FROM ${k}`))
+      const cols = Object.keys(tables[t][0]).map((name) => ({ name }))
+      return { columns: cols, rows: tables[t].map((r) => cols.map((c) => r[c.name])) }
+    }
+    const catalog = [{ name: 'ssot__ContactPointEmail__dlm', category: 'Related', fields: [], relationships: [{ from: 'ssot__ContactPointEmail__dlm', to: 'ssot__Individual__dlm', fromField: 'ssot__PartyId__c', toField: 'ssot__Id__c' }] }, { name: 'ssot__Individual__dlm', fields: [], relationships: [] }]
+    const m = await compareMany(q, R, catalog, ['a', 'b', 'c', 'd'])
+    expect(m.pairs).toHaveLength(6)
+    expect(m.pairs.filter((p) => p.rules.length).map((p) => [p.a, p.b])).toEqual([[0, 1]])
+    expect(m.pairs[0]).toMatchObject({ rules: ['Name and email'], sameProfile: true })
+    expect(m.ruleGroups).toEqual([[0, 1], [2], [3]])
+    expect(m.profileGroups).toEqual([[0, 1], [2], [3]])
+    expect(m.agrees).toBe(true)
+    // the email column: a and b match each other; c and d match nobody
+    expect(m.rules[0].rows[2].matchesSomeone).toEqual([true, true, false, false])
+    tables.L__dlm[2].u = 'u1' // c is unified with a and b although no rule joins it
+    const m2 = await compareMany(q, R, catalog, ['a', 'b', 'c', 'd'])
+    expect(m2.agrees).toBe(false)
+    await expect(compareMany(q, R, catalog, ['a'])).rejects.toThrow('at least two')
   })
 })

@@ -8,7 +8,7 @@ import { useOrg, currentOrg } from '../app/useOrg.js'
 import { orgCall, ensureDataGraphs } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
 import { recordUrl } from '../lib/links.js'
-import { loadSetup, loadActivity, pointTree, experimentTree, nameOf, ACTIVITY_SQL } from '../lib/personalization.js'
+import { loadSetup, loadActivity, pointTree, experimentTree, nameOf, ACTIVITY_SQL, personalizationStatus } from '../lib/personalization.js'
 import { labelOf, nameOf as graphName, scalars, objectTree } from '../lib/dataGraphs.js'
 import GraphTree from '../components/GraphTree.vue'
 
@@ -48,7 +48,9 @@ const totals = computed(() => {
   return { requests: d.reduce((n, r) => n + Number(r.requests || 0), 0), days: d.length }
 })
 const maxDaily = computed(() => Math.max(1, ...(activity.value?.daily || []).map((r) => Number(r.requests || 0))))
-const errors = (k) => setup.value?.errors?.[k]
+// An org without Personalization gets one plain message, not an error per tab (feedback #114).
+const status = computed(() => personalizationStatus(setup.value, activity.value))
+const errors = (k) => (status.value.setupMissing ? '' : setup.value?.errors?.[k])
 const sf = (id) => recordUrl(currentOrg()?.host, id)
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : '')
 const num = (n) => (n == null || n === '' ? '' : Number(n).toLocaleString())
@@ -109,6 +111,17 @@ const recentCols = computed(() => [
       <button :class="[btn, 'ml-auto']" :disabled="loading" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /> Load again</button>
     </div>
     <p v-if="loading && !setup" class="text-sm text-muted-foreground">Reading the setup and the log…</p>
+
+    <div v-if="setup && (status.setupMissing || status.logMissing)" class="p-3 rounded-md border border-sky-300 bg-sky-50 dark:bg-sky-950/40 dark:border-sky-800 text-sm space-y-2">
+      <p v-if="status.setupMissing"><strong>Personalization is not set up in this org.</strong> Salesforce answers that its setup objects (personalization points, decisions, recommenders) are not supported here, which means Personalization is not provisioned or not enabled. Data graphs, below, can still be used without it.</p>
+      <p v-if="status.logMissing">{{ status.setupMissing ? 'There is also no personalization log' : 'There is no personalization log' }} in this data space (<span class="font-mono text-xs">ssot__PersonalizationLog__dlm</span>), so there is no activity to show.</p>
+      <details class="text-xs">
+        <summary class="cursor-pointer text-muted-foreground">Technical details ({{ status.details.length }})</summary>
+        <ul class="mt-2 space-y-1">
+          <li v-for="(d, i) in status.details" :key="i"><span class="font-medium">{{ d.area }}:</span> <span class="font-mono break-all text-muted-foreground">{{ d.error }}</span></li>
+        </ul>
+      </details>
+    </div>
 
     <template v-if="setup">
       <nav class="flex border-b">
@@ -215,8 +228,8 @@ const recentCols = computed(() => [
           <span class="text-muted-foreground">{{ num(totals.requests) }} requests</span>
           <button class="ml-auto text-xs text-link hover:underline" @click="router.push({ path: '/sql', query: { sql: ACTIVITY_SQL.recent() } })">Open the log in SQL</button>
         </div>
-        <p v-for="(e, k) in activity?.errors" :key="k" class="text-sm text-destructive">{{ k }}: {{ e }}</p>
-        <p v-if="activity && !totals.requests && !activity.recent.length" class="text-sm text-muted-foreground">
+        <template v-if="!status.logMissing"><p v-for="(e, k) in activity?.errors" :key="k" class="text-sm text-destructive">{{ k }}: {{ e }}</p></template>
+        <p v-if="activity && !status.logMissing && !totals.requests && !activity.recent.length" class="text-sm text-muted-foreground">
           The personalization log has no requests in this period. Requests appear here once a site or app calls Salesforce Personalization.
         </p>
         <template v-else-if="activity">

@@ -76,7 +76,7 @@ SQL
 IDENTITY RESOLUTION
 - Every ruleset with its match and reconciliation rules in plain words, and its stats: source and unified profiles, consolidation rate, last run.
 - How many source records each unified profile has, and the largest profiles, where wrong merges usually hide.
-- Compare two people: criterion by criterion, would this ruleset join them, and are they in the same profile.
+- Compare people (two to ten): criterion by criterion, which of them this ruleset would join, and how that compares with their unified profiles.
 
 SEGMENTS
 - Every segment with its status, schedule and member count.

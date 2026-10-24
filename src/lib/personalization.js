@@ -105,3 +105,24 @@ export function nameOf(setup, id) {
   }
   return id
 }
+
+const NOT_SUPPORTED = /INVALID_TYPE|sObject type '[^']*' is not supported/i
+const NO_TABLE = /table "?[^"\s]*"? does not exist/i
+
+/**
+ * Whether Personalization is there at all (feedback #114). An org without it answers every setup
+ * query with "sObject type ... is not supported" and every log query with "table ... does not
+ * exist"; those become one plain message, with the errors kept as details.
+ */
+export function personalizationStatus(setup, activity) {
+  const setupErrors = Object.entries(setup?.errors || {})
+  const logErrors = Object.entries(activity?.errors || {})
+  const anyRecords = ['points', 'decisions', 'recommenders', 'experiments', 'schemas', 'objectives'].some((k) => setup?.[k]?.length)
+  const setupMissing = setupErrors.length > 0 && !anyRecords && setupErrors.every(([, e]) => NOT_SUPPORTED.test(String(e)))
+  const logMissing = logErrors.length > 0 && logErrors.every(([, e]) => NO_TABLE.test(String(e)))
+  const details = [
+    ...(setupMissing ? setupErrors.map(([k, e]) => ({ area: k, error: String(e) })) : []),
+    ...(logMissing ? logErrors.map(([k, e]) => ({ area: `log: ${k}`, error: String(e) })) : []),
+  ]
+  return { setupMissing, logMissing, details }
+}

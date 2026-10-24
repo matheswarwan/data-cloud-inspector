@@ -13,7 +13,7 @@ import { useOrg, currentOrg } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
 import { useQueries, loadQueries, saveQuery, deleteQuery, addHistory } from '../app/useQueries.js'
 import { sqlSchema } from '../lib/catalog.js'
-import { runQuery, fetchRows, fetchAllRows, toCsv, resultMarkdown, PAGE_SIZE } from '../lib/query.js'
+import { runQuery, fetchRows, fetchAllRows, toCsv, resultMarkdown, errorMarkdown, PAGE_SIZE } from '../lib/query.js'
 
 const DRAFT = 'dci_sqlDraft'
 const LAYOUT = 'dci_sqlLayout'
@@ -131,6 +131,15 @@ function takeRouteSql() {
   }
 }
 
+// A failed query, ready for an AI chat (feedback #112).
+const errorMd = (t) => errorMarkdown(t.errorSql || t.sql, t.error, { version: org.version, dataSpace: org.dataSpace })
+const errorCopied = ref(false)
+async function copyError(t) {
+  await navigator.clipboard.writeText(errorMd(t))
+  errorCopied.value = true
+  setTimeout(() => { errorCopied.value = false }, 1500)
+}
+
 async function run(selected, t = tab.value) {
   const sql = (selected || t.sql).trim()
   if (!sql || !org.orgId || !org.version || t.running) return
@@ -145,6 +154,7 @@ async function run(selected, t = tab.value) {
     addHistory({ sql, host: currentOrg()?.host, rows: r.total })
   } catch (err) {
     t.error = err.message
+    t.errorSql = sql
     t.result = null
     addHistory({ sql, host: currentOrg()?.host, error: err.message })
   } finally {
@@ -315,7 +325,6 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
         </button>
         <button v-else :class="btn" @click="cancel()">Stop waiting</button>
         <button :class="btn" @click="formatSql">Format</button>
-        <RouterLink to="/sql/builder" :class="btn">Query Builder</RouterLink>
         <button :class="btn" @click="save">{{ tab.savedId ? 'Save' : 'Save as' }}</button>
         <span v-if="tabs.filter((t) => t.running).length > 1" class="text-xs text-muted-foreground">{{ tabs.filter((t) => t.running).length }} queries running</span>
         <span class="text-xs text-muted-foreground ml-2">
@@ -323,7 +332,14 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
         </span>
       </div>
 
-      <div v-if="tab.error" class="p-3 rounded-md border border-destructive text-sm whitespace-pre-wrap">{{ tab.error }}</div>
+      <div v-if="tab.error" class="p-3 rounded-md border border-destructive text-sm space-y-2">
+        <div class="whitespace-pre-wrap">{{ tab.error }}</div>
+        <div v-if="tab.errorSql" class="flex flex-wrap items-center gap-2">
+          <button :class="btn" @click="copyError(tab)">{{ errorCopied ? 'Copied' : 'Copy for AI' }}</button>
+          <DownloadMenu :get-markdown="() => errorMd(tab)" file-name="sql-error" label="Download" />
+          <span class="text-xs text-muted-foreground">The SQL and the error as Markdown, to paste into Claude or another assistant.</span>
+        </div>
+      </div>
       <div v-if="tab.notice" class="text-sm text-muted-foreground">{{ tab.notice }}</div>
       <div v-if="tab.running" class="text-sm text-muted-foreground">Running… other tabs can run at the same time.</div>
 
