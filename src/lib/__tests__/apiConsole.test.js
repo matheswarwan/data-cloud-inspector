@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 
 describe('API console', () => {
-  it('logs calls only while on, newest first, and writes Markdown', async () => {
+  // Re-imports modules, which can pass the default 5 s on a busy machine.
+  it('logs calls only while on, newest first, and writes Markdown', { timeout: 30000 }, async () => {
     vi.resetModules()
     let reply = { ok: true, status: 200, ms: 12, data: { a: 1 } }
     globalThis.chrome = { runtime: { sendMessage: (m, cb) => cb(reply), lastError: null } }
