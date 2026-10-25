@@ -5,7 +5,7 @@ import { reactive } from 'vue'
 import { send, sf, latestVersion } from '../lib/api.js'
 import { sessionProblem, dataCloudProblem } from '../lib/orgStatus.js'
 import { storeGet, storeSet } from '../lib/store.js'
-import { rememberOrg, renameOrg, forgetOrgs } from '../lib/savedOrgs.js'
+import { rememberOrg, renameOrg, forgetOrgs, orgLabel } from '../lib/savedOrgs.js'
 
 const LAST_ORG = 'dci_lastOrg'
 
@@ -25,7 +25,9 @@ async function writeSaved(next) {
   state.saved = next
   await storeSet(SAVED, JSON.parse(JSON.stringify(next)))
 }
-export const renameSavedOrg = (orgId, name) => writeSaved(renameOrg(state.saved, orgId, name))
+export const renameSavedOrg = (orgId, name) => writeSaved(renameOrg(state.saved, orgId, name, state.orgs.find((o) => o.orgId === orgId)?.host))
+/** An org's name (feedback #140), else its domain. */
+export const orgName = (orgId) => orgLabel(state.saved, orgId, state.orgs.find((o) => o.orgId === orgId)?.host)
 export const forgetSavedOrgs = (orgIds) => writeSaved(forgetOrgs(state.saved, orgIds))
 
 export async function loadOrgs() {

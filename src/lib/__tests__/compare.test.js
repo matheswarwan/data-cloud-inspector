@@ -26,5 +26,11 @@ describe('compare orgs', () => {
     expect(md).toContain('Only in sandbox: `OnlyA__dlm`')
     expect(md).toContain('- `Age`: NUMBER in sandbox, TEXT in prod')
     expect(md).toContain('## Calculated insights')
+    expect(md).not.toContain('.salesforce.com')
+  })
+  it('says which domain each org name stands for (#140)', () => {
+    const md = compareMarkdown(compareSnapshots(A, B), { a: 'Sandbox', b: 'x.my.salesforce.com', hosts: { a: 'x--dev.sandbox.my.salesforce.com', b: 'x.my.salesforce.com' } })
+    expect(md).toContain('Sandbox: x--dev.sandbox.my.salesforce.com.')
+    expect(md).not.toContain('x.my.salesforce.com: x.my.salesforce.com')
   })
 })

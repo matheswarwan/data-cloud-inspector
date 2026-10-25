@@ -4,7 +4,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ChevronDown, Check, RefreshCw } from 'lucide-vue-next'
-import { useOrg, loadOrgs, selectOrg, currentOrg, selectDataSpace } from '../app/useOrg.js'
+import { useOrg, loadOrgs, selectOrg, currentOrg, selectDataSpace, orgName } from '../app/useOrg.js'
 
 const org = useOrg()
 const router = useRouter()
@@ -14,10 +14,11 @@ const root = ref(null)
 const status = computed(() => {
   if (org.loading) return { dot: 'bg-amber-400', text: 'Looking for orgs…' }
   if (!org.orgs.length) return { dot: 'bg-red-500', text: 'Not connected' }
-  if (org.error || org.problem?.kind === 'rejected' || org.problem?.kind === 'logged-out') return { dot: 'bg-red-500', text: currentOrg()?.host || 'Not connected' }
-  if (org.problem) return { dot: 'bg-amber-400', text: currentOrg()?.host }
-  if (!org.version) return { dot: 'bg-amber-400', text: currentOrg()?.host || 'Connecting…' }
-  return { dot: 'bg-green-500', text: currentOrg()?.host }
+  const name = currentOrg() ? orgName(org.orgId) : ''
+  if (org.error || org.problem?.kind === 'rejected' || org.problem?.kind === 'logged-out') return { dot: 'bg-red-500', text: name || 'Not connected' }
+  if (org.problem) return { dot: 'bg-amber-400', text: name }
+  if (!org.version) return { dot: 'bg-amber-400', text: name || 'Connecting…' }
+  return { dot: 'bg-green-500', text: name }
 })
 
 function pick(orgId) {
@@ -63,7 +64,7 @@ onUnmounted(() => { document.removeEventListener('mousedown', onDoc); document.r
         class="w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-accent" @click="pick(o.orgId)"
       >
         <Check :class="['w-4 h-4 shrink-0', o.orgId === org.orgId ? '' : 'invisible']" />
-        <span class="truncate">{{ o.host }}</span>
+        <span class="min-w-0"><span class="block truncate">{{ orgName(o.orgId) }}</span><span v-if="orgName(o.orgId) !== o.host" class="block truncate text-xs text-muted-foreground">{{ o.host }}</span></span>
         <span class="ml-auto font-mono text-xs text-muted-foreground">{{ o.orgId }}</span>
       </button>
       <template v-if="org.dataSpaces.length">

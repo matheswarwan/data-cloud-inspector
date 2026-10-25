@@ -9,9 +9,17 @@ export function rememberOrg(saved, { orgId, host, username = '' }, now = new Dat
   return { ...saved, [orgId]: { orgId, host, name: prev.name || '', username: username || prev.username || '', lastConnected: now } }
 }
 
-export function renameOrg(saved, orgId, name) {
-  if (!saved[orgId]) return saved
-  return { ...saved, [orgId]: { ...saved[orgId], name: String(name || '').trim().slice(0, 80) } }
+/** Names an org (feedback #140: an alias shown instead of the domain). An org never saved
+ * is added when its `host` is given (for example a second org picked on Compare). */
+export function renameOrg(saved, orgId, name, host = '') {
+  const prev = saved[orgId] || (host && orgId ? { orgId, host, name: '', username: '', lastConnected: '' } : null)
+  if (!prev) return saved
+  return { ...saved, [orgId]: { ...prev, name: String(name || '').trim().slice(0, 80) } }
+}
+
+/** What to call an org on screen and in reports: its name, else its domain. */
+export function orgLabel(saved, orgId, host = '') {
+  return saved?.[orgId]?.name || host || saved?.[orgId]?.host || orgId || ''
 }
 
 export function forgetOrgs(saved, orgIds) {

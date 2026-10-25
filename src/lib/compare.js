@@ -71,8 +71,11 @@ export function compareSnapshots(a, b) {
   return result
 }
 
-export function compareMarkdown(diff, { a = 'A', b = 'B', at = new Date() } = {}) {
+export function compareMarkdown(diff, { a = 'A', b = 'B', hosts = {}, at = new Date() } = {}) {
   const out = [`# Data Cloud comparison: ${a} and ${b}`, '', `${at.toISOString().slice(0, 16).replace('T', ' ')} UTC.`, '']
+  // Named orgs (feedback #140): say which domain each name stands for
+  const named = [[a, hosts.a], [b, hosts.b]].filter(([n, h]) => h && n !== h)
+  if (named.length) out.push(named.map(([n, h]) => `${n}: ${h}.`).join(' '), '')
   if (diff.same) return [...out, 'No differences in objects, fields, segments, calculated insights or data streams.'].join('\n')
   const names = (list) => list.map((x) => `\`${typeof x === 'string' ? x : x.name}\``).join(', ') || 'none'
   out.push('## Objects', '', `Only in ${a}: ${names(diff.objectsOnlyA)}`, '', `Only in ${b}: ${names(diff.objectsOnlyB)}`, '')
