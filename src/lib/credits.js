@@ -1,20 +1,27 @@
 // Credit prediction (feedback #145): Data Cloud's own consumption data, read with SQL, and a
-// forecast from the recent daily burn. Salesforce documents these objects only in part, so
-// the objects are found by name and the fields are guessed from what the org has; the page
-// lets the user change each guess.
+// forecast from the recent daily burn. The objects are found by name and the fields guessed
+// from what the org has (known names first); the page lets the user change each guess.
 //
-// Known from Salesforce's "credit feedback loop" article (2026): TenantDailyEntitlementConsumption
-// (utilizationdate__c, carddefinitiondevelopername__c, unitsconsumed__c = credits,
-// usageconsumed__c = raw usage, unit__c, multiplier__c), TenantHourlyEntitlementConsumption
-// (usagehourbucket__c, resourcetype__c, rowdetail__c = 'PROCESSED'), TenantBillingUsageEvent
-// (EventTime__c, RootResourceType__c), TenantEntitlementTransaction (quantity__c per card).
-// TenantUsageTypeMultiplier holds the multipliers (Multiplier__c, Unit__c).
+// Field names from Salesforce Help's Digital Wallet DLO references (wallet_tdec, wallet_thec,
+// wallet_teue, wallet_tbue, wallet_tet; checked 2026-10-25):
+// - TenantDailyEntitlementConsumption: utilizationdate__c, carddefinitiondevelopername__c,
+//   unitsconsumed__c (credits), usageconsumed__c (raw), usagebusinessenvtype__c.
+// - TenantHourlyEntitlementConsumption: usagehourbucket__c, unitsconsumed__c, rowdetail__c
+//   (count 'PROCESSED' only), businessenvtype__c, UsageReportingOrgId__c.
+// - TenantEnrichedUsageEvent: eventtime__c, cardname__c, unitsconsumed__c,
+//   usagebusinessenvtype__c, usagereportingorgid__c.
+// - TenantBillingUsageEvent: EventTime__c, UsageValue__c (raw usage, no credits), businessenvtype__c.
+// - TenantEntitlementTransaction: quantity__c per entitlementcarddefdevlname__c.
+// The environment field (Production, Sandbox or Scratch) splits the figures (feedback 2026-10-25):
+// the objects exist only in production but hold the sandboxes' usage too, which draws on the
+// production cards. Usage Reporting Org ID names the org (production, sandbox or companion).
+// Digital Wallet setup creates the streams and DLOs; they must be in a data space to be queried.
 
 export const ROLES = [
   { id: 'daily', label: 'Daily consumption', match: /tenantdailyentitlementconsumption/i, use: 'consumption' },
   { id: 'hourly', label: 'Hourly consumption', match: /tenanthourlyentitlementconsumption/i, use: 'consumption' },
-  { id: 'events', label: 'Billing usage events', match: /tenantbillingusageevent/i, use: 'consumption' },
   { id: 'enriched', label: 'Enriched usage events', match: /tenantenrichedusageevent/i, use: 'consumption' },
+  { id: 'events', label: 'Billing usage events (raw usage, not credits)', match: /tenantbillingusageevent/i, use: 'consumption', raw: true },
   { id: 'entitlements', label: 'Entitlement transactions', match: /tenantentitlementtransaction/i, use: 'entitlement' },
   { id: 'multipliers', label: 'Usage type multipliers', match: /tenantusagetypemultiplier/i, use: 'reference' },
 ]
@@ -35,10 +42,12 @@ const DATE_TYPES = /date|time/i
 const NUMBER_TYPES = /number|decimal|double|int|currency|percent|long|float/i
 
 const CANDIDATES = {
-  date: ['utilizationdate', 'usagehourbucket', 'eventtime', 'usagedate', 'transactiondate', 'effectivedate', 'startdate', 'activitydate', 'createddate'],
+  date: ['utilizationdate', 'usagehourbucket', 'eventtime', 'eventime', 'usagedate', 'transactiondate', 'effectivedate', 'startdate', 'activitydate', 'createddate'],
   amount: ['unitsconsumed', 'creditsconsumed', 'consumedunits', 'credits', 'usageconsumed', 'usagevalue', 'quantity', 'amount', 'value'],
-  group: ['carddefinitiondevelopername', 'carddefinition', 'usagetype', 'eventtype', 'resourcetype', 'rootresourcetype', 'producttype', 'unit'],
+  group: ['carddefinitiondevelopername', 'entitlementcarddefdevlname', 'cardname', 'carddefinition', 'usagetype', 'eventtype', 'resourcetype', 'rootresourcetype', 'producttype', 'unit'],
   status: ['rowdetail'],
+  env: ['usagebusinessenvtype', 'businessenvtype'],
+  org: ['usagereportingorgid'],
 }
 
 const bare = (name) => String(name || '').toLowerCase().replace(/^ssot__/, '').replace(/__c$/, '').replace(/_/g, '')
@@ -57,7 +66,8 @@ export function guessField(object, what) {
 }
 
 export function guessFields(object) {
-  return { date: guessField(object, 'date'), amount: guessField(object, 'amount'), group: guessField(object, 'group'), status: guessField(object, 'status') }
+  const g = (what) => guessField(object, what)
+  return { date: g('date'), amount: g('amount'), group: g('group'), status: g('status'), env: g('env'), org: g('org') }
 }
 
 const ISO = (d) => d.toISOString().slice(0, 10)
@@ -68,50 +78,100 @@ export function cutoffDate(days, now = new Date()) {
 // Hourly rows are counted once processed (Salesforce: filter rowdetail__c = 'PROCESSED')
 const processed = (f) => (f.status ? ` AND ${f.status} = 'PROCESSED'` : '')
 
-/** Daily totals per group since `days` ago. Columns: day, grp, total. */
+/** Daily totals per group and environment since `days` ago. Columns: day, grp, env, total. */
 export function dailySql(objectName, f, { days = 180, now = new Date() } = {}) {
-  const grp = f.group ? f.group : `'all'`
   return [
-    `SELECT DATE_TRUNC('day', ${f.date}) AS day, ${grp} AS grp, SUM(${f.amount}) AS total`,
+    `SELECT DATE_TRUNC('day', ${f.date}) AS day, ${f.group || `'all'`} AS grp, ${f.env || `''`} AS env, SUM(${f.amount}) AS total`,
     `FROM ${objectName}`,
     `WHERE ${f.date} >= CAST('${cutoffDate(days, now)} 00:00:00' AS timestamp)${processed(f)}`,
-    `GROUP BY 1, 2`,
+    `GROUP BY 1, 2, 3`,
     `ORDER BY 1`,
   ].join('\n')
 }
 
-/** Totals per group over all the rows (consumed to date). Columns: grp, total, first_day, last_day. */
+/** Totals per group and environment over all the rows (consumed to date). Columns: grp, env, total, first_day, last_day. */
 export function totalsSql(objectName, f) {
-  const grp = f.group ? f.group : `'all'`
   return [
-    `SELECT ${grp} AS grp, SUM(${f.amount}) AS total${f.date ? `, MIN(${f.date}) AS first_day, MAX(${f.date}) AS last_day` : ''}`,
+    `SELECT ${f.group || `'all'`} AS grp, ${f.env || `''`} AS env, SUM(${f.amount}) AS total${f.date ? `, MIN(${f.date}) AS first_day, MAX(${f.date}) AS last_day` : ''}`,
     `FROM ${objectName}`,
     f.status ? `WHERE ${f.status} = 'PROCESSED'` : '',
-    `GROUP BY 1`,
-    `ORDER BY 2 DESC`,
+    `GROUP BY 1, 2`,
+    `ORDER BY 3 DESC`,
   ].filter(Boolean).join('\n')
 }
+
+/** Totals per environment and org that used them (production, each sandbox). Columns: env, org, total, first_day, last_day. */
+export function orgsSql(objectName, f) {
+  return [
+    `SELECT ${f.env || `''`} AS env, ${f.org} AS org, SUM(${f.amount}) AS total${f.date ? `, MIN(${f.date}) AS first_day, MAX(${f.date}) AS last_day` : ''}`,
+    `FROM ${objectName}`,
+    f.status ? `WHERE ${f.status} = 'PROCESSED'` : '',
+    `GROUP BY 1, 2`,
+    `ORDER BY 3 DESC`,
+  ].filter(Boolean).join('\n')
+}
+
+const ENV_ORDER = ['Production', 'Sandbox', 'Scratch']
+/** An environment value as shown: Production, Sandbox, Scratch, or "Not set". */
+export function envName(v) {
+  const t = v == null ? '' : String(v).trim()
+  if (!t) return 'Not set'
+  return ENV_ORDER.find((e) => e.toLowerCase() === t.toLowerCase()) || t
+}
+const envRank = (e) => (ENV_ORDER.includes(e) ? ENV_ORDER.indexOf(e) : ENV_ORDER.length)
+export const sortEnvs = (list) => [...list].sort((a, b) => envRank(a) - envRank(b) || a.localeCompare(b))
 
 const num = (v) => (v == null || v === '' ? 0 : Number(v) || 0)
 const dayKey = (v) => (v == null ? '' : String(v).slice(0, 10))
 
-/** Query rows [day, grp, total] into a daily series (every day filled) and per-group totals. */
-export function shapeDaily(rows = [], { days = 180, now = new Date() } = {}) {
-  const byDay = new Map()
-  const byGroup = new Map()
-  for (const [day, grp, total] of rows) {
-    const k = dayKey(day)
-    if (!k) continue
-    byDay.set(k, (byDay.get(k) || 0) + num(total))
-    const g = grp == null || grp === '' ? '(none)' : String(grp)
-    byGroup.set(g, (byGroup.get(g) || 0) + num(total))
-  }
+function fill(byDay, days, now) {
   const series = []
   const start = new Date(`${cutoffDate(days, now)}T00:00:00Z`)
   const end = new Date(`${ISO(now)}T00:00:00Z`)
   for (let d = start; d <= end; d = new Date(d.getTime() + 86400000)) series.push({ day: ISO(d), total: byDay.get(ISO(d)) || 0 })
-  const groups = [...byGroup.entries()].map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total)
-  return { series, groups }
+  return series
+}
+const ranked = (byGroup) => [...byGroup.entries()].map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total)
+
+/**
+ * Query rows [day, grp, env, total] (or [day, grp, total]) into a daily series (every day
+ * filled) and per-group totals, for all environments together and for each one in `envs`.
+ */
+export function shapeDaily(rows = [], { days = 180, now = new Date() } = {}) {
+  const all = { byDay: new Map(), byGroup: new Map() }
+  const per = new Map()
+  for (const row of rows) {
+    const [day, grp, env, total] = row.length >= 4 ? row : [row[0], row[1], '', row[2]]
+    const k = dayKey(day)
+    if (!k) continue
+    const e = envName(env)
+    if (!per.has(e)) per.set(e, { byDay: new Map(), byGroup: new Map() })
+    const g = grp == null || grp === '' ? '(none)' : String(grp)
+    for (const acc of [all, per.get(e)]) {
+      acc.byDay.set(k, (acc.byDay.get(k) || 0) + num(total))
+      acc.byGroup.set(g, (acc.byGroup.get(g) || 0) + num(total))
+    }
+  }
+  const envs = {}
+  for (const e of sortEnvs([...per.keys()])) envs[e] = { series: fill(per.get(e).byDay, days, now), groups: ranked(per.get(e).byGroup) }
+  return { series: fill(all.byDay, days, now), groups: ranked(all.byGroup), envs }
+}
+
+/** Totals rows [grp, env, total, first, last] into per-group totals, with each environment's share. */
+export function shapeTotals(rows = []) {
+  const byGroup = new Map()
+  for (const [grp, env, total, first, last] of rows) {
+    const name = grp == null || grp === '' ? '(none)' : String(grp)
+    const g = byGroup.get(name) || { name, total: 0, first: '', last: '', envs: {} }
+    const t = num(total)
+    g.total += t
+    const e = envName(env)
+    g.envs[e] = (g.envs[e] || 0) + t
+    if (first && (!g.first || String(first) < String(g.first))) g.first = first
+    if (last && String(last) > String(g.last)) g.last = last
+    byGroup.set(name, g)
+  }
+  return [...byGroup.values()].sort((a, b) => b.total - a.total)
 }
 
 const sum = (list) => list.reduce((n, x) => n + x, 0)

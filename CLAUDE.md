@@ -28,8 +28,12 @@ stack and conventions as `../sfmc-toolkit`. Plan and status log: `../data-cloud-
   streams, mappings, record IDs, usage, then Health if its result is over an hour old);
   `lib/preload.js` (`dci_preload`, on unless 'off'). Job results now in chrome.storage.local.
 - Credit prediction (feedback #145): `lib/credits.js` (Tenant consumption objects by name, field
-  guesses, SQL, `forecast`), `views/CreditsView.vue`. Field names from Salesforce's article and
-  guesses; not seen on an org with the data.
+  guesses, SQL, `forecast`), `views/CreditsView.vue`. Field names from Salesforce Help's Digital
+  Wallet DLO references (listed at the top of `credits.js`). The objects exist only in production
+  but hold sandbox and scratch usage: every figure splits by environment (`usagebusinessenvtype__c`
+  or `businessenvtype__c`) and by org (`usagereportingorgid__c`); credits left stay shared. Without
+  the objects the page shows how to enable them (Digital Wallet setup, add to a data space). Not
+  yet seen on an org with the data.
 - Health details (feedback #148): `lib/healthDetails.js` (detail path per kind, status and
   error-like fields of the response); segments add their publish history.
 - Org names (feedback #140, #144): `orgName`/`orgTitle` in `app/useOrg.js`, `orgLabel` in

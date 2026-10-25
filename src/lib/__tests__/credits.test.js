@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { findCreditObjects, guessFields, dailySql, totalsSql, shapeDaily, forecast, balances, cutoffDate } from '../credits.js'
+import { findCreditObjects, guessFields, dailySql, totalsSql, orgsSql, shapeDaily, shapeTotals, envName, sortEnvs, forecast, balances, cutoffDate } from '../credits.js'
 
 const f = (name, type = 'TEXT') => ({ name, label: name, type, businessType: type })
-const daily = { name: 'TenantDailyEntitlementConsumption__dll', kind: 'DLO', fields: [f('utilizationdate__c', 'DATE'), f('carddefinitiondevelopername__c'), f('unitsconsumed__c', 'NUMBER'), f('usageconsumed__c', 'NUMBER'), f('DataSource__c')] }
-const hourly = { name: 'TenantHourlyEntitlementConsumption__dll', kind: 'DLO', fields: [f('usagehourbucket__c', 'DATE_TIME'), f('resourcetype__c'), f('unitsconsumed__c', 'NUMBER'), f('rowdetail__c')] }
+const daily = { name: 'TenantDailyEntitlementConsumption__dll', kind: 'DLO', fields: [f('utilizationdate__c', 'DATE'), f('carddefinitiondevelopername__c'), f('unitsconsumed__c', 'NUMBER'), f('usageconsumed__c', 'NUMBER'), f('usagebusinessenvtype__c'), f('coreorgid__c'), f('DataSource__c')] }
+const hourly = { name: 'TenantHourlyEntitlementConsumption__dll', kind: 'DLO', fields: [f('usagehourbucket__c', 'DATE_TIME'), f('resourcetype__c'), f('unitsconsumed__c', 'NUMBER'), f('rowdetail__c'), f('entitlementbusinessenvtype__c'), f('businessenvtype__c'), f('UsageReportingOrgId__c')] }
+const enriched = { name: 'TenantEnrichedUsageEvent__dll', kind: 'DLO', fields: [f('eventtime__c', 'DATE_TIME'), f('cardname__c'), f('unitsconsumed__c', 'NUMBER'), f('usagevalue__c', 'NUMBER'), f('usagebusinessenvtype__c'), f('usagereportingorgid__c'), f('entitlementorgid__c')] }
+const realEnt = { name: 'TenantEntitlementTransaction__dll', kind: 'DLO', fields: [f('startdate__c', 'DATE_TIME'), f('entitlementcarddefdevlname__c'), f('quantity__c', 'NUMBER'), f('rawquantity__c', 'NUMBER'), f('businessenvtype__c')] }
 const ent = { name: 'TenantEntitlementTransaction__dll', kind: 'DLO', fields: [f('CardDefinitionDeveloperName__c'), f('Quantity__c', 'NUMBER'), f('TransactionDate__c', 'DATE')] }
 const odd = { name: 'TenantBillingUsageEvent__dlm', kind: 'DMO', fields: [f('ssot__Id__c'), f('When__c', 'DATE_TIME'), f('Amount2__c', 'NUMBER')] }
 
@@ -16,8 +18,10 @@ describe('credits (#145)', () => {
     ])
   })
   it('guesses fields by known names, then by type', () => {
-    expect(guessFields(daily)).toEqual({ date: 'utilizationdate__c', amount: 'unitsconsumed__c', group: 'carddefinitiondevelopername__c', status: '' })
-    expect(guessFields(hourly)).toEqual({ date: 'usagehourbucket__c', amount: 'unitsconsumed__c', group: 'resourcetype__c', status: 'rowdetail__c' })
+    expect(guessFields(daily)).toEqual({ date: 'utilizationdate__c', amount: 'unitsconsumed__c', group: 'carddefinitiondevelopername__c', status: '', env: 'usagebusinessenvtype__c', org: '' })
+    expect(guessFields(hourly)).toEqual({ date: 'usagehourbucket__c', amount: 'unitsconsumed__c', group: 'resourcetype__c', status: 'rowdetail__c', env: 'businessenvtype__c', org: 'UsageReportingOrgId__c' })
+    expect(guessFields(enriched)).toEqual({ date: 'eventtime__c', amount: 'unitsconsumed__c', group: 'cardname__c', status: '', env: 'usagebusinessenvtype__c', org: 'usagereportingorgid__c' })
+    expect(guessFields(realEnt)).toMatchObject({ amount: 'quantity__c', group: 'entitlementcarddefdevlname__c' })
     expect(guessFields(ent)).toMatchObject({ date: 'TransactionDate__c', amount: 'Quantity__c', group: 'CardDefinitionDeveloperName__c' })
     expect(guessFields(odd)).toMatchObject({ date: 'When__c', amount: 'Amount2__c', group: '' })
   })
@@ -25,16 +29,33 @@ describe('credits (#145)', () => {
     const now = new Date('2026-10-25T12:00:00Z')
     expect(cutoffDate(10, now)).toBe('2026-10-15')
     const sql = dailySql(hourly.name, guessFields(hourly), { days: 10, now })
-    expect(sql).toContain("DATE_TRUNC('day', usagehourbucket__c) AS day, resourcetype__c AS grp, SUM(unitsconsumed__c) AS total")
+    expect(sql).toContain("DATE_TRUNC('day', usagehourbucket__c) AS day, resourcetype__c AS grp, businessenvtype__c AS env, SUM(unitsconsumed__c) AS total")
+    expect(sql).toContain('GROUP BY 1, 2, 3')
     expect(sql).toContain("WHERE usagehourbucket__c >= CAST('2026-10-15 00:00:00' AS timestamp) AND rowdetail__c = 'PROCESSED'")
-    expect(dailySql('X', { date: 'd', amount: 'a', group: '' }, { days: 1, now })).toContain("'all' AS grp")
-    expect(totalsSql(ent.name, { amount: 'Quantity__c', group: 'Card__c', date: '' })).toBe('SELECT Card__c AS grp, SUM(Quantity__c) AS total\nFROM TenantEntitlementTransaction__dll\nGROUP BY 1\nORDER BY 2 DESC')
+    expect(dailySql('X', { date: 'd', amount: 'a', group: '' }, { days: 1, now })).toContain("'all' AS grp, '' AS env")
+    expect(totalsSql(ent.name, { amount: 'Quantity__c', group: 'Card__c', date: '' })).toBe("SELECT Card__c AS grp, '' AS env, SUM(Quantity__c) AS total\nFROM TenantEntitlementTransaction__dll\nGROUP BY 1, 2\nORDER BY 3 DESC")
+    expect(orgsSql(hourly.name, guessFields(hourly))).toBe("SELECT businessenvtype__c AS env, UsageReportingOrgId__c AS org, SUM(unitsconsumed__c) AS total, MIN(usagehourbucket__c) AS first_day, MAX(usagehourbucket__c) AS last_day\nFROM TenantHourlyEntitlementConsumption__dll\nWHERE rowdetail__c = 'PROCESSED'\nGROUP BY 1, 2\nORDER BY 3 DESC")
   })
   it('fills every day and totals per group', () => {
     const now = new Date('2026-10-05T08:00:00Z')
     const { series, groups } = shapeDaily([['2026-10-01T00:00:00.000Z', 'A', '5'], ['2026-10-01', 'B', 3], ['2026-10-03', 'A', 2], [null, 'A', 9]], { days: 5, now })
     expect(series.map((p) => `${p.day}=${p.total}`)).toEqual(['2026-09-30=0', '2026-10-01=8', '2026-10-02=0', '2026-10-03=2', '2026-10-04=0', '2026-10-05=0'])
     expect(groups).toEqual([{ name: 'A', total: 7 }, { name: 'B', total: 3 }])
+  })
+  it('splits days and totals by environment', () => {
+    const now = new Date('2026-10-03T08:00:00Z')
+    const { series, groups, envs } = shapeDaily([['2026-10-01', 'A', 'Production', 5], ['2026-10-01', 'A', 'SANDBOX', 2], ['2026-10-02', 'B', null, 1], ['2026-10-02', 'A', 'Scratch', 4]], { days: 2, now })
+    expect(series.map((p) => p.total)).toEqual([7, 5, 0])
+    expect(groups).toEqual([{ name: 'A', total: 11 }, { name: 'B', total: 1 }])
+    expect(Object.keys(envs)).toEqual(['Production', 'Sandbox', 'Scratch', 'Not set'])
+    expect(envs.Sandbox.series.map((p) => p.total)).toEqual([2, 0, 0])
+    expect(envs.Scratch.groups).toEqual([{ name: 'A', total: 4 }])
+    expect(envName(' production ')).toBe('Production')
+    expect(sortEnvs(['Other', 'Sandbox', 'Production'])).toEqual(['Production', 'Sandbox', 'Other'])
+    expect(shapeTotals([['A', 'Production', 10, '2026-01-02', '2026-10-01'], ['A', 'Sandbox', 3, '2026-01-01', '2026-09-01'], ['B', '', 1, null, null]])).toEqual([
+      { name: 'A', total: 13, first: '2026-01-01', last: '2026-10-01', envs: { Production: 10, Sandbox: 3 } },
+      { name: 'B', total: 1, first: '', last: '', envs: { 'Not set': 1 } },
+    ])
   })
   it('forecasts from the daily burn, without today', () => {
     const now = new Date('2026-10-31T10:00:00Z')
