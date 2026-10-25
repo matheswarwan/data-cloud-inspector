@@ -6,7 +6,7 @@ import DataTable from '../components/DataTable.vue'
 import { defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 const ModelDiagram = defineAsyncComponent(() => import('../components/ModelDiagram.vue'))
-import { useOrg, currentOrg } from '../app/useOrg.js'
+import { useOrg, currentOrg, orgName, orgTitle } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, ensureAllMappings, ensureStreams, ensureUsage } from '../app/useCatalog.js'
 import { dataModelRows, dataModelMarkdown, dataModelSheets } from '../lib/dataModels.js'
 
@@ -48,7 +48,7 @@ const cols = [
 // What the table shows after its filters and sort; downloads use it.
 const view = ref([])
 const totalDmos = computed(() => catalog.objects.filter((o) => o.kind === 'DMO').length)
-const getMarkdown = () => dataModelMarkdown(view.value, catalog.objects, catalog.mappings, catalog.streams, catalog.usage, { host: currentOrg()?.host, dataSpace: org.dataSpace })
+const getMarkdown = () => dataModelMarkdown(view.value, catalog.objects, catalog.mappings, catalog.streams, catalog.usage, { host: orgTitle(org.orgId), dataSpace: org.dataSpace })
 const getSheets = () => dataModelSheets(view.value, catalog.usage)
 </script>
 
@@ -88,7 +88,7 @@ const getSheets = () => dataModelSheets(view.value, catalog.usage)
     </DataTable>
     <ModelDiagram
       v-if="mode === 'diagram' && catalog.mappings" :objects="catalog.objects" :mappings="catalog.mappings" :names="view.map((r) => r.obj.name)"
-      :title="`Data model: ${currentOrg()?.host || ''}`" :subtitle="`${new Date().toISOString().slice(0, 10)}, data space ${org.dataSpace || 'default'}. ${view.length} data model objects (${all ? 'all' : 'with something mapped into them'}).`"
+      :title="`Data model: ${orgName(org.orgId)}`" :subtitle="`${new Date().toISOString().slice(0, 10)}, data space ${org.dataSpace || 'default'}. ${view.length} data model objects (${all ? 'all' : 'with something mapped into them'}).`"
       :file-name="`data-model-diagram-${all ? 'all' : 'mapped'}`"
     />
   </section>

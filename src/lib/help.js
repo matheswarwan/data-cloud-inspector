@@ -25,6 +25,7 @@ export const HELP = {
   insights: { title: 'Calculated insights', page: '/insights', text: 'Calculated insights as Data Cloud lists them, and for each one its SQL, dimensions and measures, a preview of its data and what it reads.' },
   personalization: { title: 'Personalization', page: '/personalization', text: 'Personalization points with their decisions in priority order, recommenders, experiments, content schemas and objectives, and what the personalization log recorded.' },
   compare: { title: 'Compare', page: '/compare', text: 'Compare two orgs, for example a sandbox and production: objects, fields, segments, calculated insights and data streams that differ. It runs in the background.' },
+  credits: { title: 'Credit prediction', page: '/credits', text: 'Data Cloud credits used, per card or usage type, and a forecast from the recent daily use, read from the org\'s consumption objects (TenantDailyEntitlementConsumption and others) with SQL. Production holds the real figures; the Digital Wallet in Setup is the record.' },
   explore: { title: 'REST explorer', page: '/explore', text: 'Send a GET to any Data Cloud or Salesforce API path and see the response, with ready-made examples. Only reads are allowed.' },
   health: { title: 'Health', page: '/health', text: 'Data streams, identity resolution, calculated insights, segments and activations on one page, problems first, with the reason each one needs a look.' },
   connection: { title: 'Connection check', page: '/connection', text: 'Which Data Cloud APIs your org answers with your session, and who the tool acts as. Copy report shares statuses and response shapes, never data values.' },
@@ -40,7 +41,7 @@ export const HELP_GROUPS = [
   { title: 'People', ids: ['bulk', 'profile', 'profile-rules', 'profile-missed'] },
   { title: 'Data model and identity', ids: ['streams', 'models', 'models-diagram', 'identity', 'identity-compare', 'graphs'] },
   { title: 'Segments and activation', ids: ['segments', 'segment-counts', 'segment-check', 'activations', 'insights'] },
-  { title: 'Personalization and checks', ids: ['personalization', 'compare', 'explore', 'health'] },
+  { title: 'Personalization and checks', ids: ['personalization', 'explore', 'credits', 'compare', 'health'] },
 ]
 
 /**

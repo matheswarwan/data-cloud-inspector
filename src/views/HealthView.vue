@@ -5,7 +5,7 @@ import HelpTip from '../components/HelpTip.vue'
 import DataTable from '../components/DataTable.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { RefreshCw } from 'lucide-vue-next'
-import { useOrg, currentOrg } from '../app/useOrg.js'
+import { useOrg, currentOrg, orgName, orgTitle } from '../app/useOrg.js'
 import { orgCall } from '../app/useCatalog.js'
 import { useJob, startJob, markSeen } from '../app/useJobs.js'
 import { recordUrl } from '../lib/links.js'
@@ -60,7 +60,7 @@ function inside(i) {
   return null
 }
 
-const healthMd = () => healthMarkdown(sections.value, { host: currentOrg()?.host, at: checkedAt.value || new Date() })
+const healthMd = () => healthMarkdown(sections.value, { host: orgTitle(org.orgId), at: checkedAt.value || new Date() })
 const healthSheets = () => sections.value.map((s) => ({ name: s.title, columns: ['Status', 'Name', 'Why', 'Last run', 'Details'], rows: s.items.map((i) => [i.level, i.label, i.reason, i.lastRun || '', i.details || '']) }))
 
 function ago(iso) {

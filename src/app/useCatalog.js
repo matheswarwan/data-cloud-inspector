@@ -2,7 +2,7 @@
 // metadata calls take a few seconds) until Refresh. Streams and mappings stay in memory.
 
 import { reactive, watch } from 'vue'
-import { sf } from '../lib/api.js'
+import { sf, setTask, endTask } from '../lib/api.js'
 import { loadCatalog } from '../lib/catalog.js'
 import { loadStreams, loadAllMappings } from '../lib/lineage.js'
 import { loadRecordIds } from '../lib/links.js'
@@ -102,8 +102,8 @@ export async function ensureAllMappings() {
   const dmos = state.objects.filter((o) => o.kind === 'DMO').map((o) => o.name)
   if (!dmos.length) return null // no objects yet: never cache an empty list
   state.mappings = await sessionCached(sessionKey(org.orgId, 'mappings'), SESSION_TTL, () => loadAllMappings(orgCall(), org.version, dmos, {
-    onProgress: (done, total) => { state.mappingsProgress = `${done} of ${total} DMOs` },
-  }))
+    onProgress: (done, total) => { state.mappingsProgress = `${done} of ${total} DMOs`; setTask('mappings', `mappings: ${done} of ${total} data model objects`) },
+  })).finally(() => endTask('mappings'))
   state.mappingsProgress = ''
   return state.mappings
 }

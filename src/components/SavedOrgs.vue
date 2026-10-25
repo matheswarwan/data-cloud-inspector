@@ -65,7 +65,7 @@ const when = (iso) => (iso ? new Date(iso).toLocaleDateString() : '')
           <td class="p-2 min-w-0">
             <div class="flex items-center gap-1.5">
               <span class="font-medium">{{ r.name || r.host }}</span>
-              <button v-if="r.saved" class="p-0.5 rounded hover:bg-accent text-muted-foreground" :aria-label="`Name ${r.host}`" title="Name this org" @click="rename(r)"><Pencil class="w-3 h-3" /></button>
+              <button class="p-0.5 rounded hover:bg-accent text-muted-foreground" :aria-label="`Name ${r.host}`" title="Name this org" @click="rename(r)"><Pencil class="w-3 h-3" /></button>
             </div>
             <div v-if="r.name" class="font-mono text-xs text-muted-foreground">{{ r.host }}</div>
             <div v-if="r.username" class="text-xs text-muted-foreground">{{ r.username }}</div>

@@ -6,7 +6,7 @@ import DataTable from '../components/DataTable.vue'
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { RefreshCw, Copy, Key, ExternalLink } from 'lucide-vue-next'
-import { useOrg, currentOrg } from '../app/useOrg.js'
+import { useOrg, currentOrg, orgName, orgTitle } from '../app/useOrg.js'
 import { recordUrl, dmoUrl } from '../lib/links.js'
 import { useCatalog, ensureCatalog, ensureStreams, ensureAllMappings, ensureRecordIds, ensureUsage, orgCall } from '../app/useCatalog.js'
 import { usageOf, fieldUsage } from '../lib/usage.js'
@@ -87,7 +87,7 @@ async function exportModel() {
       exportOpts.mappings ? ensureStreams() : Promise.resolve([]),
       ensureUsage(),
     ])
-    const model = buildModel({ objects: catalog.objects, kinds: exportOpts.kinds, mappings: mappings || [], streams: streams || [], usage, host: currentOrg()?.host, dataSpace: org.dataSpace })
+    const model = buildModel({ objects: catalog.objects, kinds: exportOpts.kinds, mappings: mappings || [], streams: streams || [], usage, host: orgTitle(org.orgId), dataSpace: org.dataSpace })
     const html = exportOpts.format === 'html'
     const body = html ? modelHtml(model) : modelMarkdown(model)
     const url = URL.createObjectURL(new Blob([body], { type: html ? 'text/html' : 'text/markdown' }))

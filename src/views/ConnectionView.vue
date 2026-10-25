@@ -8,7 +8,7 @@ import { Check, X, Copy } from 'lucide-vue-next'
 import RecordLink from '../components/RecordLink.vue'
 import { loadUserContext } from '../lib/userContext.js'
 import { CLIENT_NAME } from '../background/fetchProxy.js'
-import { useOrg, currentOrg } from '../app/useOrg.js'
+import { useOrg, currentOrg, orgName, orgTitle } from '../app/useOrg.js'
 import { sf } from '../lib/api.js'
 import { runChecks, buildReport } from '../lib/checks.js'
 
@@ -79,7 +79,7 @@ const checkCols = [
       <h2 class="text-lg font-semibold">Connection check <HelpTip topic="connection" /></h2>
       <p class="text-sm text-muted-foreground">
         Checks that your browser session reaches the core API and the Data Cloud endpoints of
-        <strong>{{ currentOrg()?.host || 'the selected org' }}</strong>. Every request is a read.
+        <strong :title="currentOrg()?.host">{{ currentOrg() ? orgName(org.orgId) : 'the selected org' }}</strong>. Every request is a read.
       </p>
     </div>
 
@@ -95,7 +95,7 @@ const checkCols = [
           <dt class="text-muted-foreground">Profile</dt><dd>{{ ctx.profile || 'unknown' }}</dd>
           <dt v-if="ctx.role" class="text-muted-foreground">Role</dt><dd v-if="ctx.role">{{ ctx.role }}</dd>
           <dt class="text-muted-foreground">User type</dt><dd>{{ ctx.userType }}</dd>
-          <dt class="text-muted-foreground">Org</dt><dd>{{ currentOrg()?.host }}</dd>
+          <dt class="text-muted-foreground">Org</dt><dd>{{ orgTitle(org.orgId) }}</dd>
           <dt class="text-muted-foreground">Org ID</dt><dd class="font-mono text-xs">{{ ctx.org.id }}</dd>
           <dt class="text-muted-foreground">Edition</dt><dd>{{ ctx.org.type }}, {{ ctx.org.sandbox ? 'sandbox' : 'production' }}{{ ctx.org.instance ? ` (${ctx.org.instance})` : '' }}</dd>
         </dl>

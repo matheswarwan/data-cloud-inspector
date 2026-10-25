@@ -1,0 +1,62 @@
+import { describe, it, expect } from 'vitest'
+import { findCreditObjects, guessFields, dailySql, totalsSql, shapeDaily, forecast, balances, cutoffDate } from '../credits.js'
+
+const f = (name, type = 'TEXT') => ({ name, label: name, type, businessType: type })
+const daily = { name: 'TenantDailyEntitlementConsumption__dll', kind: 'DLO', fields: [f('utilizationdate__c', 'DATE'), f('carddefinitiondevelopername__c'), f('unitsconsumed__c', 'NUMBER'), f('usageconsumed__c', 'NUMBER'), f('DataSource__c')] }
+const hourly = { name: 'TenantHourlyEntitlementConsumption__dll', kind: 'DLO', fields: [f('usagehourbucket__c', 'DATE_TIME'), f('resourcetype__c'), f('unitsconsumed__c', 'NUMBER'), f('rowdetail__c')] }
+const ent = { name: 'TenantEntitlementTransaction__dll', kind: 'DLO', fields: [f('CardDefinitionDeveloperName__c'), f('Quantity__c', 'NUMBER'), f('TransactionDate__c', 'DATE')] }
+const odd = { name: 'TenantBillingUsageEvent__dlm', kind: 'DMO', fields: [f('ssot__Id__c'), f('When__c', 'DATE_TIME'), f('Amount2__c', 'NUMBER')] }
+
+describe('credits (#145)', () => {
+  it('finds the consumption objects, DLO first', () => {
+    const found = findCreditObjects([odd, { name: 'Other__dll', kind: 'DLO', fields: [] }, ent, daily, hourly, { ...odd, name: 'TenantBillingUsageEvent__dll', kind: 'DLO' }])
+    expect(found.map((x) => `${x.role.id}:${x.object.name}`)).toEqual([
+      'daily:TenantDailyEntitlementConsumption__dll', 'hourly:TenantHourlyEntitlementConsumption__dll',
+      'events:TenantBillingUsageEvent__dll', 'events:TenantBillingUsageEvent__dlm', 'entitlements:TenantEntitlementTransaction__dll',
+    ])
+  })
+  it('guesses fields by known names, then by type', () => {
+    expect(guessFields(daily)).toEqual({ date: 'utilizationdate__c', amount: 'unitsconsumed__c', group: 'carddefinitiondevelopername__c', status: '' })
+    expect(guessFields(hourly)).toEqual({ date: 'usagehourbucket__c', amount: 'unitsconsumed__c', group: 'resourcetype__c', status: 'rowdetail__c' })
+    expect(guessFields(ent)).toMatchObject({ date: 'TransactionDate__c', amount: 'Quantity__c', group: 'CardDefinitionDeveloperName__c' })
+    expect(guessFields(odd)).toMatchObject({ date: 'When__c', amount: 'Amount2__c', group: '' })
+  })
+  it('writes the SQL', () => {
+    const now = new Date('2026-10-25T12:00:00Z')
+    expect(cutoffDate(10, now)).toBe('2026-10-15')
+    const sql = dailySql(hourly.name, guessFields(hourly), { days: 10, now })
+    expect(sql).toContain("DATE_TRUNC('day', usagehourbucket__c) AS day, resourcetype__c AS grp, SUM(unitsconsumed__c) AS total")
+    expect(sql).toContain("WHERE usagehourbucket__c >= CAST('2026-10-15 00:00:00' AS timestamp) AND rowdetail__c = 'PROCESSED'")
+    expect(dailySql('X', { date: 'd', amount: 'a', group: '' }, { days: 1, now })).toContain("'all' AS grp")
+    expect(totalsSql(ent.name, { amount: 'Quantity__c', group: 'Card__c', date: '' })).toBe('SELECT Card__c AS grp, SUM(Quantity__c) AS total\nFROM TenantEntitlementTransaction__dll\nGROUP BY 1\nORDER BY 2 DESC')
+  })
+  it('fills every day and totals per group', () => {
+    const now = new Date('2026-10-05T08:00:00Z')
+    const { series, groups } = shapeDaily([['2026-10-01T00:00:00.000Z', 'A', '5'], ['2026-10-01', 'B', 3], ['2026-10-03', 'A', 2], [null, 'A', 9]], { days: 5, now })
+    expect(series.map((p) => `${p.day}=${p.total}`)).toEqual(['2026-09-30=0', '2026-10-01=8', '2026-10-02=0', '2026-10-03=2', '2026-10-04=0', '2026-10-05=0'])
+    expect(groups).toEqual([{ name: 'A', total: 7 }, { name: 'B', total: 3 }])
+  })
+  it('forecasts from the daily burn, without today', () => {
+    const now = new Date('2026-10-31T10:00:00Z')
+    const series = Array.from({ length: 30 }, (_, i) => ({ day: `2026-10-${String(i + 1).padStart(2, '0')}`, total: 10 }))
+    series.push({ day: '2026-10-31', total: 1 }) // today, partial
+    const fc = forecast(series, { remaining: 1000, now })
+    expect(fc.avg30).toBe(10)
+    expect(fc.trend).toBe('flat')
+    expect(Math.round(fc.next30)).toBe(300)
+    expect(fc.projected[0].day).toBe('2026-10-31')
+    expect(Math.round(fc.toYearEnd)).toBe(620) // Oct 31 to Dec 31
+    expect(fc.runOutDays).toBe(100)
+    expect(fc.runOutDate).toBe('2027-02-08')
+    const rising = forecast(Array.from({ length: 20 }, (_, i) => ({ day: `2026-10-${String(i + 1).padStart(2, '0')}`, total: i })), { now })
+    expect(rising.trend).toBe('rising')
+    expect(rising.projected[0].total).toBeCloseTo(20)
+    expect(forecast([], { now }).next30).toBe(0)
+  })
+  it('works out what is left per card', () => {
+    expect(balances([{ name: 'A', total: 100 }, { name: 'C', total: 5 }], [{ name: 'A', total: 30 }])).toEqual([
+      { name: 'A', purchased: 100, consumed: 30, remaining: 70 },
+      { name: 'C', purchased: 5, consumed: null, remaining: null },
+    ])
+  })
+})

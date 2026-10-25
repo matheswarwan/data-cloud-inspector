@@ -8,7 +8,7 @@ import DownloadMenu from '../components/DownloadMenu.vue'
 import JsonViewer from '../components/JsonViewer.vue'
 import { useRoute } from 'vue-router'
 import { RefreshCw } from 'lucide-vue-next'
-import { useOrg, currentOrg } from '../app/useOrg.js'
+import { useOrg, currentOrg, orgName, orgTitle } from '../app/useOrg.js'
 import { orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
 import { recordUrl } from '../lib/links.js'
@@ -97,7 +97,7 @@ const attrCols = [
         <div class="flex flex-wrap items-start gap-3">
           <div><h2 class="text-lg font-semibold">{{ act.name }}</h2><div class="font-mono text-sm text-muted-foreground">{{ act.developerName }}</div></div>
           <div class="ml-auto flex gap-2">
-            <DownloadMenu :get-markdown="() => activationMarkdown(act, { counts, host: currentOrg()?.host })" :get-sheets="() => [{ name: 'Attributes', columns: ['Object', 'Field', 'Label', 'Sent as', 'Type'], rows: act.attributes.map((x) => [x.entity, x.name, x.label, x.output, x.type]) }]" :file-name="`activation-${act.developerName}`" />
+            <DownloadMenu :get-markdown="() => activationMarkdown(act, { counts, host: orgTitle(org.orgId) })" :get-sheets="() => [{ name: 'Attributes', columns: ['Object', 'Field', 'Label', 'Sent as', 'Type'], rows: act.attributes.map((x) => [x.entity, x.name, x.label, x.output, x.type]) }]" :file-name="`activation-${act.developerName}`" />
             <a :class="btn" :href="recordUrl(currentOrg()?.host, act.id)" target="_blank" rel="noopener">Open in Salesforce</a>
           </div>
         </div>

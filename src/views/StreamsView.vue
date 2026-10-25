@@ -4,10 +4,12 @@ import Loading from '../components/Loading.vue'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
 import HelpTip from '../components/HelpTip.vue'
+import DownloadMenu from '../components/DownloadMenu.vue'
 const ModelDiagram = defineAsyncComponent(() => import('../components/ModelDiagram.vue'))
 import { useRoute, useRouter } from 'vue-router'
 import { RefreshCw } from 'lucide-vue-next'
-import { useOrg, currentOrg } from '../app/useOrg.js'
+import { useOrg, currentOrg, orgName } from '../app/useOrg.js'
+import { streamsDoc, streamsSheets, streamDoc, streamSheets } from '../lib/streamDoc.js'
 import { useCatalog, ensureCatalog, ensureStreams, ensureAllMappings, orgCall } from '../app/useCatalog.js'
 import { recordUrl } from '../lib/links.js'
 import { loadStream, fieldMap, describeSchedule } from '../lib/streams.js'
@@ -89,6 +91,23 @@ const streamCols = [
 ]
 const view = ref([])
 const diagramNames = computed(() => [...new Set(view.value.flatMap(dmosOf))])
+// Downloads (feedback #146): the list as the table shows it, and one stream
+const listDoc = () => streamsDoc({ columns: streamCols, rows: view.value, org: orgName(org.orgId), dataSpace: org.dataSpace || 'default' })
+const listSheets = () => streamsSheets({ columns: streamCols, rows: view.value })
+function streamDetails(s) {
+  return [
+    ['Source', `${s.connector}${s.sourceObject ? `: ${s.sourceObject}` : ''}${s.connectorName ? ` (${s.connectorName})` : ''}`],
+    ['Status', `${s.status.toLowerCase()}${s.enabled ? '' : ', disabled'}`],
+    ['Last run', `${s.lastRunStatus === 'NONE' ? 'never run' : s.lastRunStatus.toLowerCase()}, ${when(s.lastRefresh)}`],
+    ['Schedule', describeSchedule(s)],
+    ['Records', `${num(s.totalRecords)} total; last run added ${num(s.lastAdded)}, processed ${num(s.lastProcessed)}`],
+    ['Type', [s.type, s.accessMode].filter(Boolean).join(', ').toLowerCase() + (s.acceleration ? ', accelerated' : '')],
+    ['Data lake object', s.dlo.name],
+    ['Problem records', !s.problemDlo ? 'none configured' : !problems.value ? '' : problems.value.error ? `could not count (${problems.value.error})` : num(problems.value.count)],
+  ]
+}
+const oneArgs = () => ({ stream: stream.value, details: streamDetails(stream.value), mapsTo: mapsTo.value || [], fields: fieldMap(stream.value), org: orgName(org.orgId) })
+
 const fieldCols = [
   { key: 'name', label: 'Source field' },
   { key: 'type', label: 'Type' },
@@ -128,6 +147,7 @@ const fieldCols = [
             </div>
             <input v-model="filter" placeholder="Search streams or source objects" class="border rounded-md px-2 py-1.5 bg-background w-60" />
             <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the streams again" aria-label="Load the streams again" @click="catalog.streams = null; loadList()"><RefreshCw class="w-4 h-4" /></button>
+            <DownloadMenu :get-doc="listDoc" :get-sheets="listSheets" file-name="data-streams" :disabled="!view.length" />
           </div>
         </div>
         <p class="text-xs text-muted-foreground">{{ catalog.streams ? `${list.length} data streams` : 'Loading data streams…' }}</p>
@@ -141,7 +161,7 @@ const fieldCols = [
         <template v-if="mode === 'diagram'">
           <ModelDiagram
             v-if="catalog.mappings && catalog.streams" :objects="catalog.objects" :mappings="catalog.mappings" :names="diagramNames" :streams="view"
-            :title="`Data streams: ${currentOrg()?.host || ''}`" :subtitle="`${new Date().toISOString().slice(0, 10)}, data space ${org.dataSpace || 'default'}. ${view.length} data streams.`" file-name="data-streams-diagram"
+            :title="`Data streams: ${orgName(org.orgId)}`" :subtitle="`${new Date().toISOString().slice(0, 10)}, data space ${org.dataSpace || 'default'}. ${view.length} data streams.`" file-name="data-streams-diagram"
           />
           <p v-else class="text-sm text-muted-foreground">{{ catalog.mappingsProgress ? `Reading mappings: ${catalog.mappingsProgress}` : 'Reading data streams and mappings…' }}</p>
         </template>
@@ -156,6 +176,7 @@ const fieldCols = [
             <div class="font-mono text-sm text-muted-foreground">{{ stream.name }}</div>
           </div>
           <div class="ml-auto flex gap-2">
+            <DownloadMenu :get-doc="() => streamDoc(oneArgs())" :get-sheets="() => streamSheets(oneArgs())" :file-name="`data-stream-${stream.name}`" />
             <a v-if="stream.recordId" :class="btn" :href="recordUrl(currentOrg()?.host, stream.recordId)" target="_blank" rel="noopener">Open in Salesforce</a>
           </div>
         </div>

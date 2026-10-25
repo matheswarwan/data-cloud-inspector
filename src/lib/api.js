@@ -29,17 +29,27 @@ export function recentCalls() {
 let consoleListener = null
 export function setApiListener(fn) { consoleListener = fn }
 
-// Calls in flight, for the progress bar under the header (feedback #119).
+// Calls in flight, for the progress bar under the header (feedback #119), with their paths
+// and the running jobs' progress so the page can say what is loading (feedback #143).
 let inflight = 0
+let callSeq = 0
+const paths = new Map() // call id -> path
+const tasks = new Map() // job key -> progress text
 let activityListener = null
-export function onActivity(fn) { activityListener = fn; fn(inflight) }
-const bump = (d) => { inflight = Math.max(0, inflight + d); activityListener?.(inflight) }
+const notify = () => activityListener?.(inflight, [...paths.values()], [...tasks.values()])
+export function onActivity(fn) { activityListener = fn; notify() }
+const bump = (d) => { inflight = Math.max(0, inflight + d); notify() }
+/** A longer job's progress, e.g. "data streams: page 3, 100 so far"; `endTask` removes it. */
+export function setTask(key, text) { tasks.set(key, text); notify() }
+export function endTask(key) { if (tasks.delete(key)) notify() }
 
 export async function sf(orgId, path, { method = 'GET', body } = {}) {
   const started = Date.now()
+  const id = ++callSeq
+  paths.set(id, path)
   bump(1)
   let res
-  try { res = await send({ type: 'SF_FETCH', orgId, path, method, body }) } finally { bump(-1) }
+  try { res = await send({ type: 'SF_FETCH', orgId, path, method, body }) } finally { paths.delete(id); bump(-1) }
   if (consoleListener) {
     try { consoleListener({ at: started, method, path, body: body ?? null, status: res?.status || 0, ms: res?.ms ?? Date.now() - started, ok: !!res?.ok, error: res?.ok ? '' : String(res?.error || ''), data: res?.data }) } catch { /* the console must never break a call */ }
   }

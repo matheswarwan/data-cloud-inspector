@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search } from 'lucide-vue-next'
 import AppSidebar from '../components/AppSidebar.vue'
@@ -10,10 +10,10 @@ import DialogHost from '../components/DialogHost.vue'
 import FeatureTips from '../components/FeatureTips.vue'
 import ApiConsole from '../components/ApiConsole.vue'
 import { useApiConsole } from './useApiConsole.js'
-import { useActivity } from './useActivity.js'
+import { useActivity, useActivityText } from './useActivity.js'
 import { NAV } from './router.js'
 import { recordVisit } from '../lib/visits.js'
-import { useOrg, loadOrgs } from './useOrg.js'
+import { useOrg, loadOrgs, orgName } from './useOrg.js'
 
 const org = useOrg()
 const route = useRoute()
@@ -22,9 +22,12 @@ const NAV_PATHS = NAV.map((n) => n.path)
 useRouter().afterEach((to) => recordVisit(to.path, NAV_PATHS))
 const apiConsoleOn = useApiConsole().enabled
 const busy = useActivity()
+const busyText = useActivityText()
 const feedback = ref(false)
 const palette = ref(null)
 onMounted(loadOrgs)
+// Each app tab keeps its own org (feedback #144): the browser tab says which one
+watchEffect(() => { document.title = org.orgId ? `${orgName(org.orgId)} · Data Cloud Inspector` : 'Data Cloud Inspector' })
 </script>
 
 <template>
@@ -39,6 +42,7 @@ onMounted(loadOrgs)
         </button>
       </div>
       <div v-if="busy" class="absolute left-0 right-0 bottom-0 h-0.5 overflow-hidden" role="progressbar" aria-label="Loading from Salesforce"><div class="dci-progress h-full w-1/3 bg-primary/70" /></div>
+      <div v-if="busy && busyText" class="absolute right-4 top-full mt-1 max-w-[60vw] truncate rounded-md border bg-card/95 px-2 py-0.5 text-xs text-muted-foreground shadow-sm" role="status" aria-live="polite" :title="busyText">Loading {{ busyText }}</div>
     </header>
 
     <div class="flex flex-1 min-h-0">

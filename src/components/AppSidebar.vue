@@ -2,7 +2,7 @@
 // Left sidebar (feedback #95, as in Marketing Cloud Toolkit): the pages in groups with
 // dividers, a dot for background jobs, and a collapse to icons only (remembered).
 import { ref, watch } from 'vue'
-import { Boxes, Database, ListChecks, User, ArrowDownToLine, Network, Fingerprint, Users, Send, Calculator, LayoutTemplate, GitCompare, Terminal, HeartPulse, Plug, Blocks, Share2, Home, Settings, CircleHelp, Circle, PanelLeftOpen, PanelLeftClose } from 'lucide-vue-next'
+import { Boxes, Database, ListChecks, User, ArrowDownToLine, Network, Fingerprint, Users, Send, Calculator, LayoutTemplate, GitCompare, Terminal, HeartPulse, Plug, Blocks, Share2, Home, Gauge, Settings, CircleHelp, Circle, PanelLeftOpen, PanelLeftClose } from 'lucide-vue-next'
 import { NAV } from '../app/router.js'
 import { jobBadge } from '../app/useJobs.js'
 
@@ -10,7 +10,7 @@ const KEY = 'dci_sidebarCollapsed'
 const read = () => { try { return localStorage.getItem(KEY) === '1' } catch { return false } }
 const collapsed = ref(read())
 watch(collapsed, (v) => { try { localStorage.setItem(KEY, v ? '1' : '0') } catch { /* private window */ } })
-const ICONS = { Boxes, Database, ListChecks, User, ArrowDownToLine, Network, Fingerprint, Users, Send, Calculator, LayoutTemplate, GitCompare, Terminal, HeartPulse, Plug, Blocks, Share2, Home }
+const ICONS = { Boxes, Database, ListChecks, User, ArrowDownToLine, Network, Fingerprint, Users, Send, Calculator, LayoutTemplate, GitCompare, Terminal, HeartPulse, Plug, Blocks, Share2, Home, Gauge }
 // At the bottom, like the SFMC Toolkit (feedback #107).
 const FOOTER = [{ path: '/help', label: 'Help', icon: CircleHelp }, { path: '/settings', label: 'Settings', icon: Settings }]
 const icon = (name) => ICONS[name] || Circle
@@ -49,5 +49,6 @@ const icon = (name) => ICONS[name] || Circle
       <component :is="collapsed ? PanelLeftOpen : PanelLeftClose" class="w-4 h-4" />
       <span v-if="!collapsed">Collapse</span>
     </button>
+    <p v-if="!collapsed" class="mx-1.5 mt-1 px-2 text-[11px] text-muted-foreground">Created by <a href="https://www.linkedin.com/in/mathesk/" target="_blank" rel="noopener" class="hover:underline">Mathes</a>, Ateko</p>
   </aside>
 </template>

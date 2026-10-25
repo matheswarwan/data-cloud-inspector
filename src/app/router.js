@@ -19,9 +19,11 @@ import StreamsView from '../views/StreamsView.vue'
 import ActivationsView from '../views/ActivationsView.vue'
 import InsightsView from '../views/InsightsView.vue'
 import DataModelsView from '../views/DataModelsView.vue'
+import CreditsView from '../views/CreditsView.vue'
 
 // The sidebar, in the order and groups the user chose (feedback #95); `group` starts a new
-// section. Activations is not in that list and sits with Segments.
+// section. Activations is not in that list and sits with Segments. Last group reordered and
+// Credit prediction added (feedback #145).
 export const NAV = [
   { path: '/', label: 'Home', icon: 'Home', group: 0 },
   { path: '/objects', label: 'Objects', icon: 'Boxes', group: 1 },
@@ -37,8 +39,9 @@ export const NAV = [
   { path: '/activations', label: 'Activations', icon: 'Send', group: 3 },
   { path: '/insights', label: 'Insights', icon: 'Calculator', group: 3 },
   { path: '/personalization', label: 'Personalization', icon: 'LayoutTemplate', group: 4 },
-  { path: '/compare', label: 'Compare', icon: 'GitCompare', group: 5, job: 'compare' },
   { path: '/explore', label: 'REST explorer', icon: 'Terminal', group: 5 },
+  { path: '/credits', label: 'Credit prediction', icon: 'Gauge', group: 5 },
+  { path: '/compare', label: 'Compare', icon: 'GitCompare', group: 5, job: 'compare' },
   { path: '/health', label: 'Health', icon: 'HeartPulse', group: 5, job: 'health:' },
   { path: '/connection', label: 'Connection check', icon: 'Plug', group: 5 },
 ]
@@ -64,6 +67,7 @@ export function createAppRouter() {
       { path: '/health', component: HealthView },
       { path: '/personalization', component: PersonalizationView },
       { path: '/compare', component: CompareView },
+      { path: '/credits', component: CreditsView },
       { path: '/identity/:id?', component: IdentityView },
       { path: '/graphs/:name?', component: DataGraphsView },
       { path: '/help', component: HelpView },

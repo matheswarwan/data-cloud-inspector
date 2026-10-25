@@ -4,7 +4,7 @@ import { useApiConsole, setApiConsole } from '../app/useApiConsole.js'
 import { tipsOn, setTipsOn, resetTips } from '../lib/tips.js'
 import { Monitor, Sun, Moon } from 'lucide-vue-next'
 import { useSettings } from '../app/useSettings.js'
-import { useOrg, currentOrg, recheckOrg } from '../app/useOrg.js'
+import { useOrg, currentOrg, recheckOrg, orgName } from '../app/useOrg.js'
 import { send } from '../lib/api.js'
 import { resetCatalog, ensureCatalog } from '../app/useCatalog.js'
 import { readStorage, deleteKeys, formatBytes } from '../lib/storageUsage.js'
@@ -219,7 +219,7 @@ function showTipsAgain() { setTipsOn(true); resetTips(); tips.value = true }
         It uses an External Client App in that org, so an admin has to create one first.
       </p>
       <template v-if="org.orgId && oauth">
-        <p class="text-sm">For <strong>{{ currentOrg()?.host }}</strong>: {{ oauth.active ? `logged in with OAuth since ${when(oauth.since)}` : 'using the browser session' }}.</p>
+        <p class="text-sm">For <strong :title="currentOrg()?.host">{{ orgName(org.orgId) }}</strong>: {{ oauth.active ? `logged in with OAuth since ${when(oauth.since)}` : 'using the browser session' }}.</p>
         <ol class="text-sm list-decimal pl-5 space-y-1">
           <li>In the org's Setup, create an External Client App with OAuth enabled, the API scope and the Data Cloud scopes (their names start with cdp_), and PKCE required.</li>
           <li>Callback URL: <code class="text-xs break-all select-all">{{ oauth.redirectUri }}</code></li>

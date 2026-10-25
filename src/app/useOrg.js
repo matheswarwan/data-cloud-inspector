@@ -28,6 +28,12 @@ async function writeSaved(next) {
 export const renameSavedOrg = (orgId, name) => writeSaved(renameOrg(state.saved, orgId, name, state.orgs.find((o) => o.orgId === orgId)?.host))
 /** An org's name (feedback #140), else its domain. */
 export const orgName = (orgId) => orgLabel(state.saved, orgId, state.orgs.find((o) => o.orgId === orgId)?.host)
+/** For reports and titles (feedback #144): "Name (domain)", or the domain when not named. */
+export function orgTitle(orgId) {
+  const host = state.orgs.find((o) => o.orgId === orgId)?.host || state.saved[orgId]?.host || ''
+  const name = orgName(orgId)
+  return name && host && name !== host ? `${name} (${host})` : host || name
+}
 export const forgetSavedOrgs = (orgIds) => writeSaved(forgetOrgs(state.saved, orgIds))
 
 export async function loadOrgs() {
