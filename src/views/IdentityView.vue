@@ -2,12 +2,14 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import Loading from '../components/Loading.vue'
 import HelpTip from '../components/HelpTip.vue'
+import DownloadMenu from '../components/DownloadMenu.vue'
+import { docFrom, sheetsFrom } from '../lib/tableDoc.js'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { RefreshCw, X, Check } from 'lucide-vue-next'
 import PersonPicker from '../components/PersonPicker.vue'
-import { useOrg, currentOrg } from '../app/useOrg.js'
+import { useOrg, currentOrg, orgTitle } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall, cachedRulesets } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
 import { recordUrl } from '../lib/links.js'
@@ -94,6 +96,29 @@ const sourceCols = [
   { key: 'object', label: 'Object' },
   { key: 'n', label: 'Source records', align: 'right', kind: 'number' },
 ]
+
+// Downloads (feedback #149): the rulesets, and one ruleset with its rules and counts
+const rsCols = [
+  { key: 'label', label: 'Ruleset' }, { key: 'id', label: 'ID' }, { key: 'status', label: 'Status', value: (r) => r.status.toLowerCase() },
+  { key: 'lastJobStatus', label: 'Last run', value: (r) => r.lastJobStatus.toLowerCase() || 'never' },
+  { key: 'rules', label: 'Match rules', value: (r) => r.rules.length },
+]
+const listSections = () => [{ heading: 'Rulesets', columns: rsCols, rows: rulesets.value }]
+const listDoc = () => docFrom({ title: 'Identity resolution rulesets', intro: `${orgTitle(org.orgId)}, data space ${org.dataSpace || 'default'}.`, sections: listSections() })
+function rsSections() {
+  const r = ruleset.value
+  const st = detail.value?.stats || {}
+  return [
+    { heading: 'Details', kv: [['ID', r.id], ['Description', r.description || ''], ['Status', r.status.toLowerCase()], ['Runs', r.runsAutomatically ? 'automatically' : 'by hand'], ['Case-sensitive', r.caseSensitive ? 'yes' : 'no'],
+      ['Source profiles', num(st.sourceProfiles)], ['Unified profiles', num(st.unifiedProfiles)], ['Consolidation rate', st.consolidationRate == null ? '—' : `${Math.round(st.consolidationRate * 10) / 10}%`], ['Last run', `${(st.lastJobStatus || '').toLowerCase()} ${when(st.lastJobCompleted)}`]] },
+    { heading: 'Match rules', list: r.rules.map((x, i) => `${x.label || `Rule ${i + 1}`}: ${x.criteria.map(describeCriterion).join('; ')}`) },
+    { heading: 'Reconciliation rules', list: r.reconciliation.map((rec) => describeReconciliation(rec).join(' ')) },
+    { heading: 'Source records per unified profile', columns: [{ key: 'sources', label: 'Source records' }, { key: 'profiles', label: 'Unified profiles' }], rows: detail.value?.sizes || [] },
+    { heading: 'Largest unified profiles', columns: [{ key: 'unified', label: 'Unified profile' }, { key: 'sources', label: 'Source records' }], rows: detail.value?.largest || [] },
+    { heading: 'Where the source records come from', columns: sourceCols, rows: detail.value?.sources || [] },
+  ]
+}
+const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`, intro: `${orgTitle(org.orgId)}.`, sections: rsSections() })
 </script>
 
 <template>
@@ -101,7 +126,8 @@ const sourceCols = [
     <ListPanel name="identity" label="rulesets list" :width="288">
       <div class="flex items-center gap-2">
         <h2 class="font-semibold">Identity resolution <HelpTip topic="identity" /></h2>
-        <button class="ml-auto p-1.5 rounded-md border hover:bg-accent" title="Load the rulesets again" @click="load({ refresh: true })"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
+        <span class="ml-auto"><DownloadMenu small label="" :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="identity-rulesets" :disabled="!rulesets.length" /></span>
+        <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the rulesets again" @click="load({ refresh: true })"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
       </div>
       <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
       <p v-else-if="!loading && !rulesets.length" class="text-sm text-muted-foreground">No identity resolution rulesets in this data space.</p>
@@ -128,6 +154,7 @@ const sourceCols = [
             </div>
           </div>
           <div class="ml-auto flex gap-2">
+            <DownloadMenu :get-doc="rsDoc" :get-sheets="() => sheetsFrom(rsSections())" :file-name="`identity-${ruleset.id}`" :disabled="detailLoading" />
             <a v-if="ruleset.recordId" :class="btn" :href="recordUrl(currentOrg()?.host, ruleset.recordId)" target="_blank" rel="noopener">Open in Salesforce</a>
           </div>
         </div>

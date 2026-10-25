@@ -1,7 +1,8 @@
 // Background jobs for slow pages (Health, Compare): a job keeps running while you use other
 // pages, and its result waits for you. Finished results are also kept in
-// chrome.storage.session, so they survive closing and reopening the inspector until the
-// browser closes. The nav shows a running job and an unseen result.
+// chrome.storage.local (feedback #147: no wait screen after reopening the browser; before
+// that, chrome.storage.session, still read as a fallback). The nav shows a running job and an
+// unseen result.
 
 import { reactive } from 'vue'
 
@@ -19,8 +20,8 @@ export function useJob(id) {
   if (!jobs[id]) jobs[id] = blank(id)
   if (!restored.has(id)) {
     restored.add(id)
-    chrome.storage?.session?.get?.(storeKey(id)).then((r) => {
-      const saved = r?.[storeKey(id)]
+    const get = (area) => chrome.storage?.[area]?.get?.(storeKey(id)).then((r) => r?.[storeKey(id)]) ?? Promise.resolve(null)
+    get('local').then((saved) => saved || get('session')).then((saved) => {
       if (saved && jobs[id].status === 'idle') Object.assign(jobs[id], saved, { seen: true })
     }).catch(() => {})
   }
@@ -44,7 +45,7 @@ export function startJob(id, run, { params = null } = {}) {
     })
     .then(() => {
       const { status, startedAt, finishedAt, result, error, params: p } = job
-      chrome.storage?.session?.set?.({ [storeKey(id)]: JSON.parse(JSON.stringify({ status, startedAt, finishedAt, result, error, params: p })) }).catch(() => {})
+      chrome.storage?.local?.set?.({ [storeKey(id)]: JSON.parse(JSON.stringify({ status, startedAt, finishedAt, result, error, params: p })) }).catch(() => {})
     })
   return job
 }

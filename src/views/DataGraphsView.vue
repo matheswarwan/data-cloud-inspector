@@ -10,7 +10,9 @@ import { RefreshCw } from 'lucide-vue-next'
 import ListPanel from '../components/ListPanel.vue'
 import SqlBlock from '../components/SqlBlock.vue'
 import HelpTip from '../components/HelpTip.vue'
-import { useOrg, currentOrg } from '../app/useOrg.js'
+import DownloadMenu from '../components/DownloadMenu.vue'
+import { docFrom, sheetsFrom } from '../lib/tableDoc.js'
+import { useOrg, currentOrg, orgTitle } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, ensureAllMappings, ensureDataGraphs, orgCall } from '../app/useCatalog.js'
 import { objectTree, labelOf, nameOf, graphSql, valuesSql, graphRecordPath, expandJson, resolveObject } from '../lib/dataGraphs.js'
 import { recordUrl } from '../lib/links.js'
@@ -84,6 +86,31 @@ async function fetchRecord() {
 }
 const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2 -mb-px', tab.value === t ? 'border-foreground font-medium' : 'border-transparent text-muted-foreground hover:text-foreground']
 const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent'
+
+// Downloads (feedback #149): the list, and one graph with its objects and SQL
+const listCols = [
+  { key: 'label', label: 'Data graph', value: (g) => labelOf(g) }, { key: 'name', label: 'API name', value: (g) => nameOf(g) },
+  { key: 'primary', label: 'Primary object', value: (g) => g.primaryObjectLabel || g.primaryObjectName || '' },
+  { key: 'status', label: 'Status', value: (g) => status(g) }, { key: 'records', label: 'Records', value: (g) => num(g.record?.recordCount) },
+  { key: 'refresh', label: 'Last refresh', value: (g) => when(g.record?.lastRefresh || g.lastRefreshedDate) },
+]
+const listSections = () => [{ heading: 'Data graphs', columns: listCols, rows: list.value }]
+const listDoc = () => docFrom({ title: 'Data graphs', intro: `${orgTitle(org.orgId)}, data space ${org.dataSpace || 'default'}. ${list.value.length} data graphs.`, sections: listSections() })
+const objectCols = [
+  { key: 'label', label: 'Object', value: (r) => `${'  '.repeat(r.depth)}${r.obj?.label || r.label}` }, { key: 'name', label: 'API name' },
+  { key: 'join', label: 'Joined to its parent on', value: (r) => (r.join ? `${r.join.childField} = ${r.parent}.${r.join.parentField}` : r.depth ? 'not given' : 'primary object') },
+  { key: 'fields', label: 'Fields in the graph', value: (r) => r.fields.join(', ') },
+]
+function graphSections() {
+  const g = graph.value
+  return [
+    { heading: 'Details', kv: [['API name', nameOf(g)], ['Primary object', g.primaryObjectLabel || g.primaryObjectName || ''], ['Status', status(g) || 'unknown'], ['Records', num(g.record?.recordCount)], ['Last refresh', when(g.record?.lastRefresh || g.lastRefreshedDate)], ['Data space', g.dataspaceName || ''], ...(g.description ? [['Description', g.description]] : [])] },
+    { heading: 'Objects', columns: objectCols, rows: rows.value },
+    ...(joinSql.value.sql ? [{ heading: 'The objects joined (SQL)', code: joinSql.value.sql, lang: 'sql' }] : []),
+    ...(builtSql.value ? [{ heading: 'The built graph (SQL)', code: builtSql.value, lang: 'sql' }] : []),
+  ]
+}
+const graphDoc = () => docFrom({ title: `Data graph: ${labelOf(graph.value)}`, intro: `${orgTitle(org.orgId)}.`, sections: graphSections() })
 </script>
 
 <template>
@@ -92,7 +119,8 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
       <div class="flex items-center gap-2">
         <h2 class="font-semibold">Data graphs</h2>
         <HelpTip topic="graphs" />
-        <button class="ml-auto p-1.5 rounded-md border hover:bg-accent" title="Load again" aria-label="Load the data graphs again" @click="load(true)"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
+        <span class="ml-auto"><DownloadMenu small label="" :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="data-graphs" :disabled="!list.length" /></span>
+        <button class="p-1.5 rounded-md border hover:bg-accent" title="Load again" aria-label="Load the data graphs again" @click="load(true)"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
       </div>
       <input v-model="filter" placeholder="Search data graphs" class="w-full border rounded-md px-2 py-1 bg-background text-sm" />
       <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
@@ -121,6 +149,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
             <div class="font-mono text-sm text-muted-foreground">{{ nameOf(graph) }}</div>
           </div>
           <div class="ml-auto flex gap-2">
+            <DownloadMenu :get-doc="graphDoc" :get-sheets="() => sheetsFrom(graphSections())" :file-name="`data-graph-${nameOf(graph)}`" />
             <a v-if="graph.record?.id || graph.id" :class="btn" :href="recordUrl(currentOrg()?.host, graph.record?.id || graph.id)" target="_blank" rel="noopener">Open in Salesforce</a>
           </div>
         </div>

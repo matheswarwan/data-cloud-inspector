@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import Loading from '../components/Loading.vue'
 import HelpTip from '../components/HelpTip.vue'
+import { docFrom, sheetsFrom } from '../lib/tableDoc.js'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
 import DownloadMenu from '../components/DownloadMenu.vue'
@@ -63,6 +64,15 @@ const DOT = { fail: 'bg-red-500', warn: 'bg-amber-400', running: 'bg-sky-500', i
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : 'never')
 const num = (n) => (typeof n === 'number' ? n.toLocaleString() : n || '…')
 const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent'
+// Download of the list (feedback #149)
+const listCols = [
+  { key: 'name', label: 'Activation' }, { key: 'developerName', label: 'API name' }, { key: 'segment', label: 'Segment' }, { key: 'target', label: 'Target' },
+  { key: 'status', label: 'Status', value: (a) => a.status.toLowerCase() }, { key: 'lastPublishStatus', label: 'Last publish', value: (a) => a.lastPublishStatus.toLowerCase() || 'never' },
+  { key: 'lastPublish', label: 'Published at', value: (a) => (a.lastPublish ? new Date(a.lastPublish).toLocaleString() : '') }, { key: 'refreshType', label: 'Refresh', value: (a) => a.refreshType.toLowerCase() },
+  { key: 'health', label: 'Health', value: (a) => activationHealth(a).reason },
+]
+const listSections = () => [{ heading: 'Activations', columns: listCols, rows: list.value }]
+const listDoc = () => docFrom({ title: 'Activations', intro: `${orgTitle(org.orgId)}, data space ${org.dataSpace || 'default'}. ${list.value.length} activations.`, sections: listSections() })
 const attrCols = [
   { key: 'field', label: 'Field', value: (x) => `${x.entity.replace(/^ssot__|__dlm$/g, '')}.${x.name} ${x.label || ''}`, sortValue: (x) => `${x.entity}.${x.name}` },
   { key: 'output', label: 'Sent as' },
@@ -75,7 +85,8 @@ const attrCols = [
     <ListPanel name="activations" label="activations list">
       <div class="flex items-center gap-2">
         <h2 class="font-semibold">Activations <HelpTip topic="activations" /></h2>
-        <button class="ml-auto p-1.5 rounded-md border hover:bg-accent" title="Load again" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
+        <span class="ml-auto"><DownloadMenu small label="" :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="activations" :disabled="!list.length" /></span>
+        <button class="p-1.5 rounded-md border hover:bg-accent" title="Load again" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
       </div>
       <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
       <p v-else-if="!loading && !list.length" class="text-sm text-muted-foreground">No activations in this data space.</p>

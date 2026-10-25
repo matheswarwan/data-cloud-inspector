@@ -11,6 +11,7 @@ import FeatureTips from '../components/FeatureTips.vue'
 import ApiConsole from '../components/ApiConsole.vue'
 import { useApiConsole } from './useApiConsole.js'
 import { useActivity, useActivityText } from './useActivity.js'
+import { usePreload } from './usePreload.js'
 import { NAV } from './router.js'
 import { recordVisit } from '../lib/visits.js'
 import { useOrg, loadOrgs, orgName } from './useOrg.js'
@@ -26,6 +27,7 @@ const busyText = useActivityText()
 const feedback = ref(false)
 const palette = ref(null)
 onMounted(loadOrgs)
+usePreload()
 // Each app tab keeps its own org (feedback #144): the browser tab says which one
 watchEffect(() => { document.title = org.orgId ? `${orgName(org.orgId)} · Data Cloud Inspector` : 'Data Cloud Inspector' })
 </script>

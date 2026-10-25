@@ -3,10 +3,12 @@ import DataTable from '../components/DataTable.vue'
 import Loading from '../components/Loading.vue'
 import JsonViewer from '../components/JsonViewer.vue'
 import HelpTip from '../components/HelpTip.vue'
+import DownloadMenu from '../components/DownloadMenu.vue'
+import { docFrom, sheetsFrom } from '../lib/tableDoc.js'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { RefreshCw } from 'lucide-vue-next'
-import { useOrg, currentOrg } from '../app/useOrg.js'
+import { useOrg, currentOrg, orgTitle } from '../app/useOrg.js'
 import { orgCall, ensureDataGraphs } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
 import { recordUrl } from '../lib/links.js'
@@ -101,6 +103,21 @@ const recentCols = computed(() => [
   { key: 'details', label: 'Details', value: (r) => [r.channel, r.content, r.items != null ? `${r.items} items` : ''].filter(Boolean).join(' · ') },
   { key: 'status', label: 'Status', align: 'right', value: (r) => `${r.status} · ${Math.round(r.ms || 0)} ms`, sortValue: (r) => r.ms },
 ])
+
+// Download (feedback #149): the whole setup and the activity read for the chosen period
+function sections() {
+  const out = []
+  for (const p of points.value) out.push({ heading: `Point: ${p.Name}`, kv: [['API name', p.DeveloperName], ['Status', p.Status], ['Schema', p.schemaName || ''], ['Source', p.Source || ''], ['Max items', p.MaxItemsCount ?? ''], ['Experiment', p.experimentName || '']] }, { heading: `Decisions: ${p.Name}`, columns: decisionCols, rows: p.decisions })
+  out.push({ heading: 'Recommenders', columns: recommenderCols, rows: setup.value.recommenders })
+  out.push({ heading: 'Experiments', list: experiments.value.map((e) => `${e.Name}: ${[e.Status, e.State].filter(Boolean).join(', ')}${e.decisions.length ? ` (${e.decisions.map((d) => d.decisionName).join(', ')})` : ''}`) })
+  out.push({ heading: 'Content schemas', columns: schemaCols, rows: setup.value.schemas }, { heading: 'Objectives', columns: objectiveCols, rows: setup.value.objectives })
+  if (activity.value && !status.value.logMissing) {
+    out.push({ heading: `Requests per day (last ${days.value} days)`, columns: [{ key: 'day', label: 'Day' }, { key: 'requests', label: 'Requests' }, { key: 'people', label: 'People' }], rows: activity.value.daily })
+    out.push({ heading: 'By decision', columns: byDecisionCols.value, rows: activity.value.byDecision }, { heading: 'By status', columns: statusCols, rows: activity.value.byStatus }, { heading: 'Latest requests', columns: recentCols.value, rows: activity.value.recent })
+  }
+  return out
+}
+const doc = () => docFrom({ title: 'Personalization', intro: `${orgTitle(org.orgId)}, data space ${org.dataSpace || 'default'}.`, sections: sections() })
 </script>
 
 <template>
@@ -110,7 +127,8 @@ const recentCols = computed(() => [
         <h2 class="text-lg font-semibold">Personalization <HelpTip topic="personalization" /></h2>
         <p class="text-sm text-muted-foreground">Salesforce Personalization setup (points, decisions, recommenders, experiments) and what the personalization log recorded.</p>
       </div>
-      <button :class="[btn, 'ml-auto']" :disabled="loading" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /> Load again</button>
+      <span class="ml-auto"><DownloadMenu :get-doc="doc" :get-sheets="() => sheetsFrom(sections())" file-name="personalization" :disabled="!setup" /></span>
+      <button :class="btn" :disabled="loading" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /> Load again</button>
     </div>
     <Loading v-if="loading && !setup" text="Reading the setup and the log…" />
 

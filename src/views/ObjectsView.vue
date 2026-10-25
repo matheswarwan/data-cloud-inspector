@@ -12,6 +12,7 @@ import { useCatalog, ensureCatalog, ensureStreams, ensureAllMappings, ensureReco
 import { usageOf, fieldUsage } from '../lib/usage.js'
 import { problemCounts, latestProblemsSql } from '../lib/problems.js'
 import { buildModel, modelMarkdown, modelHtml } from '../lib/modelDoc.js'
+import { docFrom, sheetsFrom } from '../lib/tableDoc.js'
 import { loadInsight, baseInsightName } from '../lib/insights.js'
 import InsightDefinition from '../components/InsightDefinition.vue'
 import { filterObjects, selectFor, objectMarkdown } from '../lib/catalog.js'
@@ -75,6 +76,14 @@ const mapCols = [
   { key: 'target', label: 'DMO field' },
 ]
 const fieldUses = computed(() => (selected.value ? fieldUsage(selected.value.name, catalog.usage) : new Map()))
+// Download of the list as filtered (feedback #149)
+const objCols = [
+  { key: 'label', label: 'Object' }, { key: 'name', label: 'API name' }, { key: 'kind', label: 'Kind' },
+  { key: 'category', label: 'Category', value: (o) => (o.category || '').replace(/_/g, ' ') }, { key: 'fields', label: 'Fields', value: (o) => o.fields.length },
+]
+const listSections = () => [{ heading: 'Objects', columns: objCols, rows: list.value }]
+const listDoc = () => docFrom({ title: 'Data Cloud objects', intro: `${orgTitle(org.orgId)}, data space ${org.dataSpace || 'default'}. ${list.value.length} objects${text.value.trim() ? ` matching "${text.value.trim()}"` : ''}.`, sections: listSections() })
+
 // Export the data model as one document.
 const exporting = ref(false)
 const exportOpen = ref(false)
@@ -213,7 +222,10 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
         </select>
       </div>
       <div>
-        <button class="text-xs text-link hover:underline" @click="exportOpen = !exportOpen">Export data model</button>
+        <div class="flex items-center gap-2">
+          <button class="text-xs text-link hover:underline" @click="exportOpen = !exportOpen">Export data model</button>
+          <span class="ml-auto"><DownloadMenu small label="List" :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="objects" :disabled="!list.length" /></span>
+        </div>
         <div v-if="exportOpen" class="mt-1 p-2 border rounded-md bg-card text-xs space-y-1.5">
           <div class="flex gap-3">
             <label v-for="k in ['DMO', 'DLO', 'CI']" :key="k" class="flex items-center gap-1"><input v-model="exportOpts.kinds" type="checkbox" :value="k" /> {{ k }}s</label>

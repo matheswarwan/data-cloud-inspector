@@ -6,8 +6,12 @@ import DataTable from '../components/DataTable.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { RefreshCw } from 'lucide-vue-next'
 import { useOrg, currentOrg, orgName, orgTitle } from '../app/useOrg.js'
-import { orgCall } from '../app/useCatalog.js'
+import { orgCall, useCatalog, ensureCatalog } from '../app/useCatalog.js'
+import { runQuery } from '../lib/query.js'
+import { detailPath, unwrap, statusFields } from '../lib/healthDetails.js'
+import { normalizeSegment, membershipTables, publishHistory } from '../lib/segments.js'
 import { useJob, startJob, markSeen } from '../app/useJobs.js'
+import { healthJobId } from '../app/usePreload.js'
 import { recordUrl } from '../lib/links.js'
 import { loadHealth, countLevels, healthMarkdown, LEVELS, LEVEL_TEXT } from '../lib/health.js'
 import { latestProblemsSql } from '../lib/problems.js'
@@ -20,7 +24,7 @@ const notice = ref('')
 
 // The check runs as a background job per org and data space: leave the page, come back, and
 // the result is there (also after reopening the inspector, until the browser closes).
-const jobId = computed(() => `health:${org.orgId}:${org.dataSpace || 'default'}`)
+const jobId = computed(() => healthJobId(org.orgId, org.dataSpace))
 const job = computed(() => (org.orgId ? useJob(jobId.value) : null))
 const sections = computed(() => job.value?.result || [])
 const loading = computed(() => job.value?.status === 'running')
@@ -49,6 +53,31 @@ const itemCols = [
   { key: 'reason', label: 'Reason' },
   { key: 'lastRun', label: 'Last run', align: 'right', kind: 'date', headerClass: 'w-32', value: (i) => ago(i.lastRun), sortValue: (i) => i.lastRun || '' },
 ]
+// Details per row (feedback #148): what the API says about the last run or publish, the
+// error when it gives one, and a segment's publish history
+const catalog = useCatalog()
+const open = ref({}) // `${kind}:${name}` -> { loading, fields, error, history }
+const keyOf = (i) => `${i.kind}:${i.name}`
+async function toggleDetails(i) {
+  const k = keyOf(i)
+  if (open.value[k]) { const next = { ...open.value }; delete next[k]; open.value = next; return }
+  const path = detailPath(i, org.version)
+  open.value = { ...open.value, [k]: { loading: true, fields: [], error: '', history: null } }
+  const d = open.value[k]
+  if (!path) { Object.assign(d, { loading: false, error: 'No detail call for this kind of record.' }); return }
+  const res = await orgCall()(path)
+  if (!res.ok) { Object.assign(d, { loading: false, error: res.error || `HTTP ${res.status}` }); return }
+  const rec = unwrap(res.data)
+  d.fields = statusFields(rec).sort((a, b) => b.error - a.error)
+  d.loading = false
+  if (i.kind === 'Segment' && rec) {
+    await ensureCatalog()
+    const seg = normalizeSegment(rec)
+    const t = membershipTables(seg, catalog.objects)
+    d.history = t.history ? await publishHistory((sql) => runQuery(orgCall(), org.version, sql, { rowLimit: 2000 }), t.history, seg).catch(() => []) : []
+  }
+}
+
 const shown = (items) => (problemsOnly.value ? items.filter((i) => i.level === 'fail' || i.level === 'warn') : items)
 
 // Where a row opens: our own page when there is one, else the record in Salesforce.
@@ -133,7 +162,27 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
           <span v-else>{{ i.label }}</span>
           <a v-if="i.recordId" :href="recordUrl(currentOrg()?.host, i.recordId)" target="_blank" rel="noopener" class="ml-2 text-xs text-link hover:underline">Open in Salesforce</a>
           <div class="text-xs text-muted-foreground">{{ i.details }}</div>
+          <button class="text-xs text-link hover:underline mr-2" :aria-expanded="!!open[keyOf(i)]" @click="toggleDetails(i)">{{ open[keyOf(i)] ? 'Hide details' : 'Details' }}</button>
           <button v-if="i.problems?.count" class="text-xs text-link hover:underline" @click="router.push({ path: '/sql', query: { sql: latestProblemsSql(i.problemDlo) } })">See the problem records in SQL</button>
+        </template>
+        <template #after-row="{ row: i, colspan }">
+          <tr v-if="open[keyOf(i)]" class="bg-muted/30"><td :colspan="colspan" class="p-3 text-xs space-y-2">
+            <p v-if="open[keyOf(i)].loading" class="text-muted-foreground">Reading the details…</p>
+            <p v-else-if="open[keyOf(i)].error" class="text-destructive">Could not read the details: {{ open[keyOf(i)].error }}</p>
+            <template v-else>
+              <p v-if="!open[keyOf(i)].fields.some((f) => f.error)" class="text-muted-foreground">The API gives no error text for this {{ i.kind.toLowerCase() }}{{ i.level === 'fail' ? '; Salesforce shows the reason on the record page (Open in Salesforce)' : '' }}.</p>
+              <dl class="grid grid-cols-[minmax(10rem,auto)_1fr] gap-x-3 gap-y-0.5">
+                <template v-for="f in open[keyOf(i)].fields" :key="f.path"><dt class="font-mono text-muted-foreground">{{ f.path }}</dt><dd :class="f.error ? 'text-destructive' : ''">{{ f.value }}</dd></template>
+              </dl>
+            </template>
+            <div v-if="open[keyOf(i)].history" class="space-y-1">
+              <div class="font-medium">Publish history (from the membership history table; failed publishes leave no rows)</div>
+              <p v-if="!open[keyOf(i)].history.length" class="text-muted-foreground">No publishes recorded.</p>
+              <table v-else class="text-xs"><thead class="text-muted-foreground"><tr><th class="pr-4 text-left font-normal">Published</th><th class="pr-4 text-right font-normal">Rows</th><th class="text-right font-normal">Members</th></tr></thead>
+                <tbody><tr v-for="v in open[keyOf(i)].history.slice(0, 15)" :key="v.version"><td class="pr-4">{{ v.at ? new Date(v.at).toLocaleString() : v.version }}</td><td class="pr-4 text-right">{{ v.members.toLocaleString() }}</td><td class="text-right">{{ v.size != null ? v.size.toLocaleString() : '' }}</td></tr></tbody></table>
+              <RouterLink :to="`/segments/${i.name}`" class="text-link hover:underline">All publishes on the segment page</RouterLink>
+            </div>
+          </td></tr>
         </template>
         <template #cell-lastRun="{ row: i }"><span class="whitespace-nowrap" :title="i.lastRun ? new Date(i.lastRun).toLocaleString() : ''">{{ ago(i.lastRun) }}</span></template>
       </DataTable>

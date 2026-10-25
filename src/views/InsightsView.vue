@@ -2,6 +2,8 @@
 import DataTable from '../components/DataTable.vue'
 import Loading from '../components/Loading.vue'
 import HelpTip from '../components/HelpTip.vue'
+import DownloadMenu from '../components/DownloadMenu.vue'
+import { docFrom, sheetsFrom } from '../lib/tableDoc.js'
 // Calculated insights as Data Cloud shows them: a list view, and a record page with Details,
 // Dimensions and Measures, SQL, Data (a preview) and Used by.
 import { ref, computed, watch, onMounted } from 'vue'
@@ -9,7 +11,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { RefreshCw } from 'lucide-vue-next'
 import InsightDefinition from '../components/InsightDefinition.vue'
 import ResultTable from '../components/ResultTable.vue'
-import { useOrg, currentOrg } from '../app/useOrg.js'
+import { useOrg, currentOrg, orgTitle } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, ensureRecordIds, ensureUsage, orgCall } from '../app/useCatalog.js'
 import { insightPages, insightHealth, LEVEL_TEXT } from '../lib/health.js'
 import { normalizeInsight } from '../lib/insights.js'
@@ -126,6 +128,23 @@ const when = (iso) => (iso ? new Date(iso).toLocaleString() : '—')
 const words = (s) => String(s || '').replace(/_/g, ' ').toLowerCase()
 const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'border-primary font-medium' : 'border-transparent text-muted-foreground hover:text-foreground']
 const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+
+// Downloads (feedback #149): the list as filtered, and one insight
+const listDoc = () => docFrom({ title: 'Calculated insights', intro: `${orgTitle(org.orgId)}, data space ${org.dataSpace || 'default'}. ${list.value.length} items.`, sections: [{ columns: listCols, rows: list.value }] })
+const listSheets = () => sheetsFrom([{ heading: 'Calculated insights', columns: listCols, rows: list.value }])
+const fieldCols = [{ key: 'name', label: 'Field' }, { key: 'label', label: 'Label' }, { key: 'role', label: 'Role' }, { key: 'type', label: 'Type' }, { key: 'aggregation', label: 'Aggregation' }, { key: 'formula', label: 'Formula' }]
+function ciSections() {
+  const c = ci.value
+  return [
+    { heading: 'Details', kv: [...detailPairs.value, ['Data Space', c.dataSpace], ['Status', cap(c.status)], ['Last Run Time', when(c.lastRun)], ['Last Run Status', cap(c.lastRunStatus) || 'Never']] },
+    { heading: 'Dimensions', columns: fieldCols, rows: c.dimensions },
+    { heading: 'Measures', columns: fieldCols, rows: c.measures },
+    { heading: 'Expression', code: c.sql, lang: 'sql' },
+    { heading: 'Reads from', list: reads.value.map((r) => `${r.object}${r.fields.length ? `: ${r.fields.join(', ')}` : ''}`) },
+    ...(used.value ? [{ heading: 'Segments that use it', list: used.value.segments.map((s) => `${s.label} (${s.name})`) }] : []),
+  ]
+}
+const ciDoc = () => docFrom({ title: `Calculated insight: ${ci.value.label}`, intro: `${ci.value.name} in ${orgTitle(org.orgId)}.`, sections: ciSections() })
 </script>
 
 <template>
@@ -140,6 +159,7 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
         <input v-model="search" placeholder="Search this list" class="border rounded-md px-2 py-1 bg-background w-60" />
         <select v-model="status" class="border rounded-md px-2 py-1 bg-background"><option value="">All statuses</option><option v-for="s in statuses" :key="s" :value="s">{{ words(s) }}</option></select>
         <button class="p-1.5 rounded-md border hover:bg-accent" title="Refresh" @click="load({ refresh: true })"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
+        <DownloadMenu :get-doc="listDoc" :get-sheets="listSheets" file-name="calculated-insights" :disabled="!list.length" />
       </div>
     </div>
     <p class="text-xs text-muted-foreground">{{ list.length }} {{ list.length === 1 ? 'item' : 'items' }}</p>
@@ -164,6 +184,7 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
             <h2 class="text-xl font-semibold">{{ ci.label }}</h2>
           </div>
           <div class="ml-auto flex gap-2">
+            <DownloadMenu :get-doc="ciDoc" :get-sheets="() => sheetsFrom(ciSections())" :file-name="`insight-${ci.name}`" />
             <button :class="btn" @click="router.push({ path: '/sql', query: { sql: querySql } })">Query in SQL</button>
             <a v-if="sfId" :class="btn" :href="recordUrl(currentOrg()?.host, sfId)" target="_blank" rel="noopener">Open in Salesforce</a>
           </div>

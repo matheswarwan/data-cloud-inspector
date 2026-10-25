@@ -3,12 +3,14 @@ import SqlBlock from '../components/SqlBlock.vue'
 import Loading from '../components/Loading.vue'
 import JsonViewer from '../components/JsonViewer.vue'
 import HelpTip from '../components/HelpTip.vue'
+import DownloadMenu from '../components/DownloadMenu.vue'
+import { docFrom, sheetsFrom } from '../lib/tableDoc.js'
 import { ref, computed, watch, onMounted } from 'vue'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { RefreshCw } from 'lucide-vue-next'
-import { useOrg, currentOrg } from '../app/useOrg.js'
+import { useOrg, currentOrg, orgTitle } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
 import { recordUrl } from '../lib/links.js'
@@ -146,6 +148,29 @@ const versionCols = [
   { key: 'changes', label: 'Changes', value: (v) => `${v.snapshot === 'F' ? 'full, ' : v.snapshot ? 'incremental, ' : ''}${Object.entries(v.deltas).map(([k, n]) => `${num(n)} ${k}`).join(', ')}` },
   { key: 'version', label: 'Version' },
 ]
+
+// Downloads (feedback #149): the list as filtered and sorted, and one segment
+const listCols = [
+  { key: 'label', label: 'Segment' }, { key: 'apiName', label: 'API name' },
+  { key: 'lastCount', label: 'Members at publish', value: (s) => num(s.lastCount) },
+  { key: 'publishStatus', label: 'Publish status' }, { key: 'lastPublished', label: 'Last published', value: (s) => when(s.lastPublished) },
+  { key: 'publishInterval', label: 'Schedule', value: (s) => s.publishInterval.replace(/_/g, ' ').toLowerCase() },
+  { key: 'on', label: 'Segment on' }, { key: 'status', label: 'Status' }, { key: 'type', label: 'Type' },
+  { key: 'created', label: 'Created', value: (s) => when(s.created) }, { key: 'modified', label: 'Modified', value: (s) => when(s.modified) },
+]
+const listSections = () => [{ heading: 'Segments', columns: listCols, rows: list.value }]
+const listDoc = () => docFrom({ title: 'Segments', intro: `${orgTitle(org.orgId)}, data space ${org.dataSpace || 'default'}. ${list.value.length} segments${filter.value.trim() ? ` matching "${filter.value.trim()}"` : ''}.`, sections: listSections() })
+function segSections() {
+  const s = seg.value
+  const d = detail.value
+  return [
+    { heading: 'Details', kv: [['API name', s.apiName], ['Segment on', s.on], ['Status', s.status.toLowerCase()], ['Last published', `${when(s.lastPublished) || 'never'} (${s.publishStatus.toLowerCase()})`], ['Schedule', s.publishInterval.replace(/_/g, ' ').toLowerCase()], ['Members at publish', num(s.lastCount)], ['In the membership table now', d?.latest ? num(d.latestCount) : 'no table found'], ['Matching the criteria now', typeof d?.countNow === 'number' ? num(d.countNow) : 'not counted'], ['Type', `${s.type}${s.lookback ? `, lookback ${s.lookback}` : ''}`], ['Created', when(s.created)], ['Modified', when(s.modified)]] },
+    { heading: 'Criteria', list: lines.value.map((l) => `${'  '.repeat(l.depth)}${l.text}`) },
+    ...(sql.value && !sql.value.error ? [{ heading: 'Equivalent SQL', code: sql.value.select, lang: 'sql' }] : []),
+    { heading: 'Publish history', columns: versionCols, rows: d?.versions || [], empty: 'No publishes recorded.' },
+  ]
+}
+const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${orgTitle(org.orgId)}, data space ${org.dataSpace || 'default'}.`, sections: segSections() })
 </script>
 
 <template>
@@ -161,6 +186,7 @@ const versionCols = [
         <span class="text-muted-foreground">{{ list.length.toLocaleString() }} of {{ segments.length.toLocaleString() }} segments</span>
         <label class="ml-auto text-muted-foreground" for="seg-sort">Sort</label>
         <select id="seg-sort" v-model="sortBy" class="border rounded px-1 py-0.5 bg-background"><option v-for="o in SEGMENT_SORTS" :key="o.id" :value="o.id">{{ o.label }}</option></select>
+        <DownloadMenu small :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="segments" :disabled="!list.length" />
       </div>
       <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
       <ul class="max-h-[75vh] overflow-auto text-sm">
@@ -187,6 +213,7 @@ const versionCols = [
             <div class="font-mono text-sm text-muted-foreground">{{ seg.apiName }}</div>
           </div>
           <div class="ml-auto flex gap-2">
+            <DownloadMenu :get-doc="segDoc" :get-sheets="() => sheetsFrom(segSections())" :file-name="`segment-${seg.apiName}`" />
             <a v-if="seg.id" :class="btn" :href="recordUrl(currentOrg()?.host, seg.id)" target="_blank" rel="noopener">Open in Salesforce</a>
           </div>
         </div>

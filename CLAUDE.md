@@ -19,6 +19,21 @@ stack and conventions as `../sfmc-toolkit`. Plan and status log: `../data-cloud-
 - Query builder layout (feedback #124): `lib/builderLayout.js` (sizes and step heights in
   `dci_builderLayout`, clamped), `components/Splitter.vue` (drag handle, v-model px, `invert` for
   panes after the handle). The SQL panel width is capped in CSS so the middle keeps 26rem.
+- Downloads on every page (feedback #146, #149): `lib/tableDoc.js` (`docFrom`/`sheetsFrom`: a page
+  describes its sections as kv, DataTable-style columns plus rows, list, text or code);
+  `DownloadMenu` has `small` and an icon-only form (`label=""`).
+- Loading details (feedback #143): `api.js` keeps the paths in flight and jobs set with
+  `setTask`/`endTask`; `lib/loadingText.js` names them; `fetchAllPages` reports its pages.
+- Preload (feedback #147): `app/usePreload.js` (once per org and data space per tab: catalog,
+  streams, mappings, record IDs, usage, then Health if its result is over an hour old);
+  `lib/preload.js` (`dci_preload`, on unless 'off'). Job results now in chrome.storage.local.
+- Credit prediction (feedback #145): `lib/credits.js` (Tenant consumption objects by name, field
+  guesses, SQL, `forecast`), `views/CreditsView.vue`. Field names from Salesforce's article and
+  guesses; not seen on an org with the data.
+- Health details (feedback #148): `lib/healthDetails.js` (detail path per kind, status and
+  error-like fields of the response); segments add their publish history.
+- Org names (feedback #140, #144): `orgName`/`orgTitle` in `app/useOrg.js`, `orgLabel` in
+  `lib/savedOrgs.js`.
 - `src/views/`: pages. `src/app/useOrg.js`: selected org and API version.
 
 ## API facts (checked live 2026-10-22, API v68.0)

@@ -2,15 +2,9 @@
 // (Markdown, Word, PDF, HTML) and Excel sheets. Cells come from the page's table columns, so
 // a download has what the table shows, in the order and with the filters applied.
 
-const text = (v) => (v == null ? '' : Array.isArray(v) ? v.join(', ') : String(v))
+import { tableFromColumns } from './tableDoc.js'
 
-/** Table cells from DataTable-style columns ({ key, label, value? }) and rows. */
-export function tableFromColumns(columns, rows) {
-  return {
-    columns: columns.map((c) => c.label),
-    rows: rows.map((r) => columns.map((c) => text(c.value ? c.value(r) : r[c.key]))),
-  }
-}
+export { tableFromColumns }
 
 export function streamsDoc({ columns, rows, org = '', dataSpace = 'default', at = new Date() }) {
   const t = tableFromColumns(columns, rows)

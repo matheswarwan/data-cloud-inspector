@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useApiConsole, setApiConsole } from '../app/useApiConsole.js'
 import { tipsOn, setTipsOn, resetTips } from '../lib/tips.js'
+import { preloadOn, setPreloadOn } from '../lib/preload.js'
 import { Monitor, Sun, Moon } from 'lucide-vue-next'
 import { useSettings } from '../app/useSettings.js'
 import { useOrg, currentOrg, recheckOrg, orgName } from '../app/useOrg.js'
@@ -137,6 +138,8 @@ const savedCount = computed(() => queries.saved.length)
 const apiConsole = useApiConsole()
 const tips = ref(tipsOn())
 function toggleTips(on) { setTipsOn(on); tips.value = on }
+const preload = ref(preloadOn())
+function togglePreload(on) { setPreloadOn(on); preload.value = on }
 function showTipsAgain() { setTipsOn(true); resetTips(); tips.value = true }
 </script>
 
@@ -162,6 +165,10 @@ function showTipsAgain() { setTipsOn(true); resetTips(); tips.value = true }
       <label class="flex items-start gap-2 text-sm">
         <input type="checkbox" class="mt-1" :checked="apiConsole.enabled.value" @change="setApiConsole($event.target.checked)" />
         <span>API console<span class="block text-xs text-muted-foreground">A drawer at the bottom of the window that lists every call to Salesforce with its request and response, to see what a page reads or to report a problem. Kept in memory only, cleared when the tab closes.</span></span>
+      </label>
+      <label class="flex items-start gap-2 text-sm">
+        <input type="checkbox" class="mt-1" :checked="preload" @change="togglePreload($event.target.checked)" />
+        <span>Preload when connected<span class="block text-xs text-muted-foreground">As soon as an org is connected, read its objects, data streams, mappings and usage, and run the Health check, in the background, so pages open without a wait. The Health result is kept in this browser and checked again when over an hour old. Uses a few read-only API calls per org.</span></span>
       </label>
       <label class="flex items-start gap-2 text-sm">
         <input type="checkbox" class="mt-1" :checked="tips" @change="toggleTips($event.target.checked)" />
