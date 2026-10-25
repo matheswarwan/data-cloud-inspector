@@ -12,7 +12,7 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 - **Privacy policy URL:** https://data-cloud-inspector.mathes.dev/privacy (Worker
   `data-cloud-inspector-site`, source in `site/`; deploy steps in `site/wrangler.jsonc`).
 - **Publisher:** CloudKettle's developer account (same as SFMC Query Saver).
-- **Version:** 1.0.6, `releases/data-cloud-inspector-1.0.6.zip` (GitHub release `v1.0.6`), an update to the item submitted as 1.0.0 on 2026-10-23; uploaded 2026-10-24. No permission changes. 1.0.0 was the first store version; builds numbered 1.1.0 to 1.7.0 were never published and are folded into it (GitHub pre-releases, zips in `releases/archive/`), which is why updates are numbered 1.0.x.
+- **Version:** 1.0.6, `releases/data-cloud-inspector-1.0.6.zip` (GitHub release `v1.0.6`, uploaded 2026-10-25), an update to the item submitted as 1.0.0 on 2026-10-23; uploaded 2026-10-24. No permission changes. 1.0.0 was the first store version; builds numbered 1.1.0 to 1.7.0 were never published and are folded into it (GitHub pre-releases, zips in `releases/archive/`), which is why updates are numbered 1.0.x.
 
 ## Updating (1.0.1 and later)
 
