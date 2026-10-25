@@ -12,11 +12,11 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 - **Privacy policy URL:** https://data-cloud-inspector.mathes.dev/privacy (Worker
   `data-cloud-inspector-site`, source in `site/`; deploy steps in `site/wrangler.jsonc`).
 - **Publisher:** CloudKettle's developer account (same as SFMC Query Saver).
-- **Version:** 1.0.5, `releases/data-cloud-inspector-1.0.5.zip` (GitHub release `v1.0.5`), an update to the item submitted as 1.0.0 on 2026-10-23; uploaded 2026-10-24. No permission changes. 1.0.0 was the first store version; builds numbered 1.1.0 to 1.7.0 were never published and are folded into it (GitHub pre-releases, zips in `releases/archive/`), which is why updates are numbered 1.0.x.
+- **Version:** 1.0.6, `releases/data-cloud-inspector-1.0.6.zip` (GitHub release `v1.0.6`), an update to the item submitted as 1.0.0 on 2026-10-23; uploaded 2026-10-24. No permission changes. 1.0.0 was the first store version; builds numbered 1.1.0 to 1.7.0 were never published and are folded into it (GitHub pre-releases, zips in `releases/archive/`), which is why updates are numbered 1.0.x.
 
 ## Updating (1.0.1 and later)
 
-1. Developer Dashboard, the Data Cloud Inspector item, Package tab, Upload new package: the latest zip, now `releases/data-cloud-inspector-1.0.5.zip`.
+1. Developer Dashboard, the Data Cloud Inspector item, Package tab, Upload new package: the latest zip, now `releases/data-cloud-inspector-1.0.6.zip`.
 2. Store listing tab: replace the five screenshots with the new ones from `docs/store/` (they show the left sidebar) and paste the description below (it mentions the Download menu and Data models).
 3. Submit for review. If 1.0.0 is still in review, the dashboard may ask to cancel that review first; uploading 1.0.1 then replaces it.
 
@@ -34,6 +34,8 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 6. Submit for review. Tell Claude when it is published, so the release can be recorded.
 
 ## What's new (version notes)
+
+1.0.6: org names instead of domains everywhere (name an org once, also on Compare and in reports); loading messages say what is being read and how far along; a Download menu on every list and record page; metadata preloaded when you connect (on by default, Settings > Tools); Health rows show the last error and refresh or publish history; a new Credit prediction page that reads Digital Wallet consumption data, splits it by environment (production, sandbox, scratch) and by org, and forecasts use, with setup steps when the data is not there.
 
 1.0.5: the Query builder's panes, SQL box and steps can be resized; the SQL panel and the results open full screen; results download as CSV (every row) or through the Download menu (Markdown, Word, PDF, HTML, Excel); the SQL position reads Right or Bottom.
 
