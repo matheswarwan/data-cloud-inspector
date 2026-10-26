@@ -25,24 +25,44 @@ export function storeAll() {
   })
 }
 
-// Cache for things that change more often than metadata (streams, mappings, rulesets, usage):
-// chrome.storage.session lives until the browser closes, and entries expire after `ttlMs`.
-export async function sessionCached(key, ttlMs, loader, { refresh = false } = {}) {
+// Cache for org data that changes more often than metadata (streams, mappings, rulesets, usage,
+// segment lists). Kept in chrome.storage.local, so it survives closing the browser (feedback
+// #1007; it was session storage before). A value younger than `ttlMs` is used as is. An older one
+// (up to `maxAgeMs`) is used at once when the caller passes `onUpdate`, and read again in the
+// background; `onUpdate` gets the new value. Without `onUpdate` an old value is read again first.
+const MAX_AGE = 7 * 24 * 3600 * 1000
+const refreshing = new Set()
+
+export async function orgCached(key, ttlMs, loader, { refresh = false, onUpdate = null, maxAgeMs = MAX_AGE, now = Date.now } = {}) {
+  const save = async (value) => { try { await chrome.storage.local.set({ [key]: { at: now(), value } }) } catch { /* too large or unavailable */ } }
   if (!refresh) {
-    try {
-      const hit = (await chrome.storage.session.get(key))?.[key]
-      if (hit && Date.now() - hit.at < ttlMs) return hit.value
-    } catch { /* no session storage: load */ }
+    let hit = null
+    try { hit = (await chrome.storage.local.get(key))?.[key] } catch { /* no storage: load */ }
+    const age = hit ? now() - hit.at : Infinity
+    if (hit && age < ttlMs) return hit.value
+    if (hit && onUpdate && age < maxAgeMs) {
+      if (!refreshing.has(key)) {
+        refreshing.add(key)
+        Promise.resolve().then(loader)
+          .then(async (value) => { await save(value); onUpdate(value) })
+          .catch(() => { /* keep the stored value */ })
+          .finally(() => refreshing.delete(key))
+      }
+      return hit.value
+    }
   }
   const value = await loader()
-  try { await chrome.storage.session.set({ [key]: { at: Date.now(), value } }) } catch { /* too large or unavailable */ }
+  await save(value)
   return value
 }
 
-export async function sessionForget(prefix) {
-  try {
-    const all = await chrome.storage.session.get(null)
-    const keys = Object.keys(all || {}).filter((k) => k.startsWith(prefix))
-    if (keys.length) await chrome.storage.session.remove(keys)
-  } catch { /* nothing to forget */ }
+/** Removes cached org data whose key starts with `prefix` (also copies left in session storage). */
+export async function forgetCached(prefix) {
+  for (const area of ['local', 'session']) {
+    try {
+      const all = await chrome.storage[area].get(null)
+      const keys = Object.keys(all || {}).filter((k) => k.startsWith(prefix))
+      if (keys.length) await chrome.storage[area].remove(keys)
+    } catch { /* nothing to forget */ }
+  }
 }

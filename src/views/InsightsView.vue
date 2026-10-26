@@ -18,7 +18,7 @@ import { normalizeInsight } from '../lib/insights.js'
 import { sqlRefs, usageOf } from '../lib/usage.js'
 import { runQuery } from '../lib/query.js'
 import { recordUrl } from '../lib/links.js'
-import { sessionCached } from '../lib/store.js'
+import { orgCached } from '../lib/store.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -41,7 +41,7 @@ async function load({ refresh = false } = {}) {
   error.value = ''
   try {
     const key = `dci_s_${org.orgId}_${org.dataSpace || 'default'}_insights`
-    const raw = await sessionCached(key, 10 * 60 * 1000, () => insightPages(orgCall(), org.version), { refresh })
+    const raw = await orgCached(key, 10 * 60 * 1000, () => insightPages(orgCall(), org.version), { refresh })
     insights.value = raw.map((r) => ({ ...normalizeInsight(r), health: insightHealth(r), dataSpace: r.dataSpace || '' })).sort((a, b) => a.label.localeCompare(b.label))
   } catch (err) {
     error.value = err.message

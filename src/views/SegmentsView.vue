@@ -180,7 +180,7 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
         </button>
       </div>
       <div class="flex items-center gap-2 text-xs">
-        <span class="text-muted-foreground">{{ list.length.toLocaleString() }} of {{ segments.length.toLocaleString() }} segments<template v-if="loading">, loading {{ store.total ? `${store.loaded.toLocaleString()} of ${store.total.toLocaleString()}` : `more (${store.loaded.toLocaleString()} so far)` }}…</template></span>
+        <span class="text-muted-foreground">{{ list.length.toLocaleString() }} of {{ segments.length.toLocaleString() }} segments<template v-if="loading">, {{ store.storedAt ? `saved ${new Date(store.storedAt).toLocaleString()}, updating` : 'loading' }} {{ store.total ? `${store.loaded.toLocaleString()} of ${store.total.toLocaleString()}` : `more (${store.loaded.toLocaleString()} so far)` }}…</template></span>
         <label class="ml-auto text-muted-foreground" for="seg-sort">Sort</label>
         <select id="seg-sort" v-model="sortBy" class="border rounded px-1 py-0.5 bg-background"><option v-for="o in SEGMENT_SORTS" :key="o.id" :value="o.id">{{ o.label }}</option></select>
         <DownloadMenu small :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="segments" :disabled="!list.length" />

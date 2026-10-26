@@ -9,7 +9,8 @@ const GROUPS = [
   { id: 'feedback', area: 'local', label: 'Feedback name and email', test: (k) => k === 'dci_feedbackContact' },
   { id: 'jobs', area: 'local', label: 'Health and Compare results', test: (k) => k.startsWith('dci_job_'), perOrg: true, note: 'The last check per org, shown at once when the page opens. Checked again in the background.' },
   { id: 'oauthClients', area: 'local', label: 'OAuth client IDs', test: (k) => k.startsWith('dci_oauthClient_'), note: 'Client IDs typed in Log in with OAuth.' },
-  { id: 'session', area: 'session', label: 'Session cache', test: (k) => k.startsWith('dci_s_'), perOrg: true, note: 'Streams, mappings, usage, record IDs, rulesets and segment lists, kept up to 30 minutes.' },
+  { id: 'orgData', area: 'local', label: 'Cached org data', test: (k) => k.startsWith('dci_s_'), perOrg: true, note: 'Streams, mappings, usage, record IDs, rulesets, segments, insights and data graphs (setup, not records). Shown at once and read again in the background when over 30 minutes old.' },
+  { id: 'session', area: 'session', label: 'Session cache (older versions)', test: (k) => k.startsWith('dci_s_'), perOrg: true, note: 'Left by an older version; gone when the browser closes.' },
   { id: 'oauthTokens', area: 'session', label: 'OAuth logins', test: (k) => k.startsWith('dci_oauth_'), note: 'Access tokens from Log in with OAuth. Deleting logs out of OAuth.' },
   { id: 'page', area: 'page', label: 'Page settings', test: (k) => k.startsWith('dci_'), note: 'Theme, last org, SQL draft, editor layout, chosen data space and ruleset.' },
 ]

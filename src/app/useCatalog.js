@@ -9,7 +9,7 @@ import { loadRecordIds } from '../lib/links.js'
 import { loadUsage } from '../lib/usage.js'
 import { fetchAllPages } from '../lib/pages.js'
 import { withDataSpace } from '../lib/dataSpace.js'
-import { storeGet, storeSet, storeRemove, sessionCached, sessionForget } from '../lib/store.js'
+import { storeGet, storeSet, storeRemove, orgCached, forgetCached } from '../lib/store.js'
 import { loadDataGraphs } from '../lib/dataGraphs.js'
 import { ensureSegments } from './useSegments.js'
 import { useOrg, currentDataSpaceId } from './useOrg.js'
@@ -36,12 +36,13 @@ export function orgCall() {
 /** Data graphs with their definitions, kept 10 minutes in session storage. */
 export function ensureDataGraphs({ refresh = false } = {}) {
   if (!org.orgId || !org.version) return Promise.resolve([])
-  return sessionCached(sessionKey(org.orgId, 'dataGraphs'), 10 * 60 * 1000, () => loadDataGraphs(orgCall(), org.version), { refresh })
+  return orgCached(sessionKey(org.orgId, 'dataGraphs'), 10 * 60 * 1000, () => loadDataGraphs(orgCall(), org.version), { refresh })
 }
 
 const cacheKey = (orgId) => `dci_catalog_${orgId}${org.dataSpace && org.dataSpace !== 'default' ? `_${org.dataSpace}` : ''}`
-// Streams, mappings, record IDs and usage change more often than metadata: kept for 30 minutes
-// in session storage (gone when the browser closes); Refresh on the Objects page reloads them.
+// Streams, mappings, record IDs and usage change more often than metadata: kept in this browser
+// (feedback #1007) and shown at once, read again in the background once over 30 minutes old;
+// Refresh on the Objects page reloads them.
 const SESSION_TTL = 30 * 60 * 1000
 const sessionKey = (orgId, what) => `dci_s_${orgId}_${org.dataSpace || 'default'}_${what}`
 
@@ -67,7 +68,7 @@ async function loadCatalogState({ refresh = false } = {}) {
   state.orgId = orgId
   state.key = key
   state.error = ''
-  if (refresh) await sessionForget(`dci_s_${orgId}_`)
+  if (refresh) await forgetCached(`dci_s_${orgId}_`)
   if (!refresh) {
     const cached = await storeGet(cacheKey(orgId))
     if (cached?.objects?.length) {
@@ -91,7 +92,8 @@ async function loadCatalogState({ refresh = false } = {}) {
 export async function ensureStreams() {
   if (state.streams || !org.version) return state.streams
   const { orgId, version } = org
-  state.streams = await sessionCached(sessionKey(orgId, 'streams'), SESSION_TTL, () => loadStreams(orgCall(), version))
+  const key = state.key
+  state.streams = await orgCached(sessionKey(orgId, 'streams'), SESSION_TTL, () => loadStreams(orgCall(), version), { onUpdate: (v) => { if (state.key === key) state.streams = v } })
     .catch((err) => { state.error = err.message; return null })
   return state.streams
 }
@@ -102,9 +104,10 @@ export async function ensureAllMappings() {
   if (state.mappings) return state.mappings
   const dmos = state.objects.filter((o) => o.kind === 'DMO').map((o) => o.name)
   if (!dmos.length) return null // no objects yet: never cache an empty list
-  state.mappings = await sessionCached(sessionKey(org.orgId, 'mappings'), SESSION_TTL, () => loadAllMappings(orgCall(), org.version, dmos, {
+  const key = state.key
+  state.mappings = await orgCached(sessionKey(org.orgId, 'mappings'), SESSION_TTL, () => loadAllMappings(orgCall(), org.version, dmos, {
     onProgress: (done, total) => { state.mappingsProgress = `${done} of ${total} DMOs`; setTask('mappings', `mappings: ${done} of ${total} data model objects`) },
-  })).finally(() => endTask('mappings'))
+  }).finally(() => { endTask('mappings'); state.mappingsProgress = '' }), { onUpdate: (v) => { if (state.key === key) state.mappings = v } })
   state.mappingsProgress = ''
   return state.mappings
 }
@@ -113,7 +116,8 @@ let recordIdsLoading = null
 /** Record IDs of DLOs, DMOs and CIs by API name, for links into the org. */
 export function ensureRecordIds() {
   if (state.recordIds || !org.version) return Promise.resolve(state.recordIds)
-  recordIdsLoading ||= sessionCached(sessionKey(org.orgId, 'recordIds'), SESSION_TTL, () => loadRecordIds(orgCall(), org.version, fetchAllPages))
+  const key = state.key
+  recordIdsLoading ||= orgCached(sessionKey(org.orgId, 'recordIds'), SESSION_TTL, () => loadRecordIds(orgCall(), org.version, fetchAllPages), { onUpdate: (v) => { if (state.key === key) state.recordIds = v } })
     .then((ids) => { state.recordIds = ids; return ids })
     .finally(() => { recordIdsLoading = null })
   return recordIdsLoading
@@ -124,7 +128,8 @@ let usageLoading = null
 export function ensureUsage({ refresh = false } = {}) {
   if (refresh) state.usage = null
   if (state.usage || !org.version) return Promise.resolve(state.usage)
-  usageLoading ||= sessionCached(sessionKey(org.orgId, 'usage'), SESSION_TTL, () => loadUsage(orgCall(), org.version, { segments: () => ensureSegments({ refresh }) }), { refresh })
+  const key = state.key
+  usageLoading ||= orgCached(sessionKey(org.orgId, 'usage'), SESSION_TTL, () => loadUsage(orgCall(), org.version, { segments: () => ensureSegments({ refresh }) }), { refresh, onUpdate: (v) => { if (state.key === key) state.usage = v } })
     .then((u) => { state.usage = u; return u })
     .finally(() => { usageLoading = null })
   return usageLoading
@@ -133,7 +138,7 @@ export function ensureUsage({ refresh = false } = {}) {
 /** Forget the cached metadata of an org (Settings). */
 export async function forgetCatalog(orgId) {
   await storeRemove(cacheKey(orgId))
-  await sessionForget(`dci_s_${orgId}_`)
+  await forgetCached(`dci_s_${orgId}_`)
   if (state.orgId === orgId) Object.assign(state, { key: null, orgId: null, objects: [], errors: [], loadedAt: '', streams: null, mappings: null, recordIds: null })
 }
 
@@ -145,7 +150,7 @@ export function useCatalog() {
 
 /** Identity resolution rulesets for Profiles, kept 5 minutes (their last-run status changes). */
 export function cachedRulesets(load, { refresh = false } = {}) {
-  return sessionCached(sessionKey(org.orgId, 'rulesets'), 5 * 60 * 1000, load, { refresh })
+  return orgCached(sessionKey(org.orgId, 'rulesets'), 5 * 60 * 1000, load, { refresh })
 }
 
 /** Drop what is in memory (after Settings deleted caches); it loads again when needed. */

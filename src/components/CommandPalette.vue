@@ -7,7 +7,7 @@ import { useOrg } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
 import { useQueries, loadQueries } from '../app/useQueries.js'
 import { loadSegments } from '../lib/segments.js'
-import { sessionCached } from '../lib/store.js'
+import { orgCached } from '../lib/store.js'
 import { paletteItems, searchPalette } from '../lib/palette.js'
 
 const router = useRouter()
@@ -30,7 +30,7 @@ async function show() {
   loadQueries()
   if (org.version) {
     const key = `dci_s_${org.orgId}_${org.dataSpace || 'default'}_segmentsList`
-    segments.value = await sessionCached(key, 10 * 60 * 1000, () => loadSegments(orgCall(), org.version).then((l) => l.map((s) => ({ apiName: s.apiName, label: s.label })))).catch(() => [])
+    segments.value = await orgCached(key, 10 * 60 * 1000, () => loadSegments(orgCall(), org.version).then((l) => l.map((s) => ({ apiName: s.apiName, label: s.label })))).catch(() => [])
   }
 }
 
