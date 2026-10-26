@@ -40,10 +40,11 @@ export function criteriaRefs(node, refs = {}) {
   return refs
 }
 
-export async function loadUsage(call, version) {
+/** `segments` loads the segment list (the app passes its shared, progressive one). */
+export async function loadUsage(call, version, { segments: loadSegs = null } = {}) {
   const [insights, segments, activations] = await Promise.all([
     insightPages(call, version).catch(() => []),
-    loadSegments(call, version).catch(() => []),
+    (loadSegs ? loadSegs() : loadSegments(call, version)).catch(() => []),
     offsetPages(call, `/services/data/v${version}/ssot/activations`, 'activations').then((a) => inSpace(a, call.dataSpace)).catch(() => []),
   ])
   // Field sets become arrays so the result can be cached in chrome.storage.session.

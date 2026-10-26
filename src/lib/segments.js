@@ -13,7 +13,7 @@ import { lit, inList, toObjects } from './profile.js'
 
 // Pages are read by what came back, not what was asked for: an org answered 20 a page to
 // limit=100, and stopping at the first short page showed only 20 of 500+ (feedback #121).
-export async function loadSegments(call, version, { max = 10000 } = {}) {
+export async function loadSegments(call, version, { max = 10000, onPage = null } = {}) {
   const out = []
   const seen = new Set()
   let offset = 0
@@ -26,6 +26,7 @@ export async function loadSegments(call, version, { max = 10000 } = {}) {
     for (const x of fresh) seen.add(x.apiName)
     out.push(...fresh.map(normalizeSegment))
     const total = res.data?.totalSize
+    onPage?.(out.slice(), total ?? null) // shown while the rest loads (feedback #1005)
     if (total != null && out.length >= total) break
     offset += page.length
   }

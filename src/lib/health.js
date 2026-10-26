@@ -144,7 +144,7 @@ export async function insightPages(call, version) {
  * Every section, each `{ title, items, error }`; a section that fails to load says so
  * and the others still show.
  */
-export async function loadHealth(call, version, { now = Date.now(), onProgress = () => {} } = {}) {
+export async function loadHealth(call, version, { now = Date.now(), onProgress = () => {}, segments: loadSegs = null } = {}) {
   const v = `/services/data/v${version}/ssot`
   let done = 0
   const TOTAL = 6
@@ -173,7 +173,7 @@ export async function loadHealth(call, version, { now = Date.now(), onProgress =
       }))
     }),
     section('Calculated insights', async () => (await insightPages(call, version)).map(insightHealth)),
-    section('Segments', async () => (await loadSegments(call, version)).map((s) => segmentHealth(s, now))),
+    section('Segments', async () => (await (loadSegs ? loadSegs() : loadSegments(call, version))).map((s) => segmentHealth(s, now))),
     section('Activations', async () => inSpace(await offsetPages(call, `${v}/activations`, 'activations'), call.dataSpace).map(activationHealth)),
     section('Personalization recommenders', async () => {
       const res = await call(`/services/data/v${version}/query?q=${encodeURIComponent(SETUP_QUERIES.recommenders)}`)

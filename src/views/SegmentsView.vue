@@ -16,8 +16,9 @@ import { runQuery } from '../lib/query.js'
 import { recordUrl } from '../lib/links.js'
 import { inSpace } from '../lib/dataSpace.js'
 import { parseRulesets, search, INDIVIDUAL } from '../lib/profile.js'
+import { useSegments, ensureSegments } from '../app/useSegments.js'
 import {
-  loadSegments, describeCriteria, topConditions, segmentSql, membershipTables, membershipCount, publishHistory, checkMembers,
+  describeCriteria, topConditions, segmentSql, membershipTables, membershipCount, publishHistory, checkMembers,
   SEGMENT_SORTS, sortSegments,
 } from '../lib/segments.js'
 
@@ -26,9 +27,11 @@ const router = useRouter()
 const org = useOrg()
 const catalog = useCatalog()
 
-const segments = ref([])
-const loading = ref(false)
-const error = ref('')
+// Shown as they load, and loading goes on on other pages (feedback #1005).
+const store = useSegments()
+const segments = computed(() => store.list)
+const loading = computed(() => store.loading)
+const error = computed(() => store.error)
 const filter = ref('')
 const q = async (sql) => runQuery(orgCall(), org.version, sql, { rowLimit: 2000 })
 
@@ -39,15 +42,9 @@ const checking = ref(false)
 const checkResult = ref(null) // { rows: [{ name, id, member, memberSince, matchesNow, failing }], note }
 const notice = ref('')
 
-async function load() {
-  if (!org.version) return
-  loading.value = true
-  error.value = ''
-  try { segments.value = await loadSegments(orgCall(), org.version) } catch (err) { error.value = err.message }
-  loading.value = false
-}
+const load = (refresh = false) => ensureSegments({ refresh }).catch(() => { /* shown from store.error */ })
 onMounted(() => { ensureCatalog(); load() })
-watch(() => [org.orgId, org.version, org.dataSpace], load)
+watch(() => [org.orgId, org.version, org.dataSpace], () => load())
 
 // Sort (feedback #121), remembered in this browser.
 const sortBy = ref((() => { try { return localStorage.getItem('dci_segmentSort') || 'name' } catch { return 'name' } })())
@@ -178,12 +175,12 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
     <ListPanel name="segments" label="segments list">
       <div class="flex gap-2">
         <input v-model="filter" placeholder="Search segments" class="flex-1 border rounded-md px-2 py-1 bg-background text-sm" />
-        <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the segments again" @click="load">
+        <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the segments again" @click="load(true)">
           <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" />
         </button>
       </div>
       <div class="flex items-center gap-2 text-xs">
-        <span class="text-muted-foreground">{{ list.length.toLocaleString() }} of {{ segments.length.toLocaleString() }} segments</span>
+        <span class="text-muted-foreground">{{ list.length.toLocaleString() }} of {{ segments.length.toLocaleString() }} segments<template v-if="loading">, loading {{ store.total ? `${store.loaded.toLocaleString()} of ${store.total.toLocaleString()}` : `more (${store.loaded.toLocaleString()} so far)` }}…</template></span>
         <label class="ml-auto text-muted-foreground" for="seg-sort">Sort</label>
         <select id="seg-sort" v-model="sortBy" class="border rounded px-1 py-0.5 bg-background"><option v-for="o in SEGMENT_SORTS" :key="o.id" :value="o.id">{{ o.label }}</option></select>
         <DownloadMenu small :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="segments" :disabled="!list.length" />
@@ -203,7 +200,7 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
 
     <div class="flex-1 min-w-0 space-y-4">
       <p v-if="!seg" class="text-sm text-muted-foreground p-4">
-        {{ loading ? 'Loading segments…' : segments.length ? 'Pick a segment to see its criteria, counts, publish history, and check whether someone is in it.' : 'No segments in this org.' }}
+        {{ loading && !segments.length ? 'Loading segments…' : loading && route.params.name ? `Loading segments: ${store.loaded.toLocaleString()} so far, ${route.params.name} not among them yet…` : segments.length ? 'Pick a segment to see its criteria, counts, publish history, and check whether someone is in it.' : 'No segments in this org.' }}
       </p>
 
       <template v-else>

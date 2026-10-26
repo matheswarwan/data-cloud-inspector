@@ -11,6 +11,7 @@ import { fetchAllPages } from '../lib/pages.js'
 import { withDataSpace } from '../lib/dataSpace.js'
 import { storeGet, storeSet, storeRemove, sessionCached, sessionForget } from '../lib/store.js'
 import { loadDataGraphs } from '../lib/dataGraphs.js'
+import { ensureSegments } from './useSegments.js'
 import { useOrg, currentDataSpaceId } from './useOrg.js'
 
 const org = useOrg()
@@ -123,7 +124,7 @@ let usageLoading = null
 export function ensureUsage({ refresh = false } = {}) {
   if (refresh) state.usage = null
   if (state.usage || !org.version) return Promise.resolve(state.usage)
-  usageLoading ||= sessionCached(sessionKey(org.orgId, 'usage'), SESSION_TTL, () => loadUsage(orgCall(), org.version), { refresh })
+  usageLoading ||= sessionCached(sessionKey(org.orgId, 'usage'), SESSION_TTL, () => loadUsage(orgCall(), org.version, { segments: () => ensureSegments({ refresh }) }), { refresh })
     .then((u) => { state.usage = u; return u })
     .finally(() => { usageLoading = null })
   return usageLoading

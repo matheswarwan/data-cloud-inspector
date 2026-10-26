@@ -141,3 +141,17 @@ describe('every segment and sorting (feedback #121)', () => {
     expect(sortSegments(list, 'name').map((x) => x.label)).toEqual(['A', 'B', 'C'])
   })
 })
+
+describe('segments shown while loading (feedback #1005)', () => {
+  it('reports each page with the total', async () => {
+    const all = Array.from({ length: 250 }, (_, i) => ({ apiName: `S${String(i).padStart(3, '0')}`, displayName: `Seg ${i}` }))
+    const call = async (path) => {
+      const offset = Number(new URL(`https://x${path}`).searchParams.get('offset'))
+      return { ok: true, data: { segments: all.slice(offset, offset + 100), totalSize: all.length } }
+    }
+    const pages = []
+    const out = await load2(call, '64.0', { onPage: (items, total) => pages.push([items.length, total]) })
+    expect(pages).toEqual([[100, 250], [200, 250], [250, 250]])
+    expect(out).toHaveLength(250)
+  })
+})

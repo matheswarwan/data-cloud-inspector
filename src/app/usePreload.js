@@ -8,6 +8,7 @@ import { useOrg } from './useOrg.js'
 import { ensureCatalog, ensureStreams, ensureAllMappings, ensureRecordIds, ensureUsage, ensureDataGraphs, useCatalog, orgCall } from './useCatalog.js'
 import { useJob, startJob } from './useJobs.js'
 import { loadHealth } from '../lib/health.js'
+import { ensureSegments } from './useSegments.js'
 import { preloadOn, stale, PRELOAD_STEPS, plural } from '../lib/preload.js'
 
 const done = new Set()
@@ -54,7 +55,7 @@ async function runHealth(org, force) {
   if (job.status !== 'running' && (force || !job.result || stale(job.finishedAt))) {
     const call = orgCall()
     const version = org.version
-    startJob(job.id, (progress) => loadHealth(call, version, { onProgress: progress }))
+    startJob(job.id, (progress) => loadHealth(call, version, { onProgress: progress, segments: () => ensureSegments() })) // the list the usage step loaded (#1005)
   }
   const s = step('health')
   while (job.status === 'running') {
