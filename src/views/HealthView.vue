@@ -78,7 +78,20 @@ async function toggleDetails(i) {
   }
 }
 
-const shown = (items) => (problemsOnly.value ? items.filter((i) => i.level === 'fail' || i.level === 'warn') : items)
+// Feedback #1001: the summary counts name nothing, so a count opens its section filtered to
+// that status, and the problems are listed by name under the summary.
+const levelFilter = ref(null) // { title, level } from a clicked count
+const shown = (items, title) => items.filter((i) =>
+  (levelFilter.value?.title === title ? i.level === levelFilter.value.level : true) &&
+  (!problemsOnly.value || i.level === 'fail' || i.level === 'warn'))
+const sectionId = (title) => `health-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+function showLevel(title, level) {
+  levelFilter.value = { title, level }
+  requestAnimationFrame(() => document.getElementById(sectionId(title))?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+}
+const attention = computed(() => sections.value
+  .flatMap((s) => s.items.filter((i) => i.level === 'fail' || i.level === 'warn').map((i) => ({ ...i, area: s.title })))
+  .sort((a, b) => LEVELS.indexOf(a.level) - LEVELS.indexOf(b.level)))
 
 // Where a row opens: our own page when there is one, else the record in Salesforce.
 function inside(i) {
@@ -139,7 +152,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
         <tr v-for="s in sections" :key="s.title" class="border-b last:border-0">
           <td class="p-2">{{ s.title }}<span v-if="s.error" class="text-destructive text-xs ml-2">could not load</span><span v-else-if="s.notice" class="text-muted-foreground text-xs ml-2">not set up</span></td>
           <td v-for="l in LEVELS" :key="l" class="p-2 text-right" :class="{ 'font-semibold': (l === 'fail' || l === 'warn') && countLevels(s.items)[l] }">
-            {{ countLevels(s.items)[l] || '' }}
+            <button v-if="countLevels(s.items)[l]" class="text-link hover:underline" :title="`Show the ${LEVEL_TEXT[l].toLowerCase()} ${s.title.toLowerCase()}`" @click="showLevel(s.title, l)">{{ countLevels(s.items)[l] }}</button>
           </td>
         </tr>
         <tr class="text-muted-foreground">
@@ -149,13 +162,28 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
       </tbody>
     </table>
 
-    <div v-for="s in sections" :key="s.title" :class="card">
-      <h3 class="p-3 border-b font-medium">{{ s.title }} <span class="text-muted-foreground font-normal text-sm">({{ s.items.length }})</span></h3>
+    <div v-if="attention.length" :class="card">
+      <h3 class="p-3 border-b font-medium">Failed or needs a look <span class="text-muted-foreground font-normal text-sm">({{ attention.length }})</span></h3>
+      <ul class="divide-y text-sm">
+        <li v-for="i in attention" :key="`${i.area}:${i.name}`" class="p-2 px-3 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <span class="whitespace-nowrap w-28 shrink-0"><span :class="['inline-block w-2 h-2 rounded-full mr-2', DOT[i.level]]" />{{ LEVEL_TEXT[i.level] }}</span>
+          <span class="text-muted-foreground w-36 shrink-0">{{ i.kind }}</span>
+          <RouterLink v-if="inside(i)" :to="inside(i)" class="text-link hover:underline font-medium">{{ i.label }}</RouterLink>
+          <span v-else class="font-medium">{{ i.label }}</span>
+          <span class="text-muted-foreground">{{ i.reason }}</span>
+        </li>
+      </ul>
+    </div>
+
+    <div v-for="s in sections" :id="sectionId(s.title)" :key="s.title" :class="[card, 'scroll-mt-4']">
+      <h3 class="p-3 border-b font-medium">{{ s.title }} <span class="text-muted-foreground font-normal text-sm">({{ s.items.length }})</span>
+        <span v-if="levelFilter?.title === s.title" class="ml-2 text-xs font-normal text-muted-foreground">Showing {{ LEVEL_TEXT[levelFilter.level].toLowerCase() }} only. <button class="text-link hover:underline" @click="levelFilter = null">Show all</button></span>
+      </h3>
       <p v-if="s.error" class="p-3 text-sm text-destructive">Could not load: {{ s.error }}</p>
       <p v-else-if="s.notice" class="p-3 text-sm text-muted-foreground">{{ s.notice }}</p>
       <p v-else-if="!s.items.length" class="p-3 text-sm text-muted-foreground">None in this org.</p>
-      <p v-else-if="!shown(s.items).length" class="p-3 text-sm text-muted-foreground">No problems.</p>
-      <DataTable v-else :columns="itemCols" :rows="shown(s.items)" row-key="name" :bordered="false">
+      <p v-else-if="!shown(s.items, s.title).length" class="p-3 text-sm text-muted-foreground">No problems.</p>
+      <DataTable v-else :columns="itemCols" :rows="shown(s.items, s.title)" row-key="name" :bordered="false">
         <template #cell-level="{ row: i }"><span class="whitespace-nowrap"><span :class="['inline-block w-2 h-2 rounded-full mr-2', DOT[i.level]]" />{{ LEVEL_TEXT[i.level] }}</span></template>
         <template #cell-name="{ row: i }">
           <RouterLink v-if="inside(i)" :to="inside(i)" class="text-link hover:underline">{{ i.label }}</RouterLink>
