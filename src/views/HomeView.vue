@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router'
 import { ShieldCheck, Plug, ArrowRight, LogIn } from 'lucide-vue-next'
 import { useOrg, currentOrg, loadOrgs } from '../app/useOrg.js'
 import SavedOrgs from '../components/SavedOrgs.vue'
+import UserContext from '../components/UserContext.vue'
 import { useCatalog, ensureCatalog } from '../app/useCatalog.js'
 import { useQueries, loadQueries } from '../app/useQueries.js'
 import { NAV } from '../app/router.js'
@@ -92,6 +93,15 @@ const short = (sql) => sql.replace(/\s+/g, ' ').slice(0, 120)
     </div>
 
     <SavedOrgs v-if="!connected && !org.loading" />
+
+    <!-- Who the tool runs as here (feedback #1004), as on Connection check. -->
+    <div v-if="connected" class="border rounded-md bg-card">
+      <div class="p-3 border-b flex items-center gap-2">
+        <h3 class="font-medium text-sm">Your user in this org</h3>
+        <RouterLink to="/connection" class="ml-auto text-xs text-link hover:underline">Connection check</RouterLink>
+      </div>
+      <div class="p-3"><UserContext compact /></div>
+    </div>
 
     <div class="space-y-2">
       <h3 class="font-medium">{{ most.length ? 'Most used' : 'Good places to start' }}</h3>
