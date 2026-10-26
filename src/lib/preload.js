@@ -17,3 +17,22 @@ export function stale(finishedAt, { maxAgeMs = 3600000, now = Date.now() } = {})
   const t = Date.parse(finishedAt || '')
   return Number.isNaN(t) || now - t > maxAgeMs
 }
+
+// The steps of Load everything, in order (feedback #1002).
+export const PRELOAD_STEPS = [
+  { id: 'catalog', label: 'Objects and fields' },
+  { id: 'streams', label: 'Data streams' },
+  { id: 'mappings', label: 'Mappings' },
+  { id: 'recordIds', label: 'Record links' },
+  { id: 'usage', label: 'Insights, segments, activations' },
+  { id: 'dataGraphs', label: 'Data graphs' },
+  { id: 'health', label: 'Health check' },
+]
+
+export const plural = (n, word) => `${Number(n).toLocaleString()} ${word}${n === 1 ? '' : 's'}`
+
+/** Counts for the progress bar: finished (done or failed), failed, total. */
+export function preloadProgress(steps) {
+  const finished = steps.filter((s) => s.status === 'done' || s.status === 'failed').length
+  return { finished, failed: steps.filter((s) => s.status === 'failed').length, total: steps.length }
+}

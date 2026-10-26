@@ -23,9 +23,33 @@ describe('criteria', () => {
   it('describes groups and rules', () => {
     const c = { type: 'LogicalComparison', operator: 'and', filters: [rule('ssot__FirstName__c', 'equals', { value: 'Ann' }), { operator: 'or', filters: [rule('ssot__LastName__c', 'begins with', { value: 'L' })] }] }
     expect(describeCriteria(c).map((l) => `${l.depth}:${l.text}`)).toEqual([
-      '0:All of these (AND):', '1:Individual.FirstName equals "Ann"', '1:Any of these (OR):', '2:Individual.LastName begins with "L"',
+      '0:All of these (AND):', '1:Individual.FirstName is "Ann"', '1:Any of these (OR):', '2:Individual.LastName begins with "L"',
     ])
     expect(describeCriteria({ type: 'Weird' })[0].raw).toContain('Weird')
+  })
+  it('describes count rules on related records and relative dates (feedback #1003)', () => {
+    const sub = (o, f) => ({ objectApiName: o, fieldApiName: f })
+    const agg = {
+      filter: { type: 'LogicalComparison', operator: 'and', filters: [
+        { type: 'TextComparison', subject: sub('Services__dlm', 'STATUS_ID__c'), operator: 'in', values: ['1', '3'] },
+        { type: 'RelativeToNowDateComparison', subject: sub('Services__dlm', 'CLOSE_DT__c'), operator: 'in the last number of days', value: 16 },
+      ] },
+      containerObjectApiName: 'Services__dlm',
+      path: [[sub('ssot__Individual__dlm', 'ssot__Id__c'), sub('Services__dlm', 'PARTY_ID__c')]],
+      type: 'NumberAggregation', aggregateFunction: 'count',
+      comparison: { type: 'NumberComparison', subject: sub('Services__dlm', 'SERVICE_ID__c'), operator: 'greater than or equal', value: 1 },
+    }
+    const c = { type: 'LogicalComparison', operator: 'or', filters: [agg, { filter: { type: 'TextComparison', subject: sub('ssot__Individual__dlm', 'ssot__PrimaryLanguageId__c'), operator: 'equal', values: ['E'] } }] }
+    expect(describeCriteria(c).map((l) => `${l.depth}:${l.text}`)).toEqual([
+      '0:Any of these (OR):',
+      '1:At least 1 related Services record where:',
+      '2:All of these (AND):',
+      '3:Services.STATUS_ID is one of "1", "3"',
+      '3:Services.CLOSE_DT is in the last 16 days',
+      '1:Individual.PrimaryLanguageId is "E"',
+    ])
+    expect(criteriaSql(agg, 'ssot__Individual__dlm', []).error).toMatch(/count rules/)
+    expect(criteriaSql({ type: 'TextComparison', subject: sub('ssot__Individual__dlm', 'X__c'), operator: 'equal', values: ['E'] }, 'ssot__Individual__dlm', []).sql).toBe(`LOWER(s.X__c) = LOWER('E')`)
   })
   it('translates operators to SQL', () => {
     expect(criteriaSql(parseCriteria(LIVE), ON, CATALOG).sql).toBe("(s.ssot__PersonName__c IS NOT NULL AND CAST(s.ssot__PersonName__c AS VARCHAR) <> '')")

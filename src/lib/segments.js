@@ -98,6 +98,32 @@ function valuesOf(n) {
 
 const short = (name) => String(name || '').replace(/^ssot__/, '').replace(/__(c|dlm|dll|cio)$/, '')
 
+// Operators as words (feedback #1003: Data Cloud sends "equal", "in", "in the last number
+// of days" and the like; unknown ones are shown as sent).
+const OP_TEXT = {
+  equal: 'is', equals: 'is', 'not equal': 'is not', 'not equals': 'is not', in: 'is one of', 'not in': 'is none of',
+  'has value': 'has a value', 'has no value': 'has no value', 'greater than': 'is greater than', 'greater than or equal': 'is at least',
+  'less than': 'is less than', 'less than or equal': 'is at most',
+}
+const COUNT_TEXT = {
+  'greater than or equal': (n) => `At least ${n}`, 'greater than': (n) => `More than ${n}`, equal: (n) => `Exactly ${n}`, equals: (n) => `Exactly ${n}`,
+  'less than': (n) => `Fewer than ${n}`, 'less than or equal': (n) => `At most ${n}`, 'not equal': (n) => `Not exactly ${n}`,
+}
+const fmtVal = (v) => (typeof v === 'string' ? JSON.stringify(v) : v && typeof v === 'object' ? JSON.stringify(v) : String(v))
+
+/** One condition as a sentence: `Individual.PrimaryLanguageId is "E"`, `CloseDt is in the last 16 days`. */
+export function conditionText(node) {
+  const subj = node.subject || {}
+  const vals = valuesOf(node)
+  const op = String(node.operator || '?')
+  const field = `${short(subj.objectApiName)}.${short(subj.fieldApiName)}`
+  const via = (node.path?.length || node.joinPath?.length) ? ' (on a related object)' : ''
+  // Relative dates: "in the last number of days" with value 16 reads "in the last 16 days".
+  if (/number of/i.test(op) && vals.length === 1) return `${field} is ${op.replace(/number of/i, String(vals[0]))}${via}`
+  const words = OP_TEXT[op.toLowerCase()] || op
+  return `${field} ${words}${vals.length ? ` ${vals.map(fmtVal).join(', ')}` : ''}${via}`
+}
+
 /** The criteria as plain lines with indentation: `[{ depth, text, raw? }]`. */
 export function describeCriteria(node, depth = 0) {
   if (!node) return [{ depth, text: 'No criteria (every record of the object)' }]
@@ -107,11 +133,31 @@ export function describeCriteria(node, depth = 0) {
     const kids = childrenOf(node)
     return [{ depth, text: `${op === 'OR' ? 'Any' : 'All'} of these (${op}):` }, ...kids.flatMap((k) => describeCriteria(k, depth + 1))]
   }
+  if (isAggregation(node)) return describeAggregation(node, depth)
+  // A wrapper with only `filter` (seen inside OR groups): describe what it wraps.
+  if (node.filter && !node.subject) return describeCriteria(node.filter, depth)
   const subj = node.subject || {}
   if (!subj.fieldApiName) return [{ depth, text: `Unrecognised rule (${node.type || 'no type'})`, raw: JSON.stringify(node) }]
-  const vals = valuesOf(node)
-  const via = (node.path || node.joinPath) ? ' (on a related object)' : ''
-  return [{ depth, text: `${short(subj.objectApiName)}.${short(subj.fieldApiName)} ${node.operator || '?'}${vals.length ? ` ${vals.map((v) => JSON.stringify(v)).join(', ')}` : ''}${via}` }]
+  return [{ depth, text: conditionText(node) }]
+}
+
+// "Count of related records" rules (type NumberAggregation, feedback #1003): `filter` holds the
+// conditions on the related records, `comparison` the count (or sum, average...) test.
+const isAggregation = (n) => /aggregation/i.test(n?.type || '') || (n?.aggregateFunction && n?.comparison)
+function describeAggregation(node, depth) {
+  const cmp = node.comparison || {}
+  const op = String(cmp.operator || '').toLowerCase()
+  const n = valuesOf(cmp)[0]
+  const obj = short(node.containerObjectApiName || cmp.subject?.objectApiName) || 'related'
+  const fn = String(node.aggregateFunction || 'count').toLowerCase()
+  let head
+  if (fn === 'count' && COUNT_TEXT[op] && n != null) head = `${COUNT_TEXT[op](n)} related ${obj} record${Number(n) === 1 ? '' : 's'}`
+  else {
+    const field = cmp.subject?.fieldApiName ? `${obj}.${short(cmp.subject.fieldApiName)}` : `${obj} records`
+    head = `${fn === 'count' ? 'Count of' : `${fn[0].toUpperCase()}${fn.slice(1)} of`} ${field} ${OP_TEXT[op] || op || '?'}${n != null ? ` ${fmtVal(n)}` : ''}`
+  }
+  if (!node.filter) return [{ depth, text: head }]
+  return [{ depth, text: `${head} where:` }, ...describeCriteria(node.filter, depth + 1)]
 }
 
 /** The top-level conditions, for a rule-by-rule check of one person. */
@@ -128,6 +174,10 @@ const OPS = {
   'is null': (f) => `${f} IS NULL`,
   'equals': (f, v, text) => (text ? `LOWER(${f}) = LOWER(${lit(v[0])})` : `${f} = ${lit(v[0])}`),
   'is equal to': (f, v, text) => OPS.equals(f, v, text),
+  'equal': (f, v, text) => OPS.equals(f, v, text),
+  'not equal': (f, v, text) => OPS['not equals'](f, v, text),
+  'in': (f, v, text) => OPS['is in'](f, v, text),
+  'not in': (f, v, text) => OPS['is not in'](f, v, text),
   'not equals': (f, v, text) => (text ? `LOWER(${f}) <> LOWER(${lit(v[0])})` : `${f} <> ${lit(v[0])}`),
   'does not equal': (f, v, text) => OPS['not equals'](f, v, text),
   'contains': (f, v) => `${f} ILIKE ${lit(`%${v[0]}%`)}`,
@@ -145,7 +195,7 @@ const OPS = {
   'is true': (f) => `${f} = true`,
   'is false': (f) => `${f} = false`,
 }
-const NEEDS = { equals: 1, 'is equal to': 1, 'not equals': 1, 'does not equal': 1, contains: 1, 'does not contain': 1, 'begins with': 1, 'starts with': 1, 'ends with': 1, 'is in': 1, 'is not in': 1, 'greater than': 1, 'greater than or equal': 1, 'less than': 1, 'less than or equal': 1, between: 2 }
+const NEEDS = { equal: 1, 'not equal': 1, in: 1, 'not in': 1, equals: 1, 'is equal to': 1, 'not equals': 1, 'does not equal': 1, contains: 1, 'does not contain': 1, 'begins with': 1, 'starts with': 1, 'ends with': 1, 'is in': 1, 'is not in': 1, 'greater than': 1, 'greater than or equal': 1, 'less than': 1, 'less than or equal': 1, between: 2 }
 
 /**
  * SQL for one criteria node against `on` (aliased `s`), or `{ error }` when it cannot be
@@ -162,6 +212,8 @@ export function criteriaSql(node, on, catalog) {
     const op = String(node.operator || node.logicalOperator || 'and').toLowerCase() === 'or' ? ' OR ' : ' AND '
     return { sql: parts.length ? `(${parts.map((p) => p.sql).join(op)})` : 'TRUE' }
   }
+  if (isAggregation(node)) return { error: 'count rules on related records are not supported yet' }
+  if (node.filter && !node.subject) return criteriaSql(node.filter, on, catalog)
   const subj = node.subject || {}
   const operator = String(node.operator || '').toLowerCase()
   const make = OPS[operator]
