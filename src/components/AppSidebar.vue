@@ -17,8 +17,9 @@ const icon = (name) => ICONS[name] || Circle
 </script>
 
 <template>
-  <aside :class="['shrink-0 border-r bg-card sticky top-[49px] h-[calc(100vh-49px)] overflow-y-auto py-2 flex flex-col', collapsed ? 'w-12' : 'w-52']" aria-label="Pages">
-    <nav class="flex-1 px-1.5 space-y-0.5">
+  <aside :class="['shrink-0 border-r bg-card sticky top-[49px] h-[calc(100vh-49px)] overflow-hidden py-2 flex flex-col', collapsed ? 'w-12' : 'w-52']" aria-label="Pages">
+    <!-- Only the page list scrolls, so Help, Settings, Collapse and the credit stay in view. -->
+    <nav class="flex-1 min-h-0 overflow-y-auto px-1.5 space-y-0.5">
       <template v-for="(item, i) in NAV" :key="item.path">
         <div v-if="i && item.group !== NAV[i - 1].group" class="my-2 border-t" role="separator" />
         <RouterLink
@@ -36,7 +37,7 @@ const icon = (name) => ICONS[name] || Circle
         </RouterLink>
       </template>
     </nav>
-    <div class="mt-2 pt-2 border-t mx-1.5 space-y-0.5">
+    <div class="shrink-0 mt-2 pt-2 border-t mx-1.5 space-y-0.5">
       <RouterLink
         v-for="f in FOOTER" :key="f.path" :to="f.path" :title="collapsed ? f.label : undefined"
         class="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-foreground/80 hover:bg-accent" active-class="bg-accent text-foreground font-medium"
@@ -45,10 +46,10 @@ const icon = (name) => ICONS[name] || Circle
         <span v-if="!collapsed">{{ f.label }}</span>
       </RouterLink>
     </div>
-    <button class="mx-1.5 mt-0.5 px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-accent flex items-center gap-2" :title="collapsed ? 'Expand the sidebar' : 'Collapse the sidebar'" @click="collapsed = !collapsed">
+    <button class="shrink-0 mx-1.5 mt-0.5 px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-accent flex items-center gap-2" :title="collapsed ? 'Expand the sidebar' : 'Collapse the sidebar'" @click="collapsed = !collapsed">
       <component :is="collapsed ? PanelLeftOpen : PanelLeftClose" class="w-4 h-4" />
       <span v-if="!collapsed">Collapse</span>
     </button>
-    <p v-if="!collapsed" class="mx-1.5 mt-1 px-2 text-[11px] text-muted-foreground">Created by <a href="https://www.linkedin.com/in/mathesk/" target="_blank" rel="noopener" class="hover:underline">Mathes</a>, Ateko</p>
+    <p v-if="!collapsed" class="shrink-0 mx-1.5 mt-1 px-2 text-[11px] text-muted-foreground">Created by <a href="https://www.linkedin.com/in/mathesk/" target="_blank" rel="noopener" class="hover:underline">Mathes</a>, Ateko</p>
   </aside>
 </template>
