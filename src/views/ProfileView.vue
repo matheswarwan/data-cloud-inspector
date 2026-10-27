@@ -5,6 +5,7 @@ import { ref, shallowRef, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, Copy, ChevronRight, ChevronDown } from 'lucide-vue-next'
 import RelatedTable from '../components/RelatedTable.vue'
+import { channelOf, actionOf, engagementSummary, loadConsent, consentFacts } from '../lib/marketing.js'
 import RecordLink from '../components/RecordLink.vue'
 import { recordUrl, recordKind } from '../lib/links.js'
 import { currentOrg } from '../app/useOrg.js'
@@ -35,6 +36,8 @@ const notice = ref('')
 const profile = shallowRef(null) // { unifiedId, unified, links, sources }
 const related = shallowRef([]) // source side
 const unifiedRelated = shallowRef([])
+const consent = shallowRef([]) // consent rows through the contact points (Marketing Cloud Next)
+const consentLoading = ref(false)
 const missed = ref([])
 const loading = ref('')
 const open = ref({}) // expanded source rows / events
@@ -136,6 +139,7 @@ async function openProfile(kind, id) {
   open.value = {}
   related.value = []
   unifiedRelated.value = []
+  consent.value = []
   missed.value = []
   loading.value = 'Loading the profile…'
   await ensureCatalog()
@@ -160,6 +164,10 @@ async function openProfile(kind, id) {
     related.value = src
     unifiedRelated.value = uni
     missed.value = await possibleMissedMatches(q, p.sources.map((s) => s.ssot__Id__c), src).catch(() => [])
+    consentLoading.value = true
+    const cps = [...src, ...uni].filter((r) => /ContactPoint/i.test(r.object))
+    const c = await loadConsent(q, cps, catalog.objects).catch(() => [])
+    if (seq === loadSeq) { consent.value = c; consentLoading.value = false }
   } catch (err) {
     if (seq === loadSeq) error.value = err.message
   } finally {
@@ -188,10 +196,17 @@ const events = computed(() => {
   const out = []
   for (const r of related.value.filter((x) => x.category === 'Engagement')) {
     const timeField = eventTimeField(byName.value.get(r.object))
-    for (const row of r.rows) out.push({ object: r.object, label: byName.value.get(r.object)?.label || r.object, time: timeField ? row[timeField] : null, row })
+    for (const row of r.rows) out.push({ object: r.object, label: byName.value.get(r.object)?.label || r.object, channel: channelOf(r.object), action: actionOf(row), time: timeField ? row[timeField] : null, row })
   }
   return out.sort((a, b) => String(b.time ?? '').localeCompare(String(a.time ?? '')))
 })
+// Message history by channel and action (Marketing Cloud Next): counts, and a filter.
+const channels = computed(() => engagementSummary(events.value))
+const channelPick = ref('')
+const actionPick = ref('')
+watch(channelPick, () => { actionPick.value = '' })
+const shownEvents = computed(() => events.value.filter((ev) => (!channelPick.value || ev.channel === channelPick.value) && (!actionPick.value || ev.action === actionPick.value)))
+const pickedChannel = computed(() => channels.value.find((c) => c.channel === channelPick.value))
 const engagementErrors = computed(() => related.value.filter((r) => r.category === 'Engagement' && r.error))
 const eventSummary = (row) => Object.entries(row)
   .filter(([k, v]) => v != null && v !== '' && !/Id__c$|^KQ_|DataSource|InternalOrganization|Created|Modified/i.test(k))
@@ -388,15 +403,43 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
         </div>
       </div>
 
+      <!-- Consent (Marketing Cloud Next): through the contact points -->
+      <div v-if="consent.length || consentLoading" :class="card">
+        <h3 class="p-3 border-b font-medium">Consent</h3>
+        <p v-if="consentLoading" class="p-3 text-sm text-muted-foreground">Looking for consent records on the contact points…</p>
+        <div v-for="r in consent" :key="r.object + r.sql" class="border-b last:border-0 p-3 space-y-1">
+          <div class="text-sm flex items-center gap-2">
+            <RouterLink :to="`/objects/${r.object}`" class="font-mono text-link hover:underline">{{ r.object }}</RouterLink>
+            <span class="text-muted-foreground">via {{ r.via }} · {{ r.rows.length }}{{ r.more ? '+' : '' }} rows</span>
+            <button v-if="r.sql" class="ml-auto text-xs inline-flex items-center gap-1 hover:underline" @click="toSql(r.sql)">SQL</button>
+          </div>
+          <p v-if="r.error" class="text-xs text-destructive">{{ r.error }}</p>
+          <ul v-if="r.rows.length" class="text-sm space-y-0.5">
+            <li v-for="(row, i) in r.rows.slice(0, 20)" :key="i">
+              <b :class="/out|revok|unsub/i.test(consentFacts(row).status) ? 'text-destructive' : ''">{{ consentFacts(row).status || 'no status field' }}</b>
+              <span class="text-muted-foreground ml-1.5">{{ [consentFacts(row).subscription, consentFacts(row).channel, consentFacts(row).when && when(consentFacts(row).when)].filter(Boolean).join(' · ') }}</span>
+            </li>
+          </ul>
+          <details class="text-xs"><summary class="cursor-pointer text-muted-foreground">All fields</summary><RelatedTable :rows="r.rows" /></details>
+        </div>
+      </div>
+
       <!-- Engagement -->
       <div :class="card">
-        <h3 class="p-3 border-b font-medium">Engagement ({{ events.length }})</h3>
+        <h3 class="p-3 border-b font-medium">Message history and engagement ({{ events.length }})</h3>
+        <div v-if="channels.length" class="px-3 pt-2 flex flex-wrap gap-1.5 text-xs" aria-label="Channels">
+          <button :class="['px-2 py-0.5 rounded-full border', !channelPick ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="channelPick = ''">All {{ events.length }}</button>
+          <button v-for="c in channels" :key="c.channel" :class="['px-2 py-0.5 rounded-full border', channelPick === c.channel ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="channelPick = channelPick === c.channel ? '' : c.channel">{{ c.channel }} {{ c.count }}</button>
+        </div>
+        <div v-if="pickedChannel?.actions.length" class="px-3 pt-1.5 flex flex-wrap gap-1.5 text-xs" aria-label="Actions">
+          <button v-for="a in pickedChannel.actions" :key="a.action" :class="['px-2 py-0.5 rounded border', actionPick === a.action ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="actionPick = actionPick === a.action ? '' : a.action">{{ a.action }} {{ a.count }}</button>
+        </div>
         <p v-if="!events.length && !loading" class="p-3 text-sm text-muted-foreground">No engagement rows for these source records.</p>
         <ul class="text-sm">
-          <li v-for="(ev, i) in events.slice(0, 200)" :key="i" class="border-b last:border-0">
+          <li v-for="(ev, i) in shownEvents.slice(0, 200)" :key="i" class="border-b last:border-0">
             <button class="w-full text-left px-3 py-1.5 flex gap-3 hover:bg-accent" @click="open[`ev${i}`] = !open[`ev${i}`]">
               <span class="font-mono text-xs w-44 shrink-0 text-muted-foreground">{{ ev.time ? when(ev.time) : 'no time' }}</span>
-              <span class="w-48 shrink-0 truncate">{{ ev.label }}</span>
+              <span class="w-48 shrink-0 truncate">{{ ev.label }}<span v-if="ev.action" class="text-muted-foreground"> · {{ ev.action }}</span></span>
               <span class="truncate text-muted-foreground">{{ eventSummary(ev.row) }}</span>
             </button>
             <dl v-if="open[`ev${i}`]" class="px-3 pb-2 grid grid-cols-[minmax(10rem,auto)_1fr] gap-x-3 text-xs">
