@@ -5,6 +5,7 @@
 import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ZoomIn, ZoomOut, Maximize, RotateCcw, Download, Key, Link2 } from 'lucide-vue-next'
+import { standaloneSvg, pngBlob } from '../lib/svgImage.js'
 import { diagramGraph, layoutDiagram, edgePath, anchorY, cardinalityText, diagramBounds, neighbours, toMermaid, toDot, toDrawio, toDiagramMarkdown, NODE } from '../lib/modelDiagram.js'
 import { saveBlob, safeFileName } from '../lib/exportDoc.js'
 
@@ -165,40 +166,7 @@ async function svgText() {
   try { return drawnSvg() } finally { [selected.value, hover.value] = keep }
 }
 function drawnSvg() {
-  const src = svg.value
-  const b = diagramBounds(graph.value, pos)
-  const clone = src.cloneNode(true)
-  // Inline the colours and fonts the theme gives each element, so the file stands alone.
-  const a = [src, ...src.querySelectorAll('*')], c = [clone, ...clone.querySelectorAll('*')]
-  a.forEach((el, i) => {
-    const cs = getComputedStyle(el)
-    for (const p of ['fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'opacity', 'font-family', 'font-size', 'font-weight']) {
-      const v = cs.getPropertyValue(p)
-      if (v) c[i].setAttribute(p, v)
-    }
-    c[i].removeAttribute('style')
-    c[i].removeAttribute('class')
-  })
-  clone.querySelector('g[data-viewport]').setAttribute('transform', '')
-  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
-  clone.setAttribute('viewBox', `${b.x} ${b.y} ${b.width} ${b.height}`)
-  clone.setAttribute('width', String(Math.round(b.width)))
-  clone.setAttribute('height', String(Math.round(b.height)))
-  const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
-  Object.entries({ x: b.x, y: b.y, width: b.width, height: b.height, fill: getComputedStyle(box.value).backgroundColor }).forEach(([k, v]) => bg.setAttribute(k, v))
-  clone.insertBefore(bg, clone.firstChild)
-  return `<?xml version="1.0" encoding="UTF-8"?>\n${new XMLSerializer().serializeToString(clone)}`
-}
-async function pngBlob(text) {
-  const img = new Image()
-  img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(text)}`
-  await img.decode()
-  const scale = Math.min(2, 16000 / Math.max(img.width, img.height))
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.round(img.width * scale)
-  canvas.height = Math.round(img.height * scale)
-  canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
-  return await new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('the image is too large'))), 'image/png'))
+  return standaloneSvg(svg.value, diagramBounds(graph.value, pos), getComputedStyle(box.value).backgroundColor, 0)
 }
 const EXPORTS = [
   ['svg', 'SVG image (.svg)'],

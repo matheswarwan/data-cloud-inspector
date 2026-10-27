@@ -2,10 +2,12 @@
 // The Graph view of JsonViewer: each object or array as a box with its plain values, lines to
 // its children, laid out with dagre. Drag to pan, wheel to zoom, click a box to copy its path.
 import { ref, reactive, computed, watch, onMounted } from 'vue'
-import { ZoomIn, ZoomOut, Maximize } from 'lucide-vue-next'
+import { ZoomIn, ZoomOut, Maximize, Download } from 'lucide-vue-next'
+import { standaloneSvg, pngBlob } from '../lib/svgImage.js'
+import { saveBlob } from '../lib/exportDoc.js'
 import { jsonGraph } from '../lib/jsonView.js'
 
-const props = defineProps({ value: { required: true }, copy: { type: Function, required: true } })
+const props = defineProps({ value: { required: true }, copy: { type: Function, required: true }, fileName: { type: String, default: 'graph' } })
 const graph = computed(() => jsonGraph(props.value))
 const pos = reactive({})
 const view = reactive({ x: 0, y: 0, k: 1 })
@@ -58,6 +60,23 @@ const path = (a, b) => {
   const x1 = pa.x + a.width, y1 = pa.y + 13, x2 = pb.x, y2 = pb.y + 13, c = Math.max(30, (x2 - x1) / 2)
   return `M${x1},${y1} C${x1 + c},${y1} ${x2 - c},${y2} ${x2},${y2}`
 }
+// Download the whole graph as an image (feedback #1010).
+const svgEl = ref(null)
+const menu = ref(false)
+function bounds() {
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
+  for (const n of graph.value.nodes) { const p = pos[n.id]; if (!p) continue; x1 = Math.min(x1, p.x); y1 = Math.min(y1, p.y); x2 = Math.max(x2, p.x + n.width); y2 = Math.max(y2, p.y + n.height) }
+  return { x: x1, y: y1, width: x2 - x1, height: y2 - y1 }
+}
+async function download(kind) {
+  menu.value = false
+  try {
+    const text = standaloneSvg(svgEl.value, bounds(), getComputedStyle(box.value).backgroundColor)
+    const name = `${props.fileName || 'graph'}-graph`
+    if (kind === 'svg') saveBlob(new Blob([text], { type: 'image/svg+xml' }), `${name}.svg`)
+    else saveBlob(await pngBlob(text), `${name}.png`)
+  } catch (e) { error.value = `Could not make the image: ${e.message}` }
+}
 const byId = computed(() => new Map(graph.value.nodes.map((n) => [n.id, n])))
 const sizeText = (n) => (n.kind === 'array' ? `[${n.size}]` : ['{', n.size, '}'].join(''))
 const T = (n) => `hsl(var(--${n}))`
@@ -67,8 +86,8 @@ const TYPE = { string: '#047857', number: '#0369a1', boolean: '#6d28d9', null: '
 <template>
   <div class="relative border rounded-md bg-background overflow-hidden h-[60vh] min-h-72 cursor-grab active:cursor-grabbing select-none" ref="box" @wheel="onWheel" @pointerdown="down">
     <p v-if="error" class="p-3 text-sm text-destructive">{{ error }}</p>
-    <svg class="w-full h-full" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
-      <g :transform="`translate(${view.x},${view.y}) scale(${view.k})`">
+    <svg ref="svgEl" class="w-full h-full" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+      <g data-viewport :transform="`translate(${view.x},${view.y}) scale(${view.k})`">
         <g v-for="e in graph.edges" :key="e.id">
           <path :d="path(byId.get(e.from), byId.get(e.to))" fill="none" :style="{ stroke: T('muted-foreground'), strokeWidth: 1 }" />
         </g>
@@ -87,6 +106,13 @@ const TYPE = { string: '#047857', number: '#0369a1', boolean: '#6d28d9', null: '
       <button class="p-1 rounded border bg-card hover:bg-accent" aria-label="Zoom in" @click="zoomBtn(1.2)"><ZoomIn class="w-3.5 h-3.5" /></button>
       <button class="p-1 rounded border bg-card hover:bg-accent" aria-label="Zoom out" @click="zoomBtn(1 / 1.2)"><ZoomOut class="w-3.5 h-3.5" /></button>
       <button class="p-1 rounded border bg-card hover:bg-accent" aria-label="Fit" @click="fit"><Maximize class="w-3.5 h-3.5" /></button>
+      <div class="relative">
+        <button class="p-1 rounded border bg-card hover:bg-accent" aria-label="Download the graph" title="Download the graph as an image" :aria-expanded="menu" :disabled="!graph.nodes.length" @click="menu = !menu"><Download class="w-3.5 h-3.5" /></button>
+        <div v-if="menu" class="absolute right-0 mt-1 z-10 w-40 rounded-md border bg-card shadow-lg py-1 text-xs" role="menu">
+          <button role="menuitem" class="block w-full text-left px-3 py-1.5 hover:bg-accent" @click="download('png')">PNG image (.png)</button>
+          <button role="menuitem" class="block w-full text-left px-3 py-1.5 hover:bg-accent" @click="download('svg')">SVG image (.svg)</button>
+        </div>
+      </div>
     </div>
     <p v-if="graph.truncated" class="absolute left-2 bottom-2 text-xs text-muted-foreground bg-card/90 border rounded px-2 py-0.5">Only the first {{ graph.nodes.length }} objects are drawn; use Tree for the rest.</p>
   </div>
