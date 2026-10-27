@@ -17,6 +17,7 @@ import { SETUP_QUERIES } from './personalization.js'
 import { inSpace } from './dataSpace.js'
 import { problemCounts, withProblems } from './problems.js'
 import { loadFlows, isMarketingFlow } from './flows.js'
+import { isOn } from './features.js'
 import { runQuery } from './query.js'
 import { eventTimeField, toObjects } from './profile.js'
 
@@ -166,7 +167,8 @@ export async function insightPages(call, version) {
 export async function loadHealth(call, version, { now = Date.now(), onProgress = () => {}, segments: loadSegs = null, objects: loadObjects = null } = {}) {
   const v = `/services/data/v${version}/ssot`
   let done = 0
-  const TOTAL = 8
+  const MCN = isOn('mcnHealth')
+  const TOTAL = MCN ? 8 : 6
   const section = async (title, fn) => {
     let out
     try { out = { title, items: sortItems(await fn()), error: '' } } catch (err) {
@@ -199,7 +201,7 @@ export async function loadHealth(call, version, { now = Date.now(), onProgress =
       if (!res.ok) throw new Error(res.error || `HTTP ${res.status}`)
       return (res.data?.records || []).filter((r) => !call.dataSpaceId || !r.DataSpaceId || r.DataSpaceId.slice(0, 15) === call.dataSpaceId.slice(0, 15)).map(recommenderHealth)
     }),
-    section('Marketing flows', async () => (await loadFlows(call, version)).filter(isMarketingFlow).map(marketingFlowHealth)),
+    ...(MCN ? [section('Marketing flows', async () => (await loadFlows(call, version)).filter(isMarketingFlow).map(marketingFlowHealth)),
     section('Engagement data', async () => {
       const objects = loadObjects ? await loadObjects() : []
       const engagement = (objects || []).filter((o) => o.kind === 'DMO' && o.category === 'Engagement').map((o) => ({ ...o, timeField: eventTimeField(o) })).filter((o) => o.timeField)
@@ -207,7 +209,7 @@ export async function loadHealth(call, version, { now = Date.now(), onProgress =
         const [row] = toObjects(await runQuery(call, version, `SELECT MAX(${o.timeField}) AS latest FROM ${o.name}`, { rowLimit: 1 }))
         return engagementHealth(o, row?.latest, now)
       }))
-    }),
+    })] : []),
   ])
 }
 

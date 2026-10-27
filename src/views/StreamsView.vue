@@ -1,4 +1,5 @@
 <script setup>
+import { selectFor } from '../lib/catalog.js'
 import { ref, computed, watch, onMounted, defineAsyncComponent } from 'vue'
 import Loading from '../components/Loading.vue'
 import ListPanel from '../components/ListPanel.vue'
@@ -78,6 +79,11 @@ const mode = computed({
   set: (v) => router.replace({ query: { ...route.query, view: v === 'diagram' ? 'diagram' : undefined } }),
 })
 watch(() => route.params.name, (n) => { if (!n) ensureAllMappings() }, { immediate: true })
+// Create SQL (feedback #1014): a SELECT of the object's fields, opened in SQL.
+function toSql(name) {
+  const obj = catalog.objects.find((o) => o.name === name)
+  router.push({ path: '/sql', query: { sql: obj ? selectFor(obj) : `SELECT * FROM ${name} LIMIT 100` } })
+}
 const dmosOf = (s) => (catalog.mappings || []).filter((m) => m.source === s.dlo).map((m) => m.target)
 const streamCols = [
   { key: 'label', label: 'Data stream', value: (s) => `${s.label} ${s.name}`, sortValue: (s) => s.label },
@@ -187,7 +193,8 @@ const fieldCols = [
           <dt class="text-muted-foreground">Schedule</dt><dd>{{ describeSchedule(stream) }}</dd>
           <dt class="text-muted-foreground">Records</dt><dd>{{ num(stream.totalRecords) }} total; last run added {{ num(stream.lastAdded) }}, processed {{ num(stream.lastProcessed) }}</dd>
           <dt class="text-muted-foreground">Type</dt><dd>{{ [stream.type, stream.accessMode].filter(Boolean).join(', ').toLowerCase() }}{{ stream.acceleration ? ', accelerated' : '' }}</dd>
-          <dt class="text-muted-foreground">Data lake object</dt><dd><RouterLink :to="`/objects/${stream.dlo.name}`" class="font-mono text-xs text-link hover:underline">{{ stream.dlo.name }}</RouterLink></dd>
+          <dt class="text-muted-foreground">Data lake object</dt><dd><RouterLink :to="`/objects/${stream.dlo.name}`" class="font-mono text-xs text-link hover:underline">{{ stream.dlo.name }}</RouterLink>
+            <button class="ml-2 text-xs text-link hover:underline" title="Open a SELECT of this data lake object in SQL (feedback #1014)" @click="toSql(stream.dlo.name)">Create SQL</button></dd>
           <dt class="text-muted-foreground">Problem records</dt>
           <dd>
             <template v-if="!stream.problemDlo">none configured</template>
@@ -200,7 +207,7 @@ const fieldCols = [
           <div class="font-medium mb-1">Maps into</div>
           <p v-if="mapsTo === null" class="text-muted-foreground">{{ catalog.mappingsProgress ? `Reading mappings: ${catalog.mappingsProgress}` : 'Reading mappings…' }}</p>
           <p v-else-if="!mapsTo.length" class="text-muted-foreground">Its DLO is not mapped to any DMO.</p>
-          <ul v-else class="space-y-0.5"><li v-for="m in mapsTo" :key="m.name"><RouterLink :to="`/objects/${m.target}`" class="font-mono text-xs text-link hover:underline">{{ m.target }}</RouterLink> <span class="text-xs text-muted-foreground">({{ m.fields.length }} fields)</span></li></ul>
+          <ul v-else class="space-y-0.5"><li v-for="m in mapsTo" :key="m.name"><RouterLink :to="`/objects/${m.target}`" class="font-mono text-xs text-link hover:underline">{{ m.target }}</RouterLink> <span class="text-xs text-muted-foreground">({{ m.fields.length }} fields)</span> <button class="text-xs text-link hover:underline" @click="toSql(m.target)">Create SQL</button></li></ul>
         </div>
         <div class="border rounded-md bg-card">
           <div class="p-3 border-b flex items-center gap-2 text-sm">

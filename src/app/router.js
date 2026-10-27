@@ -1,3 +1,4 @@
+import { isOn } from '../lib/features.js'
 import { createRouter, createWebHashHistory } from 'vue-router'
 import ProfileView from '../views/ProfileView.vue'
 import SqlView from '../views/SqlView.vue'
@@ -26,32 +27,34 @@ import CreditsView from '../views/CreditsView.vue'
 // The sidebar, in the order and groups the user chose (feedback #95); `group` starts a new
 // section. Activations is not in that list and sits with Segments. Last group reordered and
 // Credit prediction added (feedback #145).
-export const NAV = [
+// Every page; NAV is the ones switched on (src/features.json, feedback #1020).
+export const ALL_NAV = [
   { path: '/', label: 'Home', icon: 'Home', group: 0 },
-  { path: '/objects', label: 'Objects', icon: 'Boxes', group: 1 },
-  { path: '/sql', label: 'SQL', icon: 'Database', group: 1 },
-  { path: '/sql/builder', label: 'Query builder', icon: 'Blocks', group: 1 },
-  { path: '/bulk', label: 'Bulk lookup', icon: 'ListChecks', group: 2, job: 'bulk:' },
-  { path: '/profile', label: 'Profiles', icon: 'User', group: 2 },
-  { path: '/streams', label: 'Data streams', icon: 'ArrowDownToLine', group: 3 },
-  { path: '/models', label: 'Data models', icon: 'Network', group: 3 },
-  { path: '/identity', label: 'Identity', icon: 'Fingerprint', group: 3 },
-  { path: '/graphs', label: 'Data graphs', icon: 'Share2', group: 3 },
-  { path: '/segments', label: 'Segments', icon: 'Users', group: 3 },
-  { path: '/activations', label: 'Activations', icon: 'Send', group: 3 },
-  { path: '/insights', label: 'Insights', icon: 'Calculator', group: 3 },
-  { path: '/personalization', label: 'Personalization', icon: 'LayoutTemplate', group: 4 },
-  { path: '/flows', label: 'Marketing flows', icon: 'Workflow', group: 4 },
-  { path: '/campaigns', label: 'Campaigns', icon: 'Megaphone', group: 4 },
-  { path: '/explore', label: 'REST explorer', icon: 'Terminal', group: 5 },
-  { path: '/credits', label: 'Credit prediction', icon: 'Gauge', group: 5 },
-  { path: '/compare', label: 'Compare', icon: 'GitCompare', group: 5, job: 'compare' },
-  { path: '/health', label: 'Health', icon: 'HeartPulse', group: 5, job: 'health:' },
-  { path: '/connection', label: 'Connection check', icon: 'Plug', group: 5 },
+  { path: '/objects', label: 'Objects', icon: 'Boxes', group: 1, feature: 'objects' },
+  { path: '/sql', label: 'SQL', icon: 'Database', group: 1, feature: 'sql' },
+  { path: '/sql/builder', label: 'Query builder', icon: 'Blocks', group: 1, feature: 'queryBuilder' },
+  { path: '/bulk', label: 'Bulk lookup', icon: 'ListChecks', group: 2, job: 'bulk:', feature: 'bulk' },
+  { path: '/profile', label: 'Profiles', icon: 'User', group: 2, feature: 'profiles' },
+  { path: '/streams', label: 'Data streams', icon: 'ArrowDownToLine', group: 3, feature: 'streams' },
+  { path: '/models', label: 'Data models', icon: 'Network', group: 3, feature: 'models' },
+  { path: '/identity', label: 'Identity', icon: 'Fingerprint', group: 3, feature: 'identity' },
+  { path: '/graphs', label: 'Data graphs', icon: 'Share2', group: 3, feature: 'dataGraphs' },
+  { path: '/segments', label: 'Segments', icon: 'Users', group: 3, feature: 'segments' },
+  { path: '/activations', label: 'Activations', icon: 'Send', group: 3, feature: 'activations' },
+  { path: '/insights', label: 'Insights', icon: 'Calculator', group: 3, feature: 'insights' },
+  { path: '/personalization', label: 'Personalization', icon: 'LayoutTemplate', group: 4, feature: 'personalization' },
+  { path: '/flows', label: 'Marketing flows', icon: 'Workflow', group: 4, feature: 'marketingFlows' },
+  { path: '/campaigns', label: 'Campaigns', icon: 'Megaphone', group: 4, feature: 'campaigns' },
+  { path: '/explore', label: 'REST explorer', icon: 'Terminal', group: 5, feature: 'restExplorer' },
+  { path: '/credits', label: 'Credit prediction', icon: 'Gauge', group: 5, feature: 'credits' },
+  { path: '/compare', label: 'Compare', icon: 'GitCompare', group: 5, job: 'compare', feature: 'compare' },
+  { path: '/health', label: 'Health', icon: 'HeartPulse', group: 5, job: 'health:', feature: 'health' },
+  { path: '/connection', label: 'Connection check', icon: 'Plug', group: 5, feature: 'connection' },
 ]
+export const NAV = ALL_NAV.filter((n) => isOn(n.feature))
 
 export function createAppRouter() {
-  return createRouter({
+  const router = createRouter({
     history: createWebHashHistory(),
     routes: [
       { path: '/', component: HomeView },
@@ -79,4 +82,11 @@ export function createAppRouter() {
       { path: '/help', component: HelpView },
     ],
   })
+  // A page switched off goes to Home: the closest page a path belongs to decides.
+  router.beforeEach((to) => {
+    const page = ALL_NAV.filter((n) => n.path !== '/' && (to.path === n.path || to.path.startsWith(`${n.path}/`)))
+      .sort((x, y) => y.path.length - x.path.length)[0]
+    return page && !isOn(page.feature) ? '/' : true
+  })
+  return router
 }

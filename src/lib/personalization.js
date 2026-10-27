@@ -144,12 +144,32 @@ export async function loadRecord(call, version, type, id) {
   return record
 }
 
-/** Field rows for the record panel: filled fields first; IDs of other setup records named. */
+const REF_LISTS = [['points', 'PersonalizationPoint'], ['decisions', 'PersonalizationDecision'], ['recommenders', 'PersonalizationRecommender'], ['experiments', 'AbnExperiment'], ['schemas', 'PersonalizationSchema'], ['objectives', 'PersonalizationObjective']]
+
+/** The setup record an ID refers to: `{ type, record }`, or null. */
+export function refOf(setup, id) {
+  const short = String(id || '').slice(0, 15)
+  if (!short) return null
+  for (const [list, type] of REF_LISTS) {
+    const record = (setup?.[list] || []).find((r) => r.Id && r.Id.slice(0, 15) === short)
+    if (record) return { type, record }
+  }
+  return null
+}
+
+export const isRecordId = (v) => /^[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/.test(String(v || '')) && /\d/.test(String(v))
+
+/**
+ * Field rows for the record panel: filled fields first. An ID field names the record it
+ * refers to; `ref` opens a setup record in the panel, `link` marks any other record ID
+ * to open in Salesforce (feedback #1018).
+ */
 export function recordRows(setup, record) {
   const rows = Object.entries(record || {}).filter(([k]) => k !== 'attributes').map(([field, value]) => {
     const shown = value == null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value)
-    const name = /Id$/.test(field) && field !== 'Id' && shown ? nameOf(setup, shown) : ''
-    return { field, value: shown, name: name && name !== shown ? name : '' }
+    const idField = /Id$/.test(field) && shown
+    const ref = idField && field !== 'Id' ? refOf(setup, shown) : null
+    return { field, value: shown, name: ref ? ref.record.Name || '' : '', ref, link: idField && field !== 'Id' && !ref && isRecordId(shown) }
   })
   return [...rows.filter((r) => r.value !== ''), ...rows.filter((r) => r.value === '')]
 }

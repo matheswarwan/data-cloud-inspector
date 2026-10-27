@@ -7,6 +7,7 @@ import { RouterLink } from 'vue-router'
 import { ZoomIn, ZoomOut, Maximize, RotateCcw, Download, Key, Link2 } from 'lucide-vue-next'
 import { standaloneSvg, pngBlob } from '../lib/svgImage.js'
 import { diagramToDiagramforce, openInDiagramforce } from '../lib/diagramforce.js'
+import { isOn } from '../lib/features.js'
 import { diagramGraph, layoutDiagram, edgePath, anchorY, cardinalityText, diagramBounds, neighbours, toMermaid, toDot, toDrawio, toDiagramMarkdown, NODE } from '../lib/modelDiagram.js'
 import { saveBlob, safeFileName } from '../lib/exportDoc.js'
 
@@ -178,7 +179,7 @@ const EXPORTS = [
   ['dot', 'Graphviz (.dot)'],
   ['copy', 'Copy Mermaid'],
   ['diagramforce', 'Open in Diagramforce'],
-]
+].filter(([k]) => k !== 'diagramforce' || isOn('diagramforce'))
 async function doExport(kind) {
   menu.value = false
   exporting.value = ''

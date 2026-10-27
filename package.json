@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite build --watch",
     "build": "vite build && vite build --config vite.sw.config.js",
+    "build:public": "vite build --mode public && vite build --config vite.sw.config.js --mode public",
     "test": "vitest run",
     "test:watch": "vitest"
   },

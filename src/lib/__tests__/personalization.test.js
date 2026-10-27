@@ -99,3 +99,18 @@ describe('one setup record (feedback #1009)', () => {
     expect(rows.find((r) => r.field === 'Priority').value).toBe('1')
   })
 })
+
+describe('IDs in the record panel (feedback #1018)', () => {
+  it('opens setup records in the panel and other record IDs in Salesforce', async () => {
+    const { recordRows, refOf } = await import('../personalization.js')
+    const setup = { points: [{ Id: '9ppjV0000000GsnQAE', Name: 'Home Hero Batch' }], decisions: [], recommenders: [] }
+    expect(refOf(setup, '9ppjV0000000Gsn').type).toBe('PersonalizationPoint')
+    const rows = recordRows(setup, { Id: '9pbjV0000000Hs5QAE', PersonalizationPointId: '9ppjV0000000GsnQAE', DataSpaceId: '0vhjV000000B3gvQAC', State: 'Live', DeveloperName: 'Home_Hero_All' })
+    const by = Object.fromEntries(rows.map((r) => [r.field, r]))
+    expect(by.PersonalizationPointId).toMatchObject({ name: 'Home Hero Batch', link: false })
+    expect(by.PersonalizationPointId.ref.type).toBe('PersonalizationPoint')
+    expect(by.DataSpaceId).toMatchObject({ ref: null, link: true })
+    expect(by.Id.link).toBe(false)
+    expect(by.State.link).toBe(false)
+  })
+})

@@ -291,6 +291,6 @@ const doc = () => docFrom({ title: 'Personalization', intro: `${orgTitle(org.org
         </template>
       </div>
     </template>
-    <RecordDrawer v-if="detail" :title="detail.title" :type="detail.type" :link="detail.link" :rows="detail.rows" :record="detail.record" :loading="detail.loading" :error="detail.error" @close="detail = null" />
+    <RecordDrawer v-if="detail" :title="detail.title" :type="detail.type" :link="detail.link" :rows="detail.rows" :record="detail.record" :loading="detail.loading" :error="detail.error" :record-link="sf" @close="detail = null" @open="openRecord" />
   </section>
 </template>

@@ -72,6 +72,12 @@ const error = ref('')
 const result = ref(null) // { series, groups, envs, consumedAll, byOrg, entitlements, at }
 const sqlShown = ref(false)
 const ready = computed(() => source.value && fields.value.date && fields.value.amount)
+// Setup (feedback #1019, was "Found in this org"): folded once the object and fields are set.
+const setupOpen = ref(false)
+watch(() => !!ready.value, (r) => { if (!r) setupOpen.value = true }, { immediate: true })
+const setupSummary = computed(() => (ready.value
+  ? `${source.value} · credits ${fields.value.amount} by day of ${fields.value.date}${fields.value.group ? ` per ${fields.value.group}` : ''} · last ${days.value} days`
+  : 'choose the object and fields'))
 const sqlText = computed(() => {
   if (!ready.value) return ''
   const parts = [dailySql(source.value, fields.value, { days: days.value })]
@@ -276,7 +282,10 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
 
     <template v-else>
       <div class="border rounded-md bg-card p-3 space-y-3 text-sm">
-        <div class="font-medium">Found in this org</div>
+        <details :open="setupOpen" class="space-y-3" @toggle="setupOpen = $event.target.open">
+        <summary class="cursor-pointer select-none"><span class="font-medium">Setup</span> <span class="text-xs text-muted-foreground">{{ setupSummary }}</span></summary>
+        <div class="space-y-3 mt-2">
+        <div class="text-xs text-muted-foreground">Consumption objects in this org and data space:</div>
         <ul class="text-xs space-y-0.5">
           <li v-for="x in found" :key="x.object.name"><span class="text-muted-foreground">{{ x.role.label }}:</span> <RouterLink :to="`/objects/${x.object.name}`" class="font-mono text-link hover:underline">{{ x.object.name }}</RouterLink></li>
         </ul>
@@ -311,6 +320,8 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
         <p v-if="sourceRole?.raw" class="text-xs p-2 border rounded-md border-amber-400">This object holds raw usage (rows, requests), not credits. For credits use the daily, hourly or enriched consumption object.</p>
         <p v-if="!fields.env" class="text-xs text-muted-foreground">No environment field chosen: production, sandbox and scratch usage are counted together.</p>
         <p v-if="fields.status" class="text-xs text-muted-foreground">Only rows with <span class="font-mono">{{ fields.status }} = 'PROCESSED'</span> are counted, as Salesforce advises for hourly data.</p>
+        </div>
+        </details>
         <div class="flex flex-wrap items-center gap-2">
           <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="busy || !ready" @click="read"><RefreshCw class="w-4 h-4" /> {{ result ? 'Read again' : 'Read consumption' }}</button>
           <button :class="btn" :disabled="!ready" @click="sqlShown = !sqlShown">{{ sqlShown ? 'Hide SQL' : 'Show SQL' }}</button>

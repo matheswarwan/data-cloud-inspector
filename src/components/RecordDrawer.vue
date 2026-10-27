@@ -13,8 +13,10 @@ defineProps({
   record: { type: Object, default: null },
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
+  // Salesforce URL for a record ID (IDs that are not setup records open there).
+  recordLink: { type: Function, default: null },
 })
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'open'])
 const showRaw = ref(false)
 const showEmpty = ref(false)
 const onKey = (e) => { if (e.key === 'Escape') emit('close') }
@@ -41,7 +43,12 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
             <tbody>
               <tr v-for="r in rows.filter((x) => showEmpty || x.value !== '')" :key="r.field" class="border-b last:border-0 align-top">
                 <td class="py-1 pr-3 font-mono text-muted-foreground whitespace-nowrap">{{ r.field }}</td>
-                <td class="py-1 break-all">{{ r.value }}<div v-if="r.name" class="text-muted-foreground">{{ r.name }}</div></td>
+                <td class="py-1 break-all">
+                  <button v-if="r.ref" class="text-link hover:underline" :title="`Open this ${r.ref.type}`" @click="emit('open', r.ref.type, r.ref.record)">{{ r.value }}</button>
+                  <a v-else-if="r.link && recordLink" :href="recordLink(r.value)" target="_blank" rel="noopener" class="text-link hover:underline" title="Open in Salesforce">{{ r.value }}</a>
+                  <template v-else>{{ r.value }}</template>
+                  <div v-if="r.name" class="text-muted-foreground">{{ r.name }}</div>
+                </td>
               </tr>
             </tbody>
           </table>

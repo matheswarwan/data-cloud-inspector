@@ -1,0 +1,14 @@
+{
+  "_about": "Feature switches (feedback #1020). 'default' is every build; 'public' overrides it for npm run build:public. false hides a page (sidebar, Home, search; its address goes to Home) or an add-on; a missing key counts as on.",
+  "default": {
+    "objects": true, "sql": true, "queryBuilder": true, "bulk": true, "profiles": true,
+    "streams": true, "models": true, "identity": true, "dataGraphs": true, "segments": true,
+    "activations": true, "insights": true, "personalization": true, "marketingFlows": true,
+    "campaigns": true, "restExplorer": true, "credits": true, "compare": true, "health": true,
+    "connection": true,
+    "mcnProfile": true, "mcnHealth": true, "diagramforce": true
+  },
+  "public": {
+    "marketingFlows": false, "campaigns": false, "mcnProfile": false, "mcnHealth": false
+  }
+}

@@ -7,6 +7,8 @@ import { Search, Copy, ChevronRight, ChevronDown } from 'lucide-vue-next'
 import RelatedTable from '../components/RelatedTable.vue'
 import { channelOf, actionOf, engagementSummary, loadConsent, consentFacts } from '../lib/marketing.js'
 import { addressesFrom, loadCrmConsent } from '../lib/crmConsent.js'
+import { isOn } from '../lib/features.js'
+const MCN = isOn('mcnProfile') // consent and message history by channel (Marketing Cloud Next)
 import RecordLink from '../components/RecordLink.vue'
 import { recordUrl, recordKind } from '../lib/links.js'
 import { currentOrg } from '../app/useOrg.js'
@@ -167,6 +169,7 @@ async function openProfile(kind, id) {
     related.value = src
     unifiedRelated.value = uni
     missed.value = await possibleMissedMatches(q, p.sources.map((s) => s.ssot__Id__c), src).catch(() => [])
+    if (!MCN) return
     consentLoading.value = true
     const cps = [...src, ...uni].filter((r) => /ContactPoint/i.test(r.object))
     const addresses = addressesFrom(cps)
@@ -446,8 +449,8 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
 
       <!-- Engagement -->
       <div :class="card">
-        <h3 class="p-3 border-b font-medium">Message history and engagement ({{ events.length }})</h3>
-        <div v-if="channels.length" class="px-3 pt-2 flex flex-wrap gap-1.5 text-xs" aria-label="Channels">
+        <h3 class="p-3 border-b font-medium">{{ MCN ? 'Message history and engagement' : 'Engagement' }} ({{ events.length }})</h3>
+        <div v-if="MCN && channels.length" class="px-3 pt-2 flex flex-wrap gap-1.5 text-xs" aria-label="Channels">
           <button :class="['px-2 py-0.5 rounded-full border', !channelPick ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="channelPick = ''">All {{ events.length }}</button>
           <button v-for="c in channels" :key="c.channel" :class="['px-2 py-0.5 rounded-full border', channelPick === c.channel ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="channelPick = channelPick === c.channel ? '' : c.channel">{{ c.channel }} {{ c.count }}</button>
         </div>
