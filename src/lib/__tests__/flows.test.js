@@ -44,3 +44,13 @@ describe('marketing flows', () => {
     await expect(loadFlowVersion(call, '66.0', '../x')).rejects.toThrow()
   })
 })
+
+describe('flow diagram links (feedback #1016)', () => {
+  it('labels decision outcomes, defaults, loops and faults', async () => {
+    const { linksOf, flowSteps } = await import('../flows.js')
+    expect(linksOf({ rules: [{ label: 'Yes', connector: { targetReference: 'A' } }], defaultConnector: { targetReference: 'B' }, defaultConnectorLabel: 'No', faultConnector: { targetReference: 'E' } }))
+      .toEqual([{ to: 'A', label: 'Yes', fault: false }, { to: 'B', label: 'No', fault: false }, { to: 'E', label: 'Fault', fault: true }])
+    expect(linksOf({ nextValueConnector: { targetReference: 'X' }, noMoreValuesConnector: { targetReference: 'Y' } }).map((l) => l.label)).toEqual(['For each', 'After last'])
+    expect(flowSteps({ start: { connector: { targetReference: 'A' } }, assignments: [{ name: 'A' }] }).startLinks).toEqual([{ to: 'A', label: '' }])
+  })
+})

@@ -45,6 +45,20 @@ const ELEMENTS = [
   ['collectionProcessors', 'Collection'], ['transforms', 'Transform'], ['customErrors', 'Error'],
 ]
 
+/** Where an element goes next, with the path's label: `[{ to, label, fault }]`. */
+export function linksOf(el) {
+  const out = []
+  const add = (to, label = '', fault = false) => { if (to) out.push({ to, label, fault }) }
+  for (const r of el.rules || []) add(r.connector?.targetReference, r.label || r.name)
+  for (const w of el.waitEvents || []) add(w.connector?.targetReference, w.label || w.name)
+  add(el.connector?.targetReference)
+  add(el.nextValueConnector?.targetReference, 'For each')
+  add(el.noMoreValuesConnector?.targetReference, 'After last')
+  add(el.defaultConnector?.targetReference, el.defaultConnectorLabel || ((el.rules || el.waitEvents) ? 'Default' : ''))
+  add(el.faultConnector?.targetReference, 'Fault', true)
+  return out
+}
+
 const nextOf = (el) => [
   ...(el.rules || []).map((r) => r.connector?.targetReference),
   ...(el.waitEvents || []).map((w) => w.connector?.targetReference),
@@ -65,7 +79,7 @@ export function flowSteps(metadata) {
         : type === 'Decision' ? (el.rules || []).map((r) => r.label || r.name).join(', ')
           : type === 'Wait' ? (el.waitEvents || []).map((w) => w.label || w.name).join(', ')
             : el.object || el.flowName || ''
-      all.push({ name: el.name, label: el.label || el.name, type, detail, next: nextOf(el) })
+      all.push({ name: el.name, label: el.label || el.name, type, detail, next: nextOf(el), links: linksOf(el) })
     }
   }
   const byName = new Map(all.map((s) => [s.name, s]))
@@ -81,7 +95,9 @@ export function flowSteps(metadata) {
     queue.push(...byName.get(n).next)
   }
   for (const s of all) if (!seen.has(s.name)) order.push(s)
-  return { start, steps: order }
+  const startLinks = [start?.connector?.targetReference && { to: start.connector.targetReference, label: '' },
+    ...(start?.scheduledPaths || []).map((p) => p.connector?.targetReference && { to: p.connector.targetReference, label: p.label || p.name || 'Scheduled' })].filter(Boolean)
+  return { start, steps: order, startLinks }
 }
 
 /** The start in words: trigger, object or segment, activation or data graph, schedule. */

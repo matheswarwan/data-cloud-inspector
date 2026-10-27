@@ -69,7 +69,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
         <h2 class="text-lg font-semibold">Campaigns <HelpTip topic="campaigns" /></h2>
         <p class="text-sm text-muted-foreground">Campaign records, their members by status and, where an engagement object records the campaign, what happened per action.</p>
       </div>
-      <button class="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50" :disabled="loading" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /> Load again</button>
+      <button class="ml-auto shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50" :disabled="loading" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /> Load again</button>
     </div>
     <Loading v-if="loading && !campaigns.length" text="Reading campaigns" />
     <p v-else-if="error" class="text-sm text-destructive">{{ error }}</p>
@@ -80,7 +80,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
       </DataTable>
     </template>
 
-    <div v-if="open" class="fixed inset-0 z-50 bg-black/30" @mousedown.self="open = null">
+    <div v-if="open" class="fixed inset-x-0 bottom-0 top-[49px] z-20 bg-black/30" @mousedown.self="open = null">
       <aside role="dialog" :aria-label="`Campaign ${open.c.Name}`" class="absolute right-0 top-0 h-full w-[36rem] max-w-full bg-card border-l shadow-2xl flex flex-col">
         <div class="p-3 border-b flex items-start gap-2">
           <div class="min-w-0">

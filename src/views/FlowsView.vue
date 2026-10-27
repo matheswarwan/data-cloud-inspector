@@ -8,6 +8,7 @@ import { RefreshCw, X, ExternalLink } from 'lucide-vue-next'
 import DataTable from '../components/DataTable.vue'
 import Loading from '../components/Loading.vue'
 import JsonViewer from '../components/JsonViewer.vue'
+import FlowDiagram from '../components/FlowDiagram.vue'
 import HelpTip from '../components/HelpTip.vue'
 import { useOrg, currentOrg } from '../app/useOrg.js'
 import { orgCall } from '../app/useCatalog.js'
@@ -45,13 +46,13 @@ const columns = [
 const open = ref(null)
 async function openFlow(f) {
   const versionId = f.ActiveVersionId || f.LatestVersionId
-  const o = { flow: f, versionId, loading: true, error: '', metadata: null, start: null, steps: [] }
+  const o = { flow: f, versionId, loading: true, error: '', metadata: null, start: null, steps: [], startLinks: [] }
   open.value = o
   try {
     const md = await loadFlowVersion(orgCall(), org.version, versionId)
     if (open.value?.flow !== f) return
-    const { start, steps } = flowSteps(md)
-    open.value = { ...o, loading: false, metadata: md.Metadata || md, start, steps }
+    const { start, steps, startLinks } = flowSteps(md)
+    open.value = { ...o, loading: false, metadata: md.Metadata || md, start, steps, startLinks }
   } catch (e) {
     if (open.value?.flow === f) open.value = { ...o, loading: false, error: e.message }
   }
@@ -60,6 +61,7 @@ const builderUrl = (versionId) => (currentOrg()?.host && versionId ? `https://${
 const onKey = (e) => { if (e.key === 'Escape') open.value = null }
 onMounted(() => document.addEventListener('keydown', onKey))
 onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
+const panelTab = ref('diagram')
 const chip = (on) => ['px-2 py-0.5 rounded-full border text-xs', on ? 'bg-accent font-medium' : 'hover:bg-accent']
 </script>
 
@@ -70,7 +72,7 @@ const chip = (on) => ['px-2 py-0.5 rounded-full border text-xs', on ? 'bg-accent
         <h2 class="text-lg font-semibold">Marketing flows <HelpTip topic="flows" /></h2>
         <p class="text-sm text-muted-foreground">Flows with their type, trigger and status. Open one for what starts it and its steps in order. Marketing Cloud Next sends email, SMS and WhatsApp from these flows.</p>
       </div>
-      <button class="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50" :disabled="loading" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /> Load again</button>
+      <button class="ml-auto shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50" :disabled="loading" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /> Load again</button>
     </div>
     <Loading v-if="loading && !flows.length" text="Reading flows" />
     <p v-else-if="error" class="text-sm text-destructive">{{ error }}</p>
@@ -86,8 +88,8 @@ const chip = (on) => ['px-2 py-0.5 rounded-full border text-xs', on ? 'bg-accent
       </DataTable>
     </template>
 
-    <div v-if="open" class="fixed inset-0 z-50 bg-black/30" @mousedown.self="open = null">
-      <aside role="dialog" :aria-label="`Flow ${open.flow.Label}`" class="absolute right-0 top-0 h-full w-[40rem] max-w-full bg-card border-l shadow-2xl flex flex-col">
+    <div v-if="open" class="fixed inset-x-0 bottom-0 top-[49px] z-20 bg-black/30" @mousedown.self="open = null">
+      <aside role="dialog" :aria-label="`Flow ${open.flow.Label}`" class="absolute right-0 top-0 h-full w-[56rem] max-w-full bg-card border-l shadow-2xl flex flex-col">
         <div class="p-3 border-b flex items-start gap-2">
           <div class="min-w-0">
             <div class="font-medium truncate">{{ open.flow.Label }}</div>
@@ -102,7 +104,11 @@ const chip = (on) => ['px-2 py-0.5 rounded-full border text-xs', on ? 'bg-accent
           <p v-else-if="open.error" class="text-destructive">{{ open.error }}</p>
           <template v-else>
             <div><span class="font-medium">Starts:</span> {{ startSummary(open.start) || 'not stated in the metadata' }}</div>
-            <ol class="list-decimal ml-5 space-y-1">
+            <div class="flex gap-1 text-xs" role="tablist">
+              <button v-for="[k, l] in [['diagram', 'Diagram'], ['steps', 'Steps']]" :key="k" role="tab" :aria-selected="panelTab === k" :class="chip(panelTab === k)" @click="panelTab = k">{{ l }}</button>
+            </div>
+            <FlowDiagram v-if="panelTab === 'diagram' && open.steps.length" :steps="open.steps" :start-links="open.startLinks" :start-text="startSummary(open.start)" :file-name="`flow-${open.flow.ApiName}`" />
+            <ol v-if="panelTab === 'steps'" class="list-decimal ml-5 space-y-1">
               <li v-for="s in open.steps" :key="s.name"><span class="font-medium">{{ s.label }}</span> <span class="text-xs text-muted-foreground">{{ s.type }}{{ s.detail ? `: ${s.detail}` : '' }}</span></li>
             </ol>
             <p v-if="!open.steps.length" class="text-muted-foreground">No steps in this version.</p>

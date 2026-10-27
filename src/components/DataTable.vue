@@ -2,9 +2,11 @@
 // A table with sorting (click a header) and a filter per column (ColumnFilter). Cells render
 // through `#cell-<key>` slots ({ row, value }), a `#cell` slot ({ row, col, value }) or as
 // plain text; `#after-row` ({ row, colspan }) adds a row under each row. Emits `view` with
-// the rows after filters and sort, for downloads.
+// the rows after filters and sort, for downloads. Long tables show a page at a time with the
+// tool's rows-per-page choice (feedback #1015); `limit` instead shows the first rows with Show all.
 import { ref, reactive, computed, watch } from 'vue'
-import { ArrowUp, ArrowDown } from 'lucide-vue-next'
+import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { PAGE_SIZES, pageSize, pageOf } from '../lib/pageSize.js'
 import ColumnFilter from './ColumnFilter.vue'
 import { tableRows, nextSort, filterActive, colValue, valueText } from '../lib/tableView.js'
 
@@ -30,7 +32,11 @@ const filterOf = (key) => (filters[key] ||= { text: '', values: null })
 
 const shown = computed(() => tableRows(props.rows, props.columns, { sort: sort.value, filters }))
 const showAll = ref(false)
-const visible = computed(() => (props.limit && !showAll.value ? shown.value.slice(0, props.limit) : shown.value))
+const page = ref(0)
+watch([() => sort.value, filters, () => props.rows, pageSize], () => { page.value = 0 }, { deep: true })
+const paged = computed(() => pageOf(shown.value, page.value, pageSize.value))
+const paginating = computed(() => !props.limit && shown.value.length > PAGE_SIZES[0])
+const visible = computed(() => (props.limit ? (showAll.value ? shown.value : shown.value.slice(0, props.limit)) : paginating.value ? paged.value.rows : shown.value))
 const anyFilter = computed(() => Object.values(filters).some(filterActive))
 watch(shown, (v) => emit('view', v), { immediate: true })
 
@@ -75,7 +81,20 @@ function clearAll() { for (const k of Object.keys(filters)) delete filters[k] }
           <tr v-if="!shown.length"><td :colspan="columns.length" class="p-3 text-muted-foreground">{{ rows.length ? 'No rows match the filters.' : empty }}</td></tr>
         </tbody>
       </table>
-      <button v-if="visible.length < shown.length" class="text-xs text-link hover:underline px-2 py-1" @click="showAll = true">Show all {{ shown.length.toLocaleString() }}</button>
+      <button v-if="limit && visible.length < shown.length" class="text-xs text-link hover:underline px-2 py-1" @click="showAll = true">Show all {{ shown.length.toLocaleString() }}</button>
+    </div>
+    <div v-if="paginating" class="flex flex-wrap items-center gap-3 px-2 py-1.5 text-xs text-muted-foreground" aria-label="Table pages">
+      <span>{{ paged.from.toLocaleString() }} to {{ paged.to.toLocaleString() }} of {{ shown.length.toLocaleString() }}</span>
+      <label class="inline-flex items-center gap-1">Rows per page
+        <select v-model.number="pageSize" class="border rounded px-1 py-0.5 bg-background text-foreground" aria-label="Rows per page">
+          <option v-for="n in PAGE_SIZES" :key="n" :value="n">{{ n }}</option>
+        </select>
+      </label>
+      <span class="ml-auto inline-flex items-center gap-1">
+        <button class="p-1 rounded border hover:bg-accent disabled:opacity-40" :disabled="paged.page === 0" aria-label="Previous page" @click="page = paged.page - 1"><ChevronLeft class="w-3.5 h-3.5" /></button>
+        <span>Page {{ paged.page + 1 }} of {{ paged.pages }}</span>
+        <button class="p-1 rounded border hover:bg-accent disabled:opacity-40" :disabled="paged.page >= paged.pages - 1" aria-label="Next page" @click="page = paged.page + 1"><ChevronRight class="w-3.5 h-3.5" /></button>
+      </span>
     </div>
   </div>
 </template>

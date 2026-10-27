@@ -23,7 +23,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 bg-black/30" @mousedown.self="emit('close')">
+  <div class="fixed inset-x-0 bottom-0 top-[49px] z-20 bg-black/30" @mousedown.self="emit('close')">
     <aside role="dialog" :aria-label="`${type} ${title}`" class="absolute right-0 top-0 h-full w-[34rem] max-w-full bg-card border-l shadow-2xl flex flex-col">
       <div class="p-3 border-b flex items-start gap-2">
         <div class="min-w-0">
