@@ -8,6 +8,7 @@ import ExploreView from '../views/ExploreView.vue'
 import SettingsView from '../views/SettingsView.vue'
 import HealthView from '../views/HealthView.vue'
 import PersonalizationView from '../views/PersonalizationView.vue'
+import FlowsView from '../views/FlowsView.vue'
 import CompareView from '../views/CompareView.vue'
 import DataGraphsView from '../views/DataGraphsView.vue'
 import HelpView from '../views/HelpView.vue'
@@ -39,6 +40,7 @@ export const NAV = [
   { path: '/activations', label: 'Activations', icon: 'Send', group: 3 },
   { path: '/insights', label: 'Insights', icon: 'Calculator', group: 3 },
   { path: '/personalization', label: 'Personalization', icon: 'LayoutTemplate', group: 4 },
+  { path: '/flows', label: 'Marketing flows', icon: 'Workflow', group: 4 },
   { path: '/explore', label: 'REST explorer', icon: 'Terminal', group: 5 },
   { path: '/credits', label: 'Credit prediction', icon: 'Gauge', group: 5 },
   { path: '/compare', label: 'Compare', icon: 'GitCompare', group: 5, job: 'compare' },
@@ -66,6 +68,7 @@ export function createAppRouter() {
       { path: '/settings', component: SettingsView },
       { path: '/health', component: HealthView },
       { path: '/personalization', component: PersonalizationView },
+      { path: '/flows', component: FlowsView },
       { path: '/compare', component: CompareView },
       { path: '/credits', component: CreditsView },
       { path: '/identity/:id?', component: IdentityView },

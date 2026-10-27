@@ -17,7 +17,7 @@ export const SETUP_QUERIES = {
   objectives: 'SELECT Id, Name, DeveloperName, Description, DataSpaceId FROM PersonalizationObjective ORDER BY Name',
 }
 
-async function soqlAll(call, version, query) {
+export async function soqlAll(call, version, query) {
   const records = []
   let path = `/services/data/v${version}/query?q=${encodeURIComponent(query)}`
   for (let i = 0; path && i < 20; i++) {

@@ -40,7 +40,7 @@ const counts = computed(() => {
 })
 
 // Help text per sidebar page (the help topic is the page path without its slash).
-const TOPIC = { '/objects': 'objects', '/sql': 'sql', '/sql/builder': 'builder', '/bulk': 'bulk', '/profile': 'profile', '/streams': 'streams', '/models': 'models', '/identity': 'identity', '/graphs': 'graphs', '/segments': 'segments', '/activations': 'activations', '/insights': 'insights', '/personalization': 'personalization', '/compare': 'compare', '/explore': 'explore', '/health': 'health', '/connection': 'connection' }
+const TOPIC = { '/objects': 'objects', '/sql': 'sql', '/sql/builder': 'builder', '/bulk': 'bulk', '/profile': 'profile', '/streams': 'streams', '/models': 'models', '/identity': 'identity', '/graphs': 'graphs', '/segments': 'segments', '/activations': 'activations', '/insights': 'insights', '/personalization': 'personalization', '/flows': 'flows', '/compare': 'compare', '/explore': 'explore', '/health': 'health', '/connection': 'connection' }
 const pages = NAV.filter((n) => n.path !== '/')
 const byPath = new Map(pages.map((n) => [n.path, n]))
 const most = computed(() => topVisits(6).filter((v) => byPath.has(v.path)).map((v) => ({ ...byPath.get(v.path), n: v.n })))
