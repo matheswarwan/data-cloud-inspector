@@ -19,7 +19,7 @@
 <body>
 <main>
   <h1>Data Cloud Inspector: privacy policy</h1>
-  <p class="meta">Last updated 22 October 2026 (OAuth login added)</p>
+  <p class="meta">Last updated 27 October 2026 (Open in Diagramforce added)</p>
 
   <p>Data Cloud Inspector is a browser extension that reads data from the user's own Salesforce org, so that the user can inspect Salesforce Data Cloud: profiles, segments, SQL queries, the data model and its health. It only reads; it never changes data or setup in the org.</p>
 
@@ -42,13 +42,14 @@
 
   <h2>What it sends</h2>
   <ul>
-    <li>All requests go to the user's own Salesforce org, and nowhere else.</li>
+    <li>Requests for data go to the user's own Salesforce org, and nowhere else.</li>
+    <li>Open in Diagramforce, only when the user clicks it on a data model or data stream diagram: the diagram's object names, field names and relationships (no records and no session) are handed to diagramforce.com, a free diagram editor run by a third party, which opens in a new tab.</li>
     <li>Feedback, only when the user chooses to send it from the Feedback form: the message, an optional name and email address, an optional screenshot, and optional technical details (extension version, page, the org's domain and API version, and the paths and statuses of recent API calls, never their content). Feedback is sent to the developer's feedback service, hosted on Cloudflare.</li>
   </ul>
   <p>There is no analytics or tracking. Nothing is collected in the background.</p>
 
   <h2>Sharing</h2>
-  <p>Data is not sold, and is not shared with third parties. It is not used for advertising, for creditworthiness or lending, or for any purpose other than the extension's features.</p>
+  <p>Data is not sold, and is not shared with third parties, apart from the diagram the user chooses to open in Diagramforce. It is not used for advertising, for creditworthiness or lending, or for any purpose other than the extension's features.</p>
 
   <h2>Contact</h2>
   <p>Questions about this policy: use the contact email on the extension's Chrome Web Store listing, or the extension's Feedback form.</p>

@@ -127,7 +127,7 @@ function dropOn(target, id) { if (id && id !== target) layout.value.order = move
         <div class="flex items-center gap-2 font-medium"><ShieldCheck class="w-4 h-4 text-green-600" /> Nothing is ever changed in your org</div>
         <ul class="text-muted-foreground space-y-1 list-disc pl-5">
           <li>The tool only reads, and its SQL queries only read too.</li>
-          <li>It uses the Salesforce login already in this browser. The session stays inside the extension and is sent only to your own org; nothing goes to any other server.</li>
+          <li>It uses the Salesforce login already in this browser. The session stays inside the extension and is sent only to your own org. Nothing else leaves the browser unless you choose: feedback you send goes to the developer, and Open in Diagramforce hands a diagram's names (no records) to diagramforce.com.</li>
           <li>Settings, saved queries and the metadata cache are kept in this browser. Records are not stored.</li>
         </ul>
       </div>

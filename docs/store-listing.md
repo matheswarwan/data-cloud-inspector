@@ -201,8 +201,8 @@ What it accesses: the Salesforce session already in the browser, used to call th
 
 What it stores, in the browser only: settings, saved queries and query history, the list of orgs connected to (domain, org ID, username, an optional name; no session), and the org's Data Cloud metadata (object and field names). Records and query results are not stored.
 
-What it sends: requests go only to the user's own Salesforce org. When the user chooses to send feedback, the message, optional name and email, an optional screenshot and optional technical details (version, page, org domain, recent API paths and statuses) are sent to the developer's feedback service. Nothing else is collected, and there is no analytics.
+What it sends: requests for data go only to the user's own Salesforce org. When the user clicks Open in Diagramforce on a diagram, its object names, field names and relationships (no records, no session) are handed to diagramforce.com, a third-party diagram editor. When the user chooses to send feedback, the message, optional name and email, an optional screenshot and optional technical details (version, page, org domain, recent API paths and statuses) are sent to the developer's feedback service. Nothing else is collected, and there is no analytics.
 
-Data is not sold or shared with third parties.
+Data is not sold or shared with third parties, apart from a diagram the user chooses to open in Diagramforce.
 
 Contact: the email address on the store listing.
