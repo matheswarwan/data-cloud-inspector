@@ -126,3 +126,30 @@ export function personalizationStatus(setup, activity) {
   ]
   return { setupMissing, logMissing, details }
 }
+
+// One setup record with every field (feedback #1009: the record's Lightning page shows
+// nothing for these objects, so the extension shows the record itself).
+const SOBJECT = /^[A-Za-z][A-Za-z0-9_]*$/
+const RECORD_ID = /^[a-zA-Z0-9]{15}(?:[a-zA-Z0-9]{3})?$/
+export const RECORD_TYPES = ['PersonalizationPoint', 'PersonalizationDecision', 'PersonalizationRecommender', 'AbnExperiment', 'PersonalizationSchema', 'PersonalizationObjective']
+
+export function recordSql(type, id) {
+  if (!SOBJECT.test(String(type)) || !RECORD_ID.test(String(id))) throw new Error('Not a record this page can open.')
+  return `SELECT FIELDS(ALL) FROM ${type} WHERE Id = '${id}' LIMIT 1`
+}
+
+export async function loadRecord(call, version, type, id) {
+  const [record] = await soqlAll(call, version, recordSql(type, id))
+  if (!record) throw new Error(`No ${type} record ${id} (it may be in another data space, or deleted).`)
+  return record
+}
+
+/** Field rows for the record panel: filled fields first; IDs of other setup records named. */
+export function recordRows(setup, record) {
+  const rows = Object.entries(record || {}).filter(([k]) => k !== 'attributes').map(([field, value]) => {
+    const shown = value == null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value)
+    const name = /Id$/.test(field) && field !== 'Id' && shown ? nameOf(setup, shown) : ''
+    return { field, value: shown, name: name && name !== shown ? name : '' }
+  })
+  return [...rows.filter((r) => r.value !== ''), ...rows.filter((r) => r.value === '')]
+}

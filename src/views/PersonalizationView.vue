@@ -12,9 +12,10 @@ import { useOrg, currentOrg, orgTitle } from '../app/useOrg.js'
 import { orgCall, ensureDataGraphs } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
 import { recordUrl } from '../lib/links.js'
-import { loadSetup, loadActivity, pointTree, experimentTree, nameOf, ACTIVITY_SQL, personalizationStatus } from '../lib/personalization.js'
+import { loadSetup, loadActivity, pointTree, experimentTree, nameOf, ACTIVITY_SQL, personalizationStatus, loadRecord, recordRows } from '../lib/personalization.js'
 import { labelOf, nameOf as graphName, scalars, objectTree } from '../lib/dataGraphs.js'
 import GraphTree from '../components/GraphTree.vue'
+import RecordDrawer from '../components/RecordDrawer.vue'
 
 const router = useRouter()
 const org = useOrg()
@@ -56,6 +57,20 @@ const maxDaily = computed(() => Math.max(1, ...(activity.value?.daily || []).map
 const status = computed(() => personalizationStatus(setup.value, activity.value))
 const errors = (k) => (status.value.setupMissing ? '' : setup.value?.errors?.[k])
 const sf = (id) => recordUrl(currentOrg()?.host, id)
+
+// A setup record opened in the extension (feedback #1009): every field, read with SOQL.
+const detail = ref(null)
+async function openRecord(type, r) {
+  const d = { type, id: r.Id, title: r.Name || r.Id, link: sf(r.Id), loading: true, error: '', record: null, rows: [] }
+  detail.value = d
+  try {
+    const record = await loadRecord(orgCall(), org.version, type, r.Id)
+    if (detail.value?.id !== r.Id) return
+    detail.value = { ...d, loading: false, record, rows: recordRows(setup.value, record) }
+  } catch (e) {
+    if (detail.value?.id === r.Id) detail.value = { ...d, loading: false, error: e.message }
+  }
+}
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : '')
 const num = (n) => (n == null || n === '' ? '' : Number(n).toLocaleString())
 const card = 'border rounded-md bg-card'
@@ -159,7 +174,7 @@ const doc = () => docFrom({ title: 'Personalization', intro: `${orgTitle(org.org
         <p v-else-if="!points.length" class="text-sm text-muted-foreground">No personalization points in this org.</p>
         <div v-for="p in points" :key="p.Id" :class="card">
           <div class="p-3 border-b flex flex-wrap items-baseline gap-2">
-            <a :href="sf(p.Id)" target="_blank" rel="noopener" class="font-medium text-link hover:underline">{{ p.Name }}</a>
+            <button class="font-medium text-link hover:underline" @click="openRecord('PersonalizationPoint', p)">{{ p.Name }}</button>
             <span class="font-mono text-xs text-muted-foreground">{{ p.DeveloperName }}</span>
             <span class="ml-auto text-sm">{{ p.Status }}</span>
           </div>
@@ -169,7 +184,7 @@ const doc = () => docFrom({ title: 'Personalization', intro: `${orgTitle(org.org
             </div>
             <p v-if="!p.decisions.length" class="text-muted-foreground">No decisions.</p>
             <DataTable v-else :columns="decisionCols" :rows="p.decisions" row-key="Id" :bordered="false">
-              <template #cell-Name="{ row: d }"><a :href="sf(d.Id)" target="_blank" rel="noopener" class="text-link hover:underline">{{ d.Name }}</a></template>
+              <template #cell-Name="{ row: d }"><button class="text-link hover:underline" @click="openRecord('PersonalizationDecision', d)">{{ d.Name }}</button></template>
             </DataTable>
           </div>
         </div>
@@ -180,7 +195,7 @@ const doc = () => docFrom({ title: 'Personalization', intro: `${orgTitle(org.org
         <p v-if="errors('recommenders')" class="text-sm text-destructive">{{ errors('recommenders') }}</p>
         <p v-else-if="!setup.recommenders.length" class="text-sm text-muted-foreground">No recommenders in this org.</p>
         <DataTable v-else :columns="recommenderCols" :rows="setup.recommenders" row-key="Id">
-          <template #cell-Name="{ row: r }"><a :href="sf(r.Id)" target="_blank" rel="noopener" class="text-link hover:underline">{{ r.Name }}</a><div class="text-xs text-muted-foreground">{{ r.Description }}</div></template>
+          <template #cell-Name="{ row: r }"><button class="text-link hover:underline text-left" @click="openRecord('PersonalizationRecommender', r)">{{ r.Name }}</button><div class="text-xs text-muted-foreground">{{ r.Description }}</div></template>
           <template #cell-LastRefresh="{ row: r, value }">{{ value }}<div class="text-xs" :class="/fail|error/i.test(r.LatestRefreshedStatus || '') ? 'text-destructive' : 'text-muted-foreground'">{{ r.LatestRefreshedStatus }}</div></template>
         </DataTable>
       </div>
@@ -191,7 +206,7 @@ const doc = () => docFrom({ title: 'Personalization', intro: `${orgTitle(org.org
         <p v-else-if="!experiments.length" class="text-sm text-muted-foreground">No experiments in this org.</p>
         <div v-for="e in experiments" :key="e.Id" :class="[card, 'p-3 text-sm space-y-1']">
           <div class="flex flex-wrap items-baseline gap-2">
-            <a :href="sf(e.Id)" target="_blank" rel="noopener" class="font-medium text-link hover:underline">{{ e.Name }}</a>
+            <button class="font-medium text-link hover:underline" @click="openRecord('AbnExperiment', e)">{{ e.Name }}</button>
             <span class="ml-auto">{{ [e.Status, e.State].filter(Boolean).join(', ') }}</span>
           </div>
           <div class="text-muted-foreground">
@@ -206,7 +221,7 @@ const doc = () => docFrom({ title: 'Personalization', intro: `${orgTitle(org.org
       <!-- Schemas and objectives -->
       <div v-else-if="tab === 'schemas'" class="space-y-3">
         <DataTable v-if="setup.schemas.length" :columns="schemaCols" :rows="setup.schemas" row-key="Id">
-          <template #cell-Name="{ row: x }"><a :href="sf(x.Id)" target="_blank" rel="noopener" class="text-link hover:underline">{{ x.Name }}</a><div class="font-mono text-xs text-muted-foreground">{{ x.DeveloperName }}</div></template>
+          <template #cell-Name="{ row: x }"><button class="text-link hover:underline text-left" @click="openRecord('PersonalizationSchema', x)">{{ x.Name }}</button><div class="font-mono text-xs text-muted-foreground">{{ x.DeveloperName }}</div></template>
           <template #cell-Description="{ value }"><span class="text-muted-foreground">{{ value }}</span></template>
         </DataTable>
         <p v-else class="text-sm text-muted-foreground">No content schemas.</p>
@@ -276,5 +291,6 @@ const doc = () => docFrom({ title: 'Personalization', intro: `${orgTitle(org.org
         </template>
       </div>
     </template>
+    <RecordDrawer v-if="detail" :title="detail.title" :type="detail.type" :link="detail.link" :rows="detail.rows" :record="detail.record" :loading="detail.loading" :error="detail.error" @close="detail = null" />
   </section>
 </template>

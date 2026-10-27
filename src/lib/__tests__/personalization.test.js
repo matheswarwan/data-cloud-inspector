@@ -76,3 +76,26 @@ describe('personalizationStatus (feedback #114)', () => {
     expect(personalizationStatus({ schemas: [{ Id: 'x' }], errors: { points: notSupported } }, null).setupMissing).toBe(false)
   })
 })
+
+describe('one setup record (feedback #1009)', () => {
+  it('reads every field of one record with SOQL, and refuses odd input', async () => {
+    const { recordSql, loadRecord } = await import('../personalization.js')
+    expect(recordSql('PersonalizationDecision', '9pbjV0000000Hs5QAE')).toBe("SELECT FIELDS(ALL) FROM PersonalizationDecision WHERE Id = '9pbjV0000000Hs5QAE' LIMIT 1")
+    expect(() => recordSql('PersonalizationDecision', "x' OR Id != '")).toThrow()
+    expect(() => recordSql('Bad Type', '9pbjV0000000Hs5QAE')).toThrow()
+    const paths = []
+    const call = async (path) => { paths.push(path); return { ok: true, data: { records: [{ attributes: { type: 'PersonalizationDecision' }, Id: '9pbjV0000000Hs5QAE', Name: 'Home Hero All' }] } } }
+    expect(await loadRecord(call, '66.0', 'PersonalizationDecision', '9pbjV0000000Hs5QAE')).toEqual({ Id: '9pbjV0000000Hs5QAE', Name: 'Home Hero All' })
+    expect(decodeURIComponent(paths[0])).toContain('FIELDS(ALL) FROM PersonalizationDecision')
+    await expect(loadRecord(async () => ({ ok: true, data: { records: [] } }), '66.0', 'PersonalizationPoint', '9ppjV0000000GsnQAE')).rejects.toThrow(/No PersonalizationPoint record/)
+  })
+
+  it('lists filled fields first and names the point a decision belongs to', async () => {
+    const { recordRows } = await import('../personalization.js')
+    const setup = { points: [{ Id: '9ppjV0000000GsnQAE', Name: 'Home Hero Batch' }], decisions: [], recommenders: [] }
+    const rows = recordRows(setup, { Id: '9pbjV0000000Hs5QAE', Name: 'Home Hero All', PersonalizerId: null, PersonalizationPointId: '9ppjV0000000GsnQAE', State: 'Live', Priority: 1 })
+    expect(rows.map((r) => r.field)).toEqual(['Id', 'Name', 'PersonalizationPointId', 'State', 'Priority', 'PersonalizerId'])
+    expect(rows.find((r) => r.field === 'PersonalizationPointId').name).toBe('Home Hero Batch')
+    expect(rows.find((r) => r.field === 'Priority').value).toBe('1')
+  })
+})
