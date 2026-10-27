@@ -84,9 +84,12 @@ export function flowSteps(metadata) {
   return { start, steps: order }
 }
 
-/** The start in words: trigger, object or segment, schedule. */
+/** The start in words: trigger, object or segment, activation or data graph, schedule. */
 export function startSummary(start) {
   if (!start) return ''
-  const parts = [start.triggerType, start.object, start.segment || start.segmentName, start.recordTriggerType, start.schedule?.frequency && `${start.schedule.frequency.toLowerCase()} from ${start.schedule.startDate || ''}`.trim()]
-  return parts.filter(Boolean).join(' · ')
+  const name = (v) => (v && typeof v === 'object' ? v.name || v.developerName || v.label || '' : v)
+  const parts = [start.triggerType, start.object, name(start.segment) || start.segmentName, start.recordTriggerType,
+    name(start.activation) && `activation ${name(start.activation)}`, name(start.dataGraph) && `data graph ${name(start.dataGraph)}`,
+    start.schedule?.frequency && `${start.schedule.frequency.toLowerCase()} from ${start.schedule.startDate || ''}`.trim()]
+  return parts.filter(Boolean).join(' · ') || 'No trigger: runs from a screen, a button or another flow'
 }

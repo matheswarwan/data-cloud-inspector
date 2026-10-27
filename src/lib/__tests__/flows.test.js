@@ -32,6 +32,8 @@ describe('marketing flows', () => {
     expect(steps.map((s) => s.label)).toEqual(['Opted in?', 'Send welcome', 'Wait 2 days', 'Unused'])
     expect(steps[1].detail).toBe('sendEmailMessage: Welcome_Email')
     expect(startSummary(start)).toBe('Segment · Newsletter')
+    expect(startSummary({ connector: {}, activation: null, dataGraph: null })).toBe('No trigger: runs from a screen, a button or another flow')
+    expect(startSummary({ triggerType: 'Activation', activation: 'Spring_Push', dataGraph: 'Customer_DG' })).toBe('Activation · activation Spring_Push · data graph Customer_DG')
   })
 
   it('reads a version from the Tooling API only for a record ID', async () => {
