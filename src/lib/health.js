@@ -16,6 +16,9 @@ import { parseRulesets } from './profile.js'
 import { SETUP_QUERIES } from './personalization.js'
 import { inSpace } from './dataSpace.js'
 import { problemCounts, withProblems } from './problems.js'
+import { loadFlows, isMarketingFlow } from './flows.js'
+import { runQuery } from './query.js'
+import { eventTimeField, toObjects } from './profile.js'
 
 export const LEVELS = ['fail', 'warn', 'running', 'idle', 'ok']
 export const LEVEL_TEXT = { fail: 'Failed', warn: 'Needs a look', running: 'Running', idle: 'Inactive', ok: 'OK' }
@@ -116,6 +119,22 @@ export function recommenderHealth(r) {
   return { ...base, level, reason: level === 'ok' ? 'Last refresh succeeded' : `Last refresh: ${String(r.LatestRefreshedStatus).toLowerCase()}`, details }
 }
 
+// Marketing Cloud Next (analysis doc 2026-10-27): marketing flows that are switched off,
+// and engagement objects that stopped getting rows.
+export function marketingFlowHealth(f) {
+  const base = { kind: 'Marketing flow', name: f.ApiName || f.Id, label: f.Label || f.ApiName, recordId: f.ActiveVersionId || f.LatestVersionId || f.Id, lastRun: f.LastModifiedDate || null, details: [f.ProcessType, f.TriggerType].filter(Boolean).join(', ') }
+  return f.IsActive ? { ...base, level: 'ok', reason: 'Active' } : { ...base, level: 'idle', reason: 'Flow is inactive' }
+}
+
+export const ENGAGEMENT_STALE_DAYS = 7
+
+export function engagementHealth(obj, latest, now = Date.now()) {
+  const base = { kind: 'Engagement data', name: obj.name, label: obj.label || obj.name, lastRun: latest || null, details: obj.timeField ? `newest ${obj.timeField}` : '' }
+  if (!latest) return { ...base, level: 'warn', reason: 'No rows' }
+  const days = Math.floor((now - Date.parse(latest)) / 86400000)
+  return days > ENGAGEMENT_STALE_DAYS ? { ...base, level: 'warn', reason: `No new rows in ${days} days` } : { ...base, level: 'ok', reason: 'Rows in the last week' }
+}
+
 export async function offsetPages(call, path, key) {
   const out = []
   for (let offset = 0; offset < 5000; offset += 100) {
@@ -144,10 +163,10 @@ export async function insightPages(call, version) {
  * Every section, each `{ title, items, error }`; a section that fails to load says so
  * and the others still show.
  */
-export async function loadHealth(call, version, { now = Date.now(), onProgress = () => {}, segments: loadSegs = null } = {}) {
+export async function loadHealth(call, version, { now = Date.now(), onProgress = () => {}, segments: loadSegs = null, objects: loadObjects = null } = {}) {
   const v = `/services/data/v${version}/ssot`
   let done = 0
-  const TOTAL = 6
+  const TOTAL = 8
   const section = async (title, fn) => {
     let out
     try { out = { title, items: sortItems(await fn()), error: '' } } catch (err) {
@@ -179,6 +198,15 @@ export async function loadHealth(call, version, { now = Date.now(), onProgress =
       const res = await call(`/services/data/v${version}/query?q=${encodeURIComponent(SETUP_QUERIES.recommenders)}`)
       if (!res.ok) throw new Error(res.error || `HTTP ${res.status}`)
       return (res.data?.records || []).filter((r) => !call.dataSpaceId || !r.DataSpaceId || r.DataSpaceId.slice(0, 15) === call.dataSpaceId.slice(0, 15)).map(recommenderHealth)
+    }),
+    section('Marketing flows', async () => (await loadFlows(call, version)).filter(isMarketingFlow).map(marketingFlowHealth)),
+    section('Engagement data', async () => {
+      const objects = loadObjects ? await loadObjects() : []
+      const engagement = (objects || []).filter((o) => o.kind === 'DMO' && o.category === 'Engagement').map((o) => ({ ...o, timeField: eventTimeField(o) })).filter((o) => o.timeField)
+      return Promise.all(engagement.map(async (o) => {
+        const [row] = toObjects(await runQuery(call, version, `SELECT MAX(${o.timeField}) AS latest FROM ${o.name}`, { rowLimit: 1 }))
+        return engagementHealth(o, row?.latest, now)
+      }))
     }),
   ])
 }

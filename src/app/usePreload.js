@@ -55,7 +55,7 @@ async function runHealth(org, force) {
   if (job.status !== 'running' && (force || !job.result || stale(job.finishedAt))) {
     const call = orgCall()
     const version = org.version
-    startJob(job.id, (progress) => loadHealth(call, version, { onProgress: progress, segments: () => ensureSegments() })) // the list the usage step loaded (#1005)
+    startJob(job.id, (progress) => loadHealth(call, version, { onProgress: progress, segments: () => ensureSegments(), objects: () => ensureCatalog().then(() => useCatalog().objects) })) // the list the usage step loaded (#1005)
   }
   const s = step('health')
   while (job.status === 'running') {

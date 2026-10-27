@@ -50,7 +50,7 @@ describe('report', () => {
   it('keeps the other sections when one fails', async () => {
     const call = async (path) => (path.includes('activations') ? { ok: false, error: 'nope' } : { ok: true, data: {} })
     const sections = await loadHealth(call, '68.0')
-    expect(sections.map((s) => s.title)).toEqual(['Data streams', 'Identity resolution', 'Calculated insights', 'Segments', 'Activations', 'Personalization recommenders'])
+    expect(sections.map((s) => s.title)).toEqual(['Data streams', 'Identity resolution', 'Calculated insights', 'Segments', 'Activations', 'Personalization recommenders', 'Marketing flows', 'Engagement data'])
     expect(sections[4].error).toBe('nope')
     expect(sections[0].error).toBe('')
   })
@@ -70,5 +70,19 @@ describe('zero copy streams (feedback #116)', () => {
     expect(sh({ ...base, connector: 'BIGQUERY', frequency: 'DAILY' })).toMatchObject({ level: 'warn', reason: 'Zero copy with acceleration: has never refreshed' })
     expect(sh({ ...base, connector: 'SalesforceDotCom' })).toMatchObject({ level: 'warn', reason: 'Has never run' })
     expect(sh({ ...base, connector: 'BIGQUERY', lastRunStatus: 'FAILURE' }).level).toBe('fail')
+  })
+})
+
+import { marketingFlowHealth, engagementHealth } from '../health.js'
+
+describe('Marketing Cloud Next health', () => {
+  it('marks inactive marketing flows and engagement objects without recent rows', () => {
+    expect(marketingFlowHealth({ Label: 'Welcome', IsActive: false })).toMatchObject({ level: 'idle', reason: 'Flow is inactive' })
+    expect(marketingFlowHealth({ Label: 'Welcome', IsActive: true }).level).toBe('ok')
+    const now = Date.parse('2026-10-27T00:00:00Z')
+    const o = { name: 'ssot__EmailEngagement__dlm', label: 'Email Engagement', timeField: 'ssot__EngagementDateTm__c' }
+    expect(engagementHealth(o, '2026-10-25T00:00:00Z', now)).toMatchObject({ level: 'ok' })
+    expect(engagementHealth(o, '2026-10-01T00:00:00Z', now)).toMatchObject({ level: 'warn', reason: 'No new rows in 26 days' })
+    expect(engagementHealth(o, null, now)).toMatchObject({ level: 'warn', reason: 'No rows' })
   })
 })

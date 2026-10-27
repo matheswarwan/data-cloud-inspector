@@ -34,7 +34,7 @@ function load() {
   if (!org.version || !org.orgId) return
   const call = orgCall()
   const version = org.version
-  startJob(jobId.value, (progress) => loadHealth(call, version, { onProgress: progress }))
+  startJob(jobId.value, (progress) => loadHealth(call, version, { onProgress: progress, objects: () => ensureCatalog().then(() => useCatalog().objects) }))
 }
 // First visit: start a check unless one ran (or is running) for this org and data space.
 function autoStart() {
