@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Search, Copy, ChevronRight, ChevronDown } from 'lucide-vue-next'
 import RelatedTable from '../components/RelatedTable.vue'
 import { channelOf, actionOf, engagementSummary, loadConsent, consentFacts } from '../lib/marketing.js'
+import { addressesFrom, loadCrmConsent } from '../lib/crmConsent.js'
 import RecordLink from '../components/RecordLink.vue'
 import { recordUrl, recordKind } from '../lib/links.js'
 import { currentOrg } from '../app/useOrg.js'
@@ -38,6 +39,7 @@ const related = shallowRef([]) // source side
 const unifiedRelated = shallowRef([])
 const consent = shallowRef([]) // consent rows through the contact points (Marketing Cloud Next)
 const consentLoading = ref(false)
+const crmConsent = shallowRef(null) // { rows, errors, addresses } from Salesforce records
 const missed = ref([])
 const loading = ref('')
 const open = ref({}) // expanded source rows / events
@@ -140,6 +142,7 @@ async function openProfile(kind, id) {
   related.value = []
   unifiedRelated.value = []
   consent.value = []
+  crmConsent.value = null
   missed.value = []
   loading.value = 'Loading the profile…'
   await ensureCatalog()
@@ -166,8 +169,12 @@ async function openProfile(kind, id) {
     missed.value = await possibleMissedMatches(q, p.sources.map((s) => s.ssot__Id__c), src).catch(() => [])
     consentLoading.value = true
     const cps = [...src, ...uni].filter((r) => /ContactPoint/i.test(r.object))
-    const c = await loadConsent(q, cps, catalog.objects).catch(() => [])
-    if (seq === loadSeq) { consent.value = c; consentLoading.value = false }
+    const addresses = addressesFrom(cps)
+    const [c, crm] = await Promise.all([
+      loadConsent(q, cps, catalog.objects).catch(() => []),
+      addresses.emails.length || addresses.phones.length ? loadCrmConsent(orgCall(), org.version, addresses).catch((e) => ({ rows: [], errors: [e.message] })) : null,
+    ])
+    if (seq === loadSeq) { consent.value = c; crmConsent.value = crm && { ...crm, addresses }; consentLoading.value = false }
   } catch (err) {
     if (seq === loadSeq) error.value = err.message
   } finally {
@@ -404,8 +411,21 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
       </div>
 
       <!-- Consent (Marketing Cloud Next): through the contact points -->
-      <div v-if="consent.length || consentLoading" :class="card">
+      <div v-if="consent.length || consentLoading || crmConsent" :class="card">
         <h3 class="p-3 border-b font-medium">Consent</h3>
+        <div v-if="crmConsent" class="border-b p-3 space-y-1">
+          <div class="text-sm">In Salesforce <span class="text-muted-foreground">for {{ [...crmConsent.addresses.emails, ...crmConsent.addresses.phones].join(', ') }}</span></div>
+          <p v-for="(e, i) in crmConsent.errors" :key="i" class="text-xs text-destructive">{{ e }}</p>
+          <p v-if="!crmConsent.rows.length && !crmConsent.errors.length" class="text-sm text-muted-foreground">No subscription or data use consent records for these addresses.</p>
+          <ul v-else class="text-sm space-y-0.5">
+            <li v-for="r in crmConsent.rows" :key="r.id">
+              <b :class="/out|revok|unsub/i.test(r.status) ? 'text-destructive' : ''">{{ r.status || 'no status' }}</b>
+              <span class="ml-1.5">{{ r.subscription || r.purpose || r.kind }}</span>
+              <span class="text-muted-foreground ml-1.5">{{ [r.kind, r.channel, r.value, r.when && when(r.when), r.source].filter(Boolean).join(' · ') }}</span>
+              <a :href="recordUrl(currentOrg()?.host, r.id)" target="_blank" rel="noopener" class="ml-1.5 text-xs text-link hover:underline">Open</a>
+            </li>
+          </ul>
+        </div>
         <p v-if="consentLoading" class="p-3 text-sm text-muted-foreground">Looking for consent records on the contact points…</p>
         <div v-for="r in consent" :key="r.object + r.sql" class="border-b last:border-0 p-3 space-y-1">
           <div class="text-sm flex items-center gap-2">
