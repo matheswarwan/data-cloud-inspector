@@ -81,3 +81,19 @@ describe('credits (#145)', () => {
     ])
   })
 })
+
+describe('probing the Wallet DLOs (feedback #1011)', () => {
+  it('keeps the DLOs SQL can read, with their columns as fields', async () => {
+    const { probeCreditObjects, findCreditObjects } = await import('../credits.js')
+    const asked = []
+    const q = async (sql) => {
+      asked.push(sql)
+      if (/TenantBillingUsageEvent__dll/.test(sql)) return { columns: [{ name: 'EventTime__c', type: 'DateTime' }, { name: 'UsageValue__c', type: 'Number' }] }
+      throw new Error('Object not found')
+    }
+    const list = await probeCreditObjects(q)
+    expect(asked).toContain('SELECT * FROM TenantBillingUsageEvent__dll LIMIT 1')
+    expect(list).toEqual([{ name: 'TenantBillingUsageEvent__dll', label: 'TenantBillingUsageEvent', kind: 'DLO', probed: true, fields: [{ name: 'EventTime__c', type: 'DateTime' }, { name: 'UsageValue__c', type: 'Number' }] }])
+    expect(findCreditObjects(list).map((x) => x.role.id)).toEqual(['events'])
+  })
+})

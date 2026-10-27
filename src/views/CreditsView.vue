@@ -15,13 +15,38 @@ import SqlBlock from '../components/SqlBlock.vue'
 import { useOrg, currentOrg, orgName, orgTitle } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
-import { findCreditObjects, guessFields, dailySql, totalsSql, orgsSql, shapeDaily, shapeTotals, sortEnvs, envName, forecast, balances } from '../lib/credits.js'
+import { findCreditObjects, probeCreditObjects, guessFields, dailySql, totalsSql, orgsSql, shapeDaily, shapeTotals, sortEnvs, envName, forecast, balances } from '../lib/credits.js'
 
 const org = useOrg()
 const catalog = useCatalog()
 onMounted(() => ensureCatalog())
 
-const found = computed(() => findCreditObjects(catalog.objects))
+// Objects from the catalog, plus Wallet DLOs found by a SQL probe when the (cached) catalog
+// has none (feedback #1011).
+const probed = ref([])
+const probing = ref(false)
+const probedKey = ref('')
+const objects = computed(() => [...catalog.objects, ...probed.value.filter((p) => !catalog.objects.some((o) => o.name === p.name))])
+const found = computed(() => findCreditObjects(objects.value))
+async function probe() {
+  const key = `${org.orgId}|${org.dataSpace}`
+  probing.value = true
+  try {
+    const list = await probeCreditObjects((sql) => runQuery(orgCall(), org.version, sql, { rowLimit: 1 }))
+    if (key === `${org.orgId}|${org.dataSpace}`) { probed.value = list; probedKey.value = key }
+  } finally { probing.value = false }
+}
+watch([() => catalog.loading, () => org.orgId, () => org.dataSpace, () => org.version], () => {
+  const key = `${org.orgId}|${org.dataSpace}`
+  if (probedKey.value && probedKey.value !== key) probed.value = []
+  if (org.version && !catalog.loading && !probing.value && probedKey.value !== key && !findCreditObjects(catalog.objects).some((x) => x.role.use === 'consumption')) probe()
+}, { immediate: true })
+// "Check again": the object list read fresh, then the probe.
+async function checkAgain() {
+  probedKey.value = ''
+  await ensureCatalog({ refresh: true })
+  await probe()
+}
 const sources = computed(() => found.value.filter((x) => x.role.use === 'consumption'))
 const entSources = computed(() => found.value.filter((x) => x.role.use === 'entitlement'))
 const sandbox = computed(() => /\.sandbox\./i.test(currentOrg()?.host || ''))
@@ -32,7 +57,7 @@ const fields = ref({ date: '', amount: '', group: '', status: '', env: '', org: 
 const ent = ref('')
 const entFields = ref({ amount: '', group: '' })
 const days = ref(180)
-const objectOf = (name) => catalog.objects.find((o) => o.name === name)
+const objectOf = (name) => objects.value.find((o) => o.name === name)
 watch(sources, (list) => { if (!list.some((x) => x.object.name === source.value)) source.value = list[0]?.object.name || '' }, { immediate: true })
 watch(entSources, (list) => { if (!list.some((x) => x.object.name === ent.value)) ent.value = list[0]?.object.name || '' }, { immediate: true })
 watch(source, (n) => { fields.value = guessFields(objectOf(n)) }, { immediate: true })
@@ -233,18 +258,20 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
 
     <p v-if="sandbox" class="text-sm p-3 border rounded-md border-amber-400 bg-card">This is a sandbox. The consumption objects exist only in production, and production's copy includes this sandbox's usage (environment Sandbox, with this org's ID). Connect to the production org and split by environment there.</p>
 
-    <Loading v-if="catalog.loading && !catalog.objects.length" text="Looking for consumption objects" />
+    <Loading v-if="(catalog.loading && !catalog.objects.length) || (probing && !sources.length)" text="Looking for consumption objects" />
     <div v-else-if="!sources.length" class="text-sm p-3 border rounded-md bg-card space-y-2">
-      <p class="font-medium">No consumption objects in this org and data space ({{ org.dataSpace || 'default' }}).</p>
-      <p>Credit prediction reads Salesforce's consumption data (Digital Wallet) with SQL: objects such as <span class="font-mono">TenantDailyEntitlementConsumption__dll</span>. To turn them on:</p>
+      <div class="flex flex-wrap items-center gap-2"><p class="font-medium">No consumption objects in this org and data space ({{ org.dataSpace || 'default' }}).</p>
+        <button class="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border hover:bg-accent text-xs" :disabled="probing || catalog.loading" @click="checkAgain"><RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': probing || catalog.loading }" /> Check again</button></div>
+      <p>Credit prediction reads Salesforce's consumption data (Digital Wallet) with SQL: data lake objects such as <span class="font-mono">TenantBillingUsageEvent__dll</span>. To turn them on:</p>
       <ol class="list-decimal ml-5 space-y-1">
-        <li>Connect to the <b>production</b> org that holds the Data Cloud contract. Sandboxes and scratch orgs don't get these objects. Their usage is recorded in production, marked with its environment and org ID.</li>
-        <li>In Setup, search for <b>Digital Wallet</b> and open it. If it asks you to finish setting it up, do so. Digital Wallet setup creates the consumption data streams and data lake objects: TenantDailyEntitlementConsumption, TenantHourlyEntitlementConsumption, TenantEnrichedUsageEvent, TenantBillingUsageEvent, TenantEntitlementTransaction, TenantUsageTypeMultiplier and TenantUsageAttrDetail.</li>
-        <li>Add them to a data space. Digital Wallet itself works without one, but SQL can only read objects in a data space. In Data Cloud Setup, open <b>Data Spaces</b>, choose a data space (usually default) and add the Tenant data lake objects.</li>
-        <li>Your user needs access to that data space, through a Data Cloud permission set that includes it.</li>
-        <li>The data is refreshed several times a day, and the first load can take a while. When the objects show up, pick that data space in the connection menu and refresh Objects (or reload this page).</li>
+        <li>Use the <b>production</b> org that holds the Data Cloud contract. Sandboxes and scratch orgs don't get these objects; their usage is recorded in production, marked with its environment and org ID.</li>
+        <li>In Setup, search for <b>Digital Wallet</b> and enable it (finish its setup if it asks).</li>
+        <li>In Data Cloud, open <b>Data Streams</b>. Digital Wallet adds streams such as TenantBillingUsageEventStream, TenantEntitlementTransactionStream and TenantUsageTypeMultiplierStream. Select them and <b>Activate</b> them.</li>
+        <li>They still say "Data stream not added to any data space". Open Data Cloud > <b>Data Spaces</b>, open the data space (usually default), click <b>Add Data Lake Objects</b>, select every DLO whose name starts with <b>Tenant</b> and add them.</li>
+        <li>Check: in Data Cloud > <b>Query Editor</b>, under Data Lake Objects, find TenantBillingUsageEvent and run a query on it. Your user needs access to that data space (a Data Cloud permission set that includes it).</li>
+        <li>Then click <b>Check again</b> here, with that data space picked in the connection menu. The data refreshes several times a day; the first load can take a while.</li>
       </ol>
-      <p class="text-muted-foreground">Salesforce Help: "Digital Wallet Data Lake Objects (DLOs)" lists the objects and their fields.</p>
+      <p class="text-muted-foreground">More: <a class="text-link hover:underline" href="https://admin.salesforce.com/blog/2025/track-manage-and-optimize-data-cloud-usage-in-digital-wallet" target="_blank" rel="noopener">Track and optimize Data Cloud usage in Digital Wallet</a> (Salesforce Admins blog), <a class="text-link hover:underline" href="https://developer.salesforce.com/docs/data/data-cloud-dmo-mapping/guide/c360dm-si-tenantconsumptioninsightsdmo-dmo.html" target="_blank" rel="noopener">Tenant Consumption Insights DMO</a> (Salesforce Developers), and <a class="text-link hover:underline" href="https://medium.com/@marketingcloudtips/sfmc-tips-232-data-cloud-viewing-detailed-digital-wallet-consumption-data-436dc3bf4f13" target="_blank" rel="noopener">SFMC Tips #232: viewing detailed Digital Wallet consumption data</a> (step by step).</p>
     </div>
 
     <template v-else>
@@ -256,13 +283,14 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
         <details v-if="missing.length" class="text-xs">
           <summary class="cursor-pointer text-muted-foreground">Not found: {{ missing.map((id) => id === 'daily' ? 'daily consumption' : 'purchases (entitlement transactions)').join(' and ') }}. How to add them</summary>
           <div class="mt-2 space-y-2"><ol class="list-decimal ml-5 space-y-1">
-        <li>Connect to the <b>production</b> org that holds the Data Cloud contract. Sandboxes and scratch orgs don't get these objects. Their usage is recorded in production, marked with its environment and org ID.</li>
-        <li>In Setup, search for <b>Digital Wallet</b> and open it. If it asks you to finish setting it up, do so. Digital Wallet setup creates the consumption data streams and data lake objects: TenantDailyEntitlementConsumption, TenantHourlyEntitlementConsumption, TenantEnrichedUsageEvent, TenantBillingUsageEvent, TenantEntitlementTransaction, TenantUsageTypeMultiplier and TenantUsageAttrDetail.</li>
-        <li>Add them to a data space. Digital Wallet itself works without one, but SQL can only read objects in a data space. In Data Cloud Setup, open <b>Data Spaces</b>, choose a data space (usually default) and add the Tenant data lake objects.</li>
-        <li>Your user needs access to that data space, through a Data Cloud permission set that includes it.</li>
-        <li>The data is refreshed several times a day, and the first load can take a while. When the objects show up, pick that data space in the connection menu and refresh Objects (or reload this page).</li>
+        <li>Use the <b>production</b> org that holds the Data Cloud contract. Sandboxes and scratch orgs don't get these objects; their usage is recorded in production, marked with its environment and org ID.</li>
+        <li>In Setup, search for <b>Digital Wallet</b> and enable it (finish its setup if it asks).</li>
+        <li>In Data Cloud, open <b>Data Streams</b>. Digital Wallet adds streams such as TenantBillingUsageEventStream, TenantEntitlementTransactionStream and TenantUsageTypeMultiplierStream. Select them and <b>Activate</b> them.</li>
+        <li>They still say "Data stream not added to any data space". Open Data Cloud > <b>Data Spaces</b>, open the data space (usually default), click <b>Add Data Lake Objects</b>, select every DLO whose name starts with <b>Tenant</b> and add them.</li>
+        <li>Check: in Data Cloud > <b>Query Editor</b>, under Data Lake Objects, find TenantBillingUsageEvent and run a query on it. Your user needs access to that data space (a Data Cloud permission set that includes it).</li>
+        <li>Then click <b>Check again</b> here, with that data space picked in the connection menu. The data refreshes several times a day; the first load can take a while.</li>
       </ol>
-      <p class="text-muted-foreground">Salesforce Help: "Digital Wallet Data Lake Objects (DLOs)" lists the objects and their fields.</p></div>
+      <p class="text-muted-foreground">More: <a class="text-link hover:underline" href="https://admin.salesforce.com/blog/2025/track-manage-and-optimize-data-cloud-usage-in-digital-wallet" target="_blank" rel="noopener">Track and optimize Data Cloud usage in Digital Wallet</a> (Salesforce Admins blog), <a class="text-link hover:underline" href="https://developer.salesforce.com/docs/data/data-cloud-dmo-mapping/guide/c360dm-si-tenantconsumptioninsightsdmo-dmo.html" target="_blank" rel="noopener">Tenant Consumption Insights DMO</a> (Salesforce Developers), and <a class="text-link hover:underline" href="https://medium.com/@marketingcloudtips/sfmc-tips-232-data-cloud-viewing-detailed-digital-wallet-consumption-data-436dc3bf4f13" target="_blank" rel="noopener">SFMC Tips #232: viewing detailed Digital Wallet consumption data</a> (step by step).</p></div>
         </details>
         <div class="flex flex-wrap items-center gap-2">
           <label class="flex items-center gap-1.5">Use <select v-model="source" :class="sel" aria-label="Consumption object"><option v-for="x in sources" :key="x.object.name" :value="x.object.name">{{ x.object.name }}</option></select></label>

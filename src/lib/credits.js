@@ -26,6 +26,19 @@ export const ROLES = [
   { id: 'multipliers', label: 'Usage type multipliers', match: /tenantusagetypemultiplier/i, use: 'reference' },
 ]
 
+// The DLOs Digital Wallet creates. The object list (catalog) is cached until Refresh, so
+// DLOs added to the data space later were not seen (feedback #1011): when the catalog has
+// none, each is probed with a one-row SQL read, which also proves SQL can read it.
+export const WALLET_DLOS = ['TenantDailyEntitlementConsumption', 'TenantHourlyEntitlementConsumption', 'TenantEnrichedUsageEvent', 'TenantBillingUsageEvent', 'TenantEntitlementTransaction', 'TenantUsageTypeMultiplier']
+
+/** `[{ name, label, kind: 'DLO', fields }]` for the Wallet DLOs SQL can read; `q(sql)` → `{ columns }`. */
+export async function probeCreditObjects(q, names = WALLET_DLOS) {
+  const results = await Promise.allSettled(names.map((n) => q(`SELECT * FROM ${n}__dll LIMIT 1`)))
+  return results.flatMap((r, i) => (r.status === 'fulfilled'
+    ? [{ name: `${names[i]}__dll`, label: names[i], kind: 'DLO', probed: true, fields: (r.value?.columns || []).map((c) => ({ name: c.name, type: c.type || '' })) }]
+    : []))
+}
+
 /** The consumption objects the org has, best source first: `[{ role, object }]`. */
 export function findCreditObjects(objects = []) {
   const found = []
