@@ -1,4 +1,5 @@
 <script setup>
+defineProps({ bare: { type: Boolean, default: false } })
 // Orgs this browser connected to before (feedback #109): name them, forget them, use one
 // that still has a session, or open the login page of one or several. Nothing about the
 // session is kept: only the org's domain, ID, the name you give it and who logged in.
@@ -45,9 +46,9 @@ const when = (iso) => (iso ? new Date(iso).toLocaleDateString() : '')
 </script>
 
 <template>
-  <div class="border rounded-md bg-card">
-    <div class="p-3 border-b flex flex-wrap items-center gap-2">
-      <h3 class="font-medium text-sm">Your orgs</h3>
+  <div :class="bare ? '' : 'border rounded-md bg-card'">
+    <div :class="['flex flex-wrap items-center gap-2', bare ? 'pb-2' : 'p-3 border-b']">
+      <h3 v-if="!bare" class="font-medium text-sm">Your orgs</h3>
       <span class="text-xs text-muted-foreground">Orgs you connected to in this browser. Log in to one in a new tab, then come back: this page checks again.</span>
       <button class="ml-auto inline-flex items-center gap-1 text-xs text-link hover:underline" :disabled="checking" @click="check"><RefreshCw class="w-3 h-3" :class="{ 'animate-spin': checking }" /> Check again</button>
     </div>

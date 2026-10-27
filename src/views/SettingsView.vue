@@ -1,4 +1,5 @@
 <script setup>
+import OAuthLogin from '../components/OAuthLogin.vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useApiConsole, setApiConsole } from '../app/useApiConsole.js'
 import { tipsOn, setTipsOn, resetTips } from '../lib/tips.js'
@@ -23,31 +24,7 @@ const fileInput = ref(null)
 
 const version = chrome.runtime?.getManifest?.().version || 'dev'
 
-// Log in with OAuth, for orgs that reject the browser session (API Access Control).
-const oauth = ref(null) // { active, since, clientId, redirectUri }
-const clientId = ref('')
-const oauthBusy = ref(false)
-const oauthMsg = ref('')
-async function loadOauth() {
-  if (!org.orgId) return
-  oauth.value = await send({ type: 'OAUTH_STATUS', orgId: org.orgId })
-  if (!clientId.value) clientId.value = oauth.value?.clientId || ''
-}
-async function oauthLogin() {
-  oauthBusy.value = true
-  oauthMsg.value = ''
-  const res = await send({ type: 'OAUTH_LOGIN', orgId: org.orgId, clientId: clientId.value })
-  oauthBusy.value = false
-  oauthMsg.value = res?.ok ? `Logged in with OAuth${res.scope ? ` (scopes: ${res.scope})` : ''}. Calls to this org now use the OAuth token until the browser closes.` : `Could not log in: ${res?.error || 'no answer'}`
-  await loadOauth()
-  if (res?.ok) recheckOrg()
-}
-async function oauthLogout() {
-  await send({ type: 'OAUTH_LOGOUT', orgId: org.orgId })
-  oauthMsg.value = 'Logged out of OAuth; calls use the browser session again.'
-  await loadOauth()
-  recheckOrg()
-}
+const oauthBox = ref(null)
 
 // Storage: everything kept in the browser, by section, with sizes and Delete.
 const storage = ref(null) // { groups, total }
@@ -61,7 +38,7 @@ const hostOf = (orgId) => org.orgs.find((o) => o.orgId === orgId)?.host || (orgI
 async function afterDelete(groupId) {
   if (groupId === 'metadata' || groupId === 'session' || groupId === 'all') { resetCatalog(); ensureCatalog() }
   if (groupId === 'saved' || groupId === 'history' || groupId === 'all') await reloadQueries()
-  if (groupId === 'oauthTokens' || groupId === 'all') { await loadOauth(); recheckOrg() }
+  if (groupId === 'oauthTokens' || groupId === 'all') { await oauthBox.value?.load(); recheckOrg() }
   await refresh()
 }
 
@@ -81,9 +58,8 @@ async function removeAll() {
   await afterDelete('all')
 }
 
-onMounted(() => { loadQueries(); refresh(); loadOauth() })
+onMounted(() => { loadQueries(); refresh() })
 watch(() => org.orgs, refresh) // the org list may arrive after this page opens
-watch(() => org.orgId, () => { clientId.value = ''; oauthMsg.value = ''; loadOauth() })
 
 
 async function forgetContact() {
@@ -221,25 +197,7 @@ function showTipsAgain() { setTipsOn(true); resetTips(); tips.value = true }
 
     <div :class="card">
       <h3 class="font-medium">Log in with OAuth</h3>
-      <p class="text-sm text-muted-foreground">
-        Only needed when an org rejects the browser session, usually because API Access Control is on.
-        It uses an External Client App in that org, so an admin has to create one first.
-      </p>
-      <template v-if="org.orgId && oauth">
-        <p class="text-sm">For <strong :title="currentOrg()?.host">{{ orgName(org.orgId) }}</strong>: {{ oauth.active ? `logged in with OAuth since ${when(oauth.since)}` : 'using the browser session' }}.</p>
-        <ol class="text-sm list-decimal pl-5 space-y-1">
-          <li>In the org's Setup, create an External Client App with OAuth enabled, the API scope and the Data Cloud scopes (their names start with cdp_), and PKCE required.</li>
-          <li>Callback URL: <code class="text-xs break-all select-all">{{ oauth.redirectUri }}</code></li>
-          <li>Paste its consumer key (client ID) here and log in. The token is kept until the browser closes.</li>
-        </ol>
-        <div class="flex flex-wrap gap-2">
-          <input v-model="clientId" placeholder="Client ID (consumer key)" class="flex-1 min-w-64 border rounded-md px-2 py-1 bg-background text-sm font-mono" />
-          <button class="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="oauthBusy || !clientId.trim()" @click="oauthLogin">{{ oauthBusy ? 'Waiting for login…' : 'Log in with OAuth' }}</button>
-          <button v-if="oauth.active" :class="btn" @click="oauthLogout">Log out of OAuth</button>
-        </div>
-        <p v-if="oauthMsg" class="text-sm">{{ oauthMsg }}</p>
-      </template>
-      <p v-else class="text-sm text-muted-foreground">No org selected.</p>
+      <OAuthLogin ref="oauthBox" />
     </div>
 
     <div :class="card">
