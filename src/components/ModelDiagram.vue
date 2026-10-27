@@ -6,6 +6,7 @@ import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } 
 import { RouterLink } from 'vue-router'
 import { ZoomIn, ZoomOut, Maximize, RotateCcw, Download, Key, Link2 } from 'lucide-vue-next'
 import { standaloneSvg, pngBlob } from '../lib/svgImage.js'
+import { diagramToDiagramforce, openInDiagramforce } from '../lib/diagramforce.js'
 import { diagramGraph, layoutDiagram, edgePath, anchorY, cardinalityText, diagramBounds, neighbours, toMermaid, toDot, toDrawio, toDiagramMarkdown, NODE } from '../lib/modelDiagram.js'
 import { saveBlob, safeFileName } from '../lib/exportDoc.js'
 
@@ -176,6 +177,7 @@ const EXPORTS = [
   ['drawio', 'draw.io (.drawio)'],
   ['dot', 'Graphviz (.dot)'],
   ['copy', 'Copy Mermaid'],
+  ['diagramforce', 'Open in Diagramforce'],
 ]
 async function doExport(kind) {
   menu.value = false
@@ -188,7 +190,12 @@ async function doExport(kind) {
     else if (kind === 'mmd') saveBlob(new Blob([toMermaid(g)], { type: 'text/plain' }), `${base()}.mmd`)
     else if (kind === 'drawio') saveBlob(new Blob([toDrawio(g, pos)], { type: 'application/xml' }), `${base()}.drawio`)
     else if (kind === 'dot') saveBlob(new Blob([toDot(g)], { type: 'text/vnd.graphviz' }), `${base()}.dot`)
-    else if (kind === 'copy') { await navigator.clipboard.writeText(toMermaid(g)); exporting.value = 'Copied the Mermaid text.' }
+    else if (kind === 'diagramforce') {
+      const edgeLabel = (e) => (e.kind === 'map' ? 'maps to' : e.kind === 'feed' ? 'feeds' : cardinalityText(e.cardinality))
+      exporting.value = openInDiagramforce(diagramToDiagramforce(g, pos, { title: props.title || 'Data model', edgeLabel }))
+        ? 'Opened diagramforce.com in a new tab with the diagram (names only, no data).'
+        : 'The browser blocked the new tab; allow pop-ups for the extension and try again.'
+    } else if (kind === 'copy') { await navigator.clipboard.writeText(toMermaid(g)); exporting.value = 'Copied the Mermaid text.' }
   } catch (err) {
     exporting.value = `Export failed: ${err.message}`
   }
