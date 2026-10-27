@@ -15,7 +15,7 @@ import { buildModel, modelMarkdown, modelHtml } from '../lib/modelDoc.js'
 import { docFrom, sheetsFrom } from '../lib/tableDoc.js'
 import { loadInsight, baseInsightName } from '../lib/insights.js'
 import InsightDefinition from '../components/InsightDefinition.vue'
-import { filterObjects, selectFor, objectMarkdown } from '../lib/catalog.js'
+import { filterObjects, selectFor, objectMarkdown, lookupName, lookupObject } from '../lib/catalog.js'
 import { loadMappings } from '../lib/lineage.js'
 import { runQuery } from '../lib/query.js'
 
@@ -49,6 +49,22 @@ function sfUrl(o) {
 
 const categories = computed(() => [...new Set(catalog.objects.map((o) => o.category).filter(Boolean))].sort())
 const list = computed(() => filterObjects(catalog.objects, { text: text.value, kinds: kinds.value, category: category.value }))
+
+// Not in the (cached) list: look the name up with SQL (feedback #1012).
+const lookupTarget = computed(() => (list.value.length ? '' : lookupName(text.value)))
+const lookup = ref(null) // { name, loading, error, columns, rows }
+watch(lookupTarget, () => { lookup.value = null })
+async function lookUp() {
+  const name = lookupTarget.value
+  lookup.value = { name, loading: true, error: '', columns: [], rows: 0 }
+  try {
+    const r = await lookupObject((sql) => runQuery(orgCall(), org.version, sql, { rowLimit: 1 }), name)
+    if (lookup.value?.name === name) lookup.value = { ...r, loading: false, error: '' }
+  } catch (e) {
+    if (lookup.value?.name === name) lookup.value = { name, loading: false, error: e.message, columns: [], rows: 0 }
+  }
+}
+const openLookupInSql = () => router.push({ path: '/sql', query: { sql: `SELECT * FROM ${lookup.value.name} LIMIT 100` } })
 const byName = computed(() => new Map(catalog.objects.map((o) => [o.name, o])))
 const selected = computed(() => byName.value.get(route.params.name) || null)
 const fields = computed(() => {
@@ -243,6 +259,18 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
       <div class="text-xs text-muted-foreground">
         {{ list.length }} of {{ catalog.objects.length }} objects
         <span v-if="catalog.loadedAt"> · metadata from {{ time(catalog.loadedAt) }}</span>
+      </div>
+      <div v-if="lookupTarget" class="text-xs p-2 border rounded-md bg-card space-y-1.5">
+        <p>Not in this list<span v-if="catalog.loadedAt"> (read {{ time(catalog.loadedAt) }})</span>. Refresh the list, or ask Data Cloud whether it can read <span class="font-mono">{{ lookupTarget }}</span>.</p>
+        <button class="px-2 py-1 rounded-md border hover:bg-accent disabled:opacity-50" :disabled="lookup?.loading" @click="lookUp">{{ lookup?.loading ? 'Looking…' : 'Look it up in Data Cloud' }}</button>
+        <template v-if="lookup && !lookup.loading">
+          <p v-if="lookup.error" class="text-destructive">{{ lookup.error }}</p>
+          <template v-else>
+            <p><b>Data Cloud can read it</b>: {{ lookup.columns.length }} fields, {{ lookup.rows ? 'has rows' : 'no rows yet' }}. It is missing from the metadata list (the list may be older than the object, or leave it out).</p>
+            <p class="font-mono text-muted-foreground break-all">{{ lookup.columns.map((c) => c.name).join(', ') }}</p>
+            <button class="text-link hover:underline" @click="openLookupInSql">Open in SQL</button>
+          </template>
+        </template>
       </div>
       <div v-if="catalog.errors.length || catalog.error" class="text-xs text-destructive">{{ [catalog.error, ...catalog.errors].filter(Boolean).join('; ') }}</div>
       <ul class="max-h-[72vh] overflow-auto text-sm">

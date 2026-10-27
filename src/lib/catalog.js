@@ -104,3 +104,21 @@ export function objectMarkdown(obj) {
   }
   return lines.join('\n')
 }
+
+// An object the metadata list does not show (feedback #1012: TenantBillingUsageEvent__dll
+// was queryable in Data Cloud's Query Editor but not listed here). The list is cached
+// until Refresh, and some objects may not be in the metadata at all, so a name can be
+// looked up with a one-row SQL read instead.
+const NAME = /^[A-Za-z][A-Za-z0-9_]*$/
+export function lookupName(text) {
+  const t = String(text || '').trim().replace(/^"|"$/g, '')
+  if (!NAME.test(t)) return ''
+  return /__(dll|dlm|cio)$/i.test(t) ? t : `${t}__dll`
+}
+
+/** `{ name, columns: [{ name, type }], rows }` when SQL can read `name`, else throws. */
+export async function lookupObject(q, name) {
+  if (!NAME.test(name)) throw new Error('Not an object name.')
+  const r = await q(`SELECT * FROM ${name} LIMIT 1`)
+  return { name, columns: r.columns || [], rows: r.rows?.length || 0 }
+}

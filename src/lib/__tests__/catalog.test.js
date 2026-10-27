@@ -62,3 +62,17 @@ describe('helpers', () => {
     expect(md).toContain('`ssot__Party__dlm.ssot__IndividualId__c` to `ssot__Individual__dlm.ssot__Id__c` (NTOONE)')
   })
 })
+
+describe('looking up an object the list leaves out (feedback #1012)', () => {
+  it('names a DLO by default and reads one row', async () => {
+    const { lookupName, lookupObject } = await import('../catalog.js')
+    expect(lookupName('TenantBillingUsageEvent')).toBe('TenantBillingUsageEvent__dll')
+    expect(lookupName('"TenantBillingUsageEvent__dll"')).toBe('TenantBillingUsageEvent__dll')
+    expect(lookupName('ssot__Individual__dlm')).toBe('ssot__Individual__dlm')
+    expect(lookupName('two words')).toBe('')
+    const asked = []
+    const r = await lookupObject(async (sql) => { asked.push(sql); return { columns: [{ name: 'UsageValue__c', type: 'DECIMAL' }], rows: [] } }, 'TenantBillingUsageEvent__dll')
+    expect(asked).toEqual(['SELECT * FROM TenantBillingUsageEvent__dll LIMIT 1'])
+    expect(r).toEqual({ name: 'TenantBillingUsageEvent__dll', columns: [{ name: 'UsageValue__c', type: 'DECIMAL' }], rows: 0 })
+  })
+})
