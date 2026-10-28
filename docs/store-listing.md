@@ -11,7 +11,7 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
   of the description). If a warning comes, a fallback name is "Unified Profile Inspector".
 - **Privacy policy URL:** https://data-cloud-inspector.mathes.dev/privacy (Worker
   `data-cloud-inspector-site`, source in `site/`; deploy steps in `site/wrangler.jsonc`).
-- **Publisher:** CloudKettle's developer account (same as SFMC Query Saver).
+- **Publisher:** Ateko (the developer account that published SFMC Query Saver; CloudKettle is now part of Ateko). Contact email mathes.kanagarajan@cloudkettle.com. What to set in the dashboard: `docs/store-listing-checklist.md`.
 - **Version:** 1.0.6, `releases/data-cloud-inspector-1.0.6.zip` (GitHub release `v1.0.6`, uploaded 2026-10-25), an update to the item submitted as 1.0.0 on 2026-10-23; uploaded 2026-10-24. No permission changes. 1.0.0 was the first store version; builds numbered 1.1.0 to 1.7.0 were never published and are folded into it (GitHub pre-releases, zips in `releases/archive/`), which is why updates are numbered 1.0.x.
 
 ## Updating (1.0.1 and later)
@@ -20,9 +20,9 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 2. Store listing tab: replace the five screenshots with the new ones from `docs/store/` (they show the left sidebar) and paste the description below (it mentions the Download menu and Data models).
 3. Submit for review. If 1.0.0 is still in review, the dashboard may ask to cancel that review first; uploading 1.0.1 then replaces it.
 
-## Submitting (CloudKettle developer account)
+## Submitting (Ateko developer account)
 
-1. Chrome Web Store Developer Dashboard, signed in to the CloudKettle publisher, then New item.
+1. Chrome Web Store Developer Dashboard, signed in to the Ateko publisher, then New item.
 2. Upload `releases/data-cloud-inspector-1.0.0.zip`.
 3. Store listing tab: name, summary (from the manifest), description, category Developer Tools,
    language English, the five screenshots from `docs/store/` (the store takes at most five), the
