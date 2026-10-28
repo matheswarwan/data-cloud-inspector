@@ -12,6 +12,7 @@ Published by Ateko. Status: 1.0.7 on the Chrome Web Store; 1.0.8 (security and p
 - For reviewers: `docs/security-summary.md` (data flow, permissions, OAuth, storage, network calls) and `security/audits/`.
 - For administrators: `docs/enterprise-deployment.md` (force-install, limit to your org, OAuth only, cache and history off).
 - Build: `npm ci && npm run package` gives a reproducible zip and its SHA-256 in `out/`; `npm run package:verify` builds twice and compares.
+- Releases: `docs/release-process.md` (signed tags, CI checks, approval before publishing, store package compared with the release zip).
 - License: MIT (`LICENSE`).
 
 ## What it does

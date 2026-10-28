@@ -1,0 +1,111 @@
+# Publish to the Chrome Web Store when a GitHub release is published (the draft that
+# release.yml made). Steps:
+#   1. verify (no secrets): the tag is an annotated tag GitHub shows as Verified (signed by the
+#      maintainer), and rebuilding the tag gives exactly the zip attached to the release.
+#   2. publish: runs in the protected "release" environment, so it waits for the maintainer's
+#      approval; gets a short-lived token through Workload Identity Federation (no stored key)
+#      for the service account linked in the Chrome Web Store dashboard; uploads and submits.
+# Setup: docs/release-process.md.
+name: publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Version tag to publish (v1.0.8)
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Tag is signed and verified by GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          ref=$(gh api "repos/$GH_REPO/git/ref/tags/$TAG")
+          type=$(echo "$ref" | jq -r .object.type)
+          test "$type" = tag || { echo "$TAG is a lightweight tag; use a signed annotated tag (git tag -s)"; exit 1; }
+          verified=$(gh api "repos/$GH_REPO/git/tags/$(echo "$ref" | jq -r .object.sha)" -q .verification.verified)
+          test "$verified" = true || { echo "$TAG is not signed with a key GitHub verifies"; exit 1; }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Rebuild the tag and compare with the release zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          npm run package
+          gh release download "$TAG" --pattern '*.zip' --pattern '*.zip.sha256' --dir release
+          want=$(cut -d' ' -f1 release/*.zip.sha256)
+          got=$(sha256sum out/*.zip | cut -d' ' -f1)
+          asset=$(sha256sum release/*.zip | cut -d' ' -f1)
+          echo "release .sha256 $want | release zip $asset | rebuilt $got"
+          test "$want" = "$asset" && test "$asset" = "$got"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: verified-${{ env.TAG }}
+          path: release/
+          retention-days: 30
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: release
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Release zip (checked in the verify job)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release download "$TAG" --pattern '*.zip' --pattern '*.zip.sha256' --dir release
+          (cd release && sha256sum -c *.zip.sha256)
+      - id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/chromewebstore
+          create_credentials_file: false
+      - name: Upload and submit for review
+        env:
+          CWS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          CWS_PUBLISHER_ID: ${{ vars.CWS_PUBLISHER_ID }}
+          CWS_EXTENSION_ID: ${{ vars.CWS_EXTENSION_ID }}
+        run: |
+          npm ci --ignore-scripts
+          node scripts/cws.mjs upload release/*.zip
+          node scripts/cws.mjs publish
