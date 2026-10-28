@@ -37,5 +37,5 @@ What to set in the Developer Dashboard so that the listing matches the repositor
 
 ## After publishing
 
-- [ ] Tell Claude the version is live (it records it in `CHANGELOG.md` and `security/audits/`).
+- [ ] Record the live version in `CHANGELOG.md` and `security/audits/`.
 - [ ] Ask Spin.AI (or the client's scanner) to rescan, and add the new score to `security/audits/README.md`.

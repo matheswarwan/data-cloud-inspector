@@ -1,9 +1,9 @@
 {
   // Static pages for Data Cloud Inspector (the store's privacy policy). Deploy with
-  //   CLOUDFLARE_ACCOUNT_ID=51f0411bb44bb1022dbe10412e1b5b9c npx wrangler deploy
+  //   CLOUDFLARE_ACCOUNT_ID=<account id> npx wrangler deploy
+  // (PRIVACY.md is the source: npm run privacy, from the repository root, first.)
   "name": "data-cloud-inspector-site",
   "compatibility_date": "2026-10-01",
-  "account_id": "51f0411bb44bb1022dbe10412e1b5b9c",
   "routes": [{ "pattern": "data-cloud-inspector.mathes.dev", "custom_domain": true }],
   "workers_dev": false,
   "assets": { "directory": "./public", "html_handling": "drop-trailing-slash", "not_found_handling": "404-page" }

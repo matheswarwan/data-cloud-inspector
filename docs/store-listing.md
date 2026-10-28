@@ -5,7 +5,7 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
 ## Before publishing
 
 - **Name and trademark.** "Data Cloud" is a Salesforce product name (now branded Data 360). The
-  Toolkit got a trademark warning for "SFMC". Salesforce Inspector Reloaded uses "Salesforce" in
+  publisher's Marketing Cloud Toolkit once got a trademark warning for "SFMC". Salesforce Inspector Reloaded uses "Salesforce" in
   its name, and the store's policy allows a product name when it describes compatibility. The
   safest wording keeps the description clear that this is an independent tool (see the last line
   of the description). If a warning comes, a fallback name is "Unified Profile Inspector".
@@ -31,7 +31,7 @@ Text for the Chrome Web Store dashboard (new item). Screenshots are in `docs/sto
    certifications below; privacy policy URL https://data-cloud-inspector.mathes.dev/privacy.
 5. Distribution: Visibility **Unlisted** first (only people with the link can install), all
    regions. Switch to Public after it has been tried on a few real orgs.
-6. Submit for review. Tell Claude when it is published, so the release can be recorded.
+6. Submit for review. When it is published, record the version in `CHANGELOG.md` and `security/audits/`.
 
 ## What's new (version notes)
 

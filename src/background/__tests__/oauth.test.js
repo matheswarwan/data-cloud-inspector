@@ -19,7 +19,7 @@ describe('oauth helpers', () => {
     expect(() => codeFromRedirect('https://abc.chromiumapp.org/?error=access_denied&error_description=end-user+denied', 'S')).toThrow('access_denied: end-user denied')
   })
   it('reads the org of a token', () => {
-    expect(orgIdOfToken({ id: 'https://login.salesforce.com/id/00DjV000006UTXNUA4/005jV000002p0ZVQAY' })).toBe('00DjV000006UTXN')
+    expect(orgIdOfToken({ id: 'https://login.salesforce.com/id/00D000000000AAAUA4/005jV000002p0ZVQAY' })).toBe('00D000000000AAA')
     expect(orgIdOfToken({})).toBeNull()
   })
 })
