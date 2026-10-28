@@ -3,7 +3,16 @@
 A read-only Chrome extension for Salesforce Data Cloud (Data 360). It uses the Salesforce
 login you already have in the browser, so there is nothing to install in the org.
 
-Status: 1.0.6 (`releases/data-cloud-inspector-1.0.6.zip`), an update to 1.0.0, the first store release. Zips are in `releases/`.
+Published by Ateko. Status: 1.0.7 on the Chrome Web Store; 1.0.8 (security and privacy changes, see `CHANGELOG.md`) is on `main`. Zips are in `releases/`.
+
+## Security and privacy
+
+- The extension only reads, and its only network calls go to your own Salesforce org (enforced by its Content Security Policy). No analytics.
+- Privacy policy: `PRIVACY.md` (also bundled as `privacy.html` and hosted at https://data-cloud-inspector.mathes.dev/privacy). Security contact: `SECURITY.md`.
+- For reviewers: `docs/security-summary.md` (data flow, permissions, OAuth, storage, network calls) and `security/audits/`.
+- For administrators: `docs/enterprise-deployment.md` (force-install, limit to your org, OAuth only, cache and history off).
+- Build: `npm ci && npm run package` gives a reproducible zip and its SHA-256 in `out/`; `npm run package:verify` builds twice and compares.
+- License: MIT (`LICENSE`).
 
 ## What it does
 

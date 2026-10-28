@@ -5,10 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite build --watch",
-    "build": "vite build && vite build --config vite.sw.config.js",
-    "build:public": "vite build --mode public && vite build --config vite.sw.config.js --mode public",
+    "build": "node scripts/build-privacy.mjs && vite build && vite build --config vite.sw.config.js",
+    "build:public": "node scripts/build-privacy.mjs && vite build --mode public && vite build --config vite.sw.config.js --mode public",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "privacy": "node scripts/build-privacy.mjs",
+    "package": "npm run build && node scripts/package.mjs",
+    "package:verify": "node scripts/package.mjs --verify"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.4",
@@ -35,5 +38,6 @@
     "tailwindcss": "^4.3.3",
     "vite": "^8.3.5",
     "vitest": "^4.1.12"
-  }
+  },
+  "license": "MIT"
 }
