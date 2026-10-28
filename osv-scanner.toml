@@ -1,0 +1,10 @@
+# Reviewed false positives (docs/security-summary.md, Supply chain). xlsx 0.20.3 comes from
+# SheetJS's own tarball (https://cdn.sheetjs.com); the npm advisories list no fixed version
+# because the npm registry copy stopped at 0.18.5. Both issues are fixed in 0.20.3.
+[[IgnoredVulns]]
+id = "GHSA-4r6h-8v6p-xvw6"
+reason = "Prototype pollution, fixed in xlsx 0.19.3; this project uses 0.20.3."
+
+[[IgnoredVulns]]
+id = "GHSA-5pgg-2g8v-p4x9"
+reason = "ReDoS, fixed in xlsx 0.20.2; this project uses 0.20.3."

@@ -1,0 +1,91 @@
+# Checks on every pull request, every push to main and every version tag. Least privilege:
+# read-only token, no secrets used. Actions pinned to commit SHAs (Dependabot updates them);
+# scanner binaries pinned by version and SHA-256.
+name: security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-guard:
+    name: Tests, build, manifest guard, retire.js
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Manifest guard (permissions, hosts, CSP, URL hosts, network calls)
+        run: node scripts/manifest-guard.mjs
+      - name: Bundled libraries (retire.js on dist/)
+        run: npx --yes retire@5.7.0 --path dist --severity medium --exitwith 1
+
+  secrets:
+    name: Secrets in full history (gitleaks)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install gitleaks 8.30.1
+        run: |
+          curl -fsSLo gl.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gl.tgz" | sha256sum -c -
+          tar xzf gl.tgz gitleaks
+      - run: ./gitleaks git --redact --no-banner --exit-code 1 .
+
+  dependencies:
+    name: Dependencies (npm audit, osv-scanner)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: npm audit (high and critical fail)
+        run: npm audit --audit-level=high
+      - name: Install osv-scanner 2.7.0
+        run: |
+          curl -fsSLo osv-scanner https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_linux_amd64
+          echo "160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b  osv-scanner" | sha256sum -c -
+          chmod +x osv-scanner
+      - run: ./osv-scanner scan source --lockfile package-lock.json --config osv-scanner.toml
+
+  sast:
+    name: Static analysis (semgrep)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - run: pip install semgrep==1.182.1
+      - name: semgrep (JavaScript, secrets, XSS, OWASP)
+        # semgrep does not parse .vue files; scripts/manifest-guard.mjs checks them for network calls.
+        run: semgrep scan --config p/javascript --config p/secrets --config p/xss --config p/owasp-top-ten --metrics off --error src public app.html scripts
