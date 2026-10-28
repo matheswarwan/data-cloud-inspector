@@ -59,7 +59,7 @@ function compare() {
 const md = computed(() => (diff.value ? compareMarkdown(diff.value, { a: labelA.value, b: labelB.value, hosts: { a: ran.value.hostA, b: ran.value.hostB } }) : ''))
 
 const card = 'border rounded-md bg-card'
-const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+const btn = 'dci-btn'
 const pairs = [
   ['Segments', 'segmentsOnlyA', 'segmentsOnlyB'],
   ['Calculated insights', 'insightsOnlyA', 'insightsOnlyB'],
@@ -76,11 +76,11 @@ const pairs = [
     <p v-if="org.orgs.length < 2" class="text-sm p-3 border rounded-xl bg-card">Only one org is logged in in this browser. Log in to the second org in another tab, then choose Find orgs again in the connection menu.</p>
     <form class="flex flex-wrap items-center gap-2 text-sm" @submit.prevent="compare">
       <select v-model="a" aria-label="First org" class="border rounded-md px-2 py-1.5 bg-background"><option v-for="o in org.orgs" :key="o.orgId" :value="o.orgId">{{ option(o) }}</option></select>
-      <button type="button" class="p-1.5 rounded-md border hover:bg-accent" title="Name this org" aria-label="Name the first org" @click="rename(a)"><Pencil class="w-3.5 h-3.5" /></button>
+      <button type="button" class="dci-btn-icon" title="Name this org" aria-label="Name the first org" @click="rename(a)"><Pencil class="w-3.5 h-3.5" /></button>
       <span class="text-muted-foreground">and</span>
       <select v-model="b" aria-label="Second org" class="border rounded-md px-2 py-1.5 bg-background"><option v-for="o in org.orgs" :key="o.orgId" :value="o.orgId">{{ option(o) }}</option></select>
-      <button type="button" class="p-1.5 rounded-md border hover:bg-accent" title="Name this org" aria-label="Name the second org" @click="rename(b)"><Pencil class="w-3.5 h-3.5" /></button>
-      <button class="px-3 py-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50" :disabled="busy || !a || !b">{{ busy ? 'Comparing…' : 'Compare' }}</button>
+      <button type="button" class="dci-btn-icon" title="Name this org" aria-label="Name the second org" @click="rename(b)"><Pencil class="w-3.5 h-3.5" /></button>
+      <button class="dci-btn-primary" :disabled="busy || !a || !b">{{ busy ? 'Comparing…' : 'Compare' }}</button>
     </form>
     <p v-if="busy" class="text-sm text-muted-foreground">Comparing: {{ job.progress || 'starting' }}. You can use other pages meanwhile; the result waits here.</p>
     <p v-else-if="diff && job.finishedAt" class="text-sm text-muted-foreground">Compared {{ labelA }} and {{ labelB }} at {{ new Date(job.finishedAt).toLocaleString() }}.</p>

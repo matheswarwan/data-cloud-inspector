@@ -33,7 +33,7 @@ function key(e) {
 
 <template>
   <div v-if="state.hidden" class="shrink-0 -ml-1">
-    <button class="p-1.5 rounded-md border hover:bg-accent" :title="`Show the ${label}`" :aria-label="`Show the ${label}`" @click="state.hidden = false"><PanelLeftOpen class="w-4 h-4" /></button>
+    <button class="dci-btn-icon" :title="`Show the ${label}`" :aria-label="`Show the ${label}`" @click="state.hidden = false"><PanelLeftOpen class="w-4 h-4" /></button>
   </div>
   <template v-else>
     <aside class="shrink-0 min-w-0 space-y-2" :style="{ width: `${state.width}px` }" :aria-label="label">

@@ -96,6 +96,56 @@
   }
 }
 
+
+/* Shared pieces of the Home design (canvas "Option D – pages"): pill buttons, segmented
+   toggles, tabs, badges, cards and the page header. Pages use these classes instead of
+   their own button strings. */
+@layer components {
+  .dci-btn {
+    @apply inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-full border bg-card text-sm font-medium text-foreground whitespace-nowrap shadow-[0_1px_2px_rgba(17,24,39,0.04)] hover:bg-accent disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .dci-btn-sm { @apply h-8 px-3 text-[13px]; }
+  .dci-btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-full border border-transparent bg-primary text-primary-foreground text-sm font-semibold whitespace-nowrap hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .dci-btn-icon {
+    @apply inline-flex items-center justify-center shrink-0 w-9 h-9 rounded-full border bg-card text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-50;
+  }
+  .dci-btn-icon.dci-btn-sm { @apply w-8 h-8 px-0; }
+  /* Segmented toggle: a pill with the chosen option filled teal. */
+  .dci-seg { @apply inline-flex items-center gap-0.5 p-1 rounded-full border bg-card shadow-[0_1px_2px_rgba(17,24,39,0.04)]; }
+  .dci-seg-item { @apply inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-[13px] font-medium text-muted-foreground whitespace-nowrap hover:text-foreground; }
+  .dci-seg-item.is-on { @apply bg-primary text-primary-foreground font-semibold hover:text-primary-foreground; }
+  /* Filter chips (DMO, DLO, CI ...). */
+  .dci-chip { @apply inline-flex items-center gap-1 h-7 px-2.5 rounded-full border bg-card text-xs font-semibold text-muted-foreground hover:text-foreground; }
+  .dci-chip.is-on { @apply bg-primary/10 border-primary/40 text-primary dark:text-teal-300; }
+  /* Tabs: underline in teal, optional count badge. */
+  .dci-tabs { @apply flex gap-1 border-b overflow-x-auto; }
+  .dci-tab { @apply inline-flex items-center gap-1.5 h-11 px-3 -mb-px border-b-2 border-transparent text-sm font-medium text-muted-foreground whitespace-nowrap hover:text-foreground; }
+  .dci-tab.is-on { @apply border-primary text-foreground font-semibold; }
+  .dci-count { @apply inline-flex items-center px-1.5 rounded-full bg-muted text-[11px] font-semibold text-muted-foreground; }
+  /* Badges. */
+  .dci-badge { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold whitespace-nowrap bg-muted text-muted-foreground; }
+  .dci-badge-green { @apply bg-green-50 text-green-700 dark:bg-green-500/15 dark:text-green-300; }
+  .dci-badge-blue { @apply bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300; }
+  .dci-badge-amber { @apply bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300; }
+  .dci-badge-red { @apply bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300; }
+  .dci-badge-violet { @apply bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300; }
+  .dci-badge-teal { @apply bg-teal-50 text-teal-800 dark:bg-teal-500/15 dark:text-teal-300; }
+  /* Cards. */
+  .dci-card { @apply rounded-[14px] border bg-card; }
+  .dci-card-head { @apply flex items-center gap-2 px-5 py-4 border-b; }
+  .dci-card-title { @apply text-base font-semibold; }
+  /* Search field: a pill with the teal ring of Home's search. */
+  .dci-search { @apply flex items-center gap-2 h-10 pl-3.5 pr-3 rounded-full border border-teal-200 bg-card shadow-[0_0_0_4px_rgba(13,148,136,0.06)] dark:border-teal-500/30 focus-within:border-primary; }
+  .dci-search > input, .dci-search > .dci-search-input { @apply flex-1 min-w-0 bg-transparent outline-none text-sm border-0 p-0; }
+  /* Key and value in a two-column grid with row dividers. */
+  .dci-kv { @apply grid sm:grid-cols-2 gap-x-8; }
+  .dci-kv > div { @apply flex flex-col gap-0.5 py-2.5 border-b border-border/60 min-w-0; }
+  .dci-kv dt, .dci-kv .k { @apply text-xs text-muted-foreground; }
+  .dci-kv dd, .dci-kv .v { @apply text-sm break-words; }
+}
+
 /* Chrome injects a body font rule on extension pages that beats layered rules, so the app's
    root sets the font itself (unlayered). */
 #app { font-family: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }

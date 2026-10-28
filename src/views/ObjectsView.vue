@@ -5,7 +5,7 @@ import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { RefreshCw, Copy, Key, ExternalLink } from 'lucide-vue-next'
+import { RefreshCw, Copy, Key, ExternalLink, Search } from 'lucide-vue-next'
 import { useOrg, currentOrg, orgName, orgTitle } from '../app/useOrg.js'
 import { recordUrl, dmoUrl } from '../lib/links.js'
 import { useCatalog, ensureCatalog, ensureStreams, ensureAllMappings, ensureRecordIds, ensureUsage, orgCall } from '../app/useCatalog.js'
@@ -213,16 +213,16 @@ function query(o) {
 const ran = (s) => (!s.lastRunStatus || s.lastRunStatus === 'NONE' ? 'never run' : s.lastRunStatus)
 const time = (iso) => (iso ? new Date(iso).toLocaleString() : '')
 const kindClass = { DMO: 'border text-muted-foreground', DLO: 'border text-muted-foreground', CI: 'border text-muted-foreground' }
-const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
-const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'border-primary font-medium' : 'border-transparent text-muted-foreground hover:text-foreground']
+const btn = 'dci-btn'
+const tabBtn = (t) => ['dci-tab', tab.value === t ? 'is-on' : '']
 </script>
 
 <template>
   <section class="flex gap-4 min-h-0">
     <ListPanel name="objects" label="objects list">
       <div class="flex gap-2">
-        <input v-model="text" placeholder="Search objects" class="flex-1 border rounded-md px-2 py-1 bg-background text-sm" />
-        <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the metadata again" @click="ensureCatalog({ refresh: true }).then(() => ensureUsage({ refresh: true }))">
+        <label class="dci-search flex-1"><Search class="w-4 h-4 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden="true" /><input v-model="text" placeholder="Search objects" /></label>
+        <button class="dci-btn-icon" title="Load the metadata again" @click="ensureCatalog({ refresh: true }).then(() => ensureUsage({ refresh: true }))">
           <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': catalog.loading }" />
         </button>
       </div>

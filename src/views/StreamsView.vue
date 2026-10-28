@@ -8,7 +8,7 @@ import HelpTip from '../components/HelpTip.vue'
 import DownloadMenu from '../components/DownloadMenu.vue'
 const ModelDiagram = defineAsyncComponent(() => import('../components/ModelDiagram.vue'))
 import { useRoute, useRouter } from 'vue-router'
-import { RefreshCw } from 'lucide-vue-next'
+import { RefreshCw, Search } from 'lucide-vue-next'
 import { useOrg, currentOrg, orgName } from '../app/useOrg.js'
 import { streamsDoc, streamsSheets, streamDoc, streamSheets } from '../lib/streamDoc.js'
 import { useCatalog, ensureCatalog, ensureStreams, ensureAllMappings, orgCall } from '../app/useCatalog.js'
@@ -71,7 +71,7 @@ const fields = computed(() => {
 const DOT = { fail: 'bg-red-500', warn: 'bg-amber-400', running: 'bg-sky-500', idle: 'bg-gray-400', ok: 'bg-green-500' }
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : 'never')
 const num = (n) => (n == null ? '—' : Number(n).toLocaleString())
-const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+const btn = 'dci-btn'
 // Overview (no stream picked, feedback #104): every stream as a table, or a lineage diagram of
 // stream -> DLO -> DMOs, like Data models. Kept in the URL (?view=diagram).
 const mode = computed({
@@ -125,8 +125,8 @@ const fieldCols = [
   <section class="flex gap-4 min-h-0">
     <ListPanel v-if="route.params.name" name="streams" label="data streams list">
       <div class="flex gap-2">
-        <input v-model="filter" placeholder="Search streams or source objects" class="flex-1 border rounded-md px-2 py-1 bg-background text-sm" />
-        <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the streams again" @click="catalog.streams = null; loadList()"><RefreshCw class="w-4 h-4" /></button>
+        <label class="dci-search flex-1"><Search class="w-4 h-4 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden="true" /><input v-model="filter" placeholder="Search streams or source objects" /></label>
+        <button class="dci-btn-icon" title="Load the streams again" @click="catalog.streams = null; loadList()"><RefreshCw class="w-4 h-4" /></button>
       </div>
       <p class="text-xs text-muted-foreground">{{ list.length }} data streams</p>
       <ul class="max-h-[75vh] overflow-auto text-sm">
@@ -152,7 +152,7 @@ const fieldCols = [
               <button role="radio" :aria-checked="mode === 'diagram'" :class="['px-2.5 py-1.5 border-l', mode === 'diagram' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent']" @click="mode = 'diagram'">Diagram</button>
             </div>
             <input v-model="filter" placeholder="Search streams or source objects" class="border rounded-md px-2 py-1.5 bg-background w-60" />
-            <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the streams again" aria-label="Load the streams again" @click="catalog.streams = null; loadList()"><RefreshCw class="w-4 h-4" /></button>
+            <button class="dci-btn-icon" title="Load the streams again" aria-label="Load the streams again" @click="catalog.streams = null; loadList()"><RefreshCw class="w-4 h-4" /></button>
             <DownloadMenu :get-doc="listDoc" :get-sheets="listSheets" file-name="data-streams" :disabled="!view.length" />
           </div>
         </div>

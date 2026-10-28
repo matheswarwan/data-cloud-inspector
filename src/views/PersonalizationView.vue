@@ -74,8 +74,8 @@ async function openRecord(type, r) {
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : '')
 const num = (n) => (n == null || n === '' ? '' : Number(n).toLocaleString())
 const card = 'border rounded-md bg-card'
-const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'border-primary font-medium' : 'border-transparent text-muted-foreground hover:text-foreground']
-const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+const tabBtn = (t) => ['dci-tab', tab.value === t ? 'is-on' : '']
+const btn = 'dci-btn'
 const decisionCols = [
   { key: 'Priority', label: 'Priority', kind: 'number' },
   { key: 'Name', label: 'Decision' },

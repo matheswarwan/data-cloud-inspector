@@ -63,7 +63,7 @@ const segmentApi = computed(() => segments.value.find((s) => act.value?.segmentI
 const DOT = { fail: 'bg-red-500', warn: 'bg-amber-400', running: 'bg-sky-500', idle: 'bg-gray-400', ok: 'bg-green-500' }
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : 'never')
 const num = (n) => (typeof n === 'number' ? n.toLocaleString() : n || '…')
-const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent'
+const btn = 'dci-btn'
 // Download of the list (feedback #149)
 const listCols = [
   { key: 'name', label: 'Activation' }, { key: 'developerName', label: 'API name' }, { key: 'segment', label: 'Segment' }, { key: 'target', label: 'Target' },
@@ -86,7 +86,7 @@ const attrCols = [
       <div class="flex items-center gap-2">
         <h2 class="font-semibold">Activations <HelpTip topic="activations" /></h2>
         <span class="ml-auto"><DownloadMenu small label="" :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="activations" :disabled="!list.length" /></span>
-        <button class="p-1.5 rounded-md border hover:bg-accent" title="Load again" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
+        <button class="dci-btn-icon" title="Load again" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
       </div>
       <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
       <p v-else-if="!loading && !list.length" class="text-sm text-muted-foreground">No activations in this data space.</p>

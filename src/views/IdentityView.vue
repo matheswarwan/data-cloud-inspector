@@ -90,7 +90,7 @@ const num = (n) => (n == null ? '—' : Number(n).toLocaleString())
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : 'never')
 const name = (p) => [p?.ssot__FirstName__c, p?.ssot__LastName__c].filter(Boolean).join(' ') || p?.ssot__PersonName__c || p?.ssot__Id__c
 const card = 'border rounded-md bg-card'
-const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+const btn = 'dci-btn'
 const sourceCols = [
   { key: 'source', label: 'Data source' },
   { key: 'object', label: 'Object' },
@@ -127,7 +127,7 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
       <div class="flex items-center gap-2">
         <h2 class="font-semibold">Identity resolution <HelpTip topic="identity" /></h2>
         <span class="ml-auto"><DownloadMenu small label="" :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="identity-rulesets" :disabled="!rulesets.length" /></span>
-        <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the rulesets again" @click="load({ refresh: true })"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
+        <button class="dci-btn-icon" title="Load the rulesets again" @click="load({ refresh: true })"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
       </div>
       <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
       <p v-else-if="!loading && !rulesets.length" class="text-sm text-muted-foreground">No identity resolution rulesets in this data space.</p>
@@ -239,7 +239,7 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
               </div>
             </div>
             <div class="flex flex-wrap items-center gap-3">
-              <button class="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="pickedIds.length < 2 || comparing" @click="compare">{{ comparing ? 'Comparing…' : `Compare ${pickedIds.length || ''} ${pickedIds.length === 1 ? 'person' : 'people'}` }}</button>
+              <button class="dci-btn-primary" :disabled="pickedIds.length < 2 || comparing" @click="compare">{{ comparing ? 'Comparing…' : `Compare ${pickedIds.length || ''} ${pickedIds.length === 1 ? 'person' : 'people'}` }}</button>
               <button v-if="slots.length < MAX_COMPARE" class="text-sm text-link hover:underline" @click="slots.push(newSlot())">Add a person</button>
             </div>
             <p v-if="compareError" class="text-sm text-destructive">{{ compareError }}</p>

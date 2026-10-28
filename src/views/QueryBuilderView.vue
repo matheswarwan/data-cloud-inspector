@@ -151,7 +151,7 @@ async function downloadCsv() {
 }
 const resultName = () => q.value.tables.map((t) => objects.value.find((o) => o.name === t.name)?.label || t.name).join(' + ') || 'query'
 
-const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs hover:bg-accent disabled:opacity-50'
+const btn = 'dci-btn dci-btn-sm'
 const sel = 'border rounded px-1.5 py-0.5 bg-background text-xs'
 const stepHead = 'w-full flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground hover:bg-accent disabled:cursor-not-allowed'
 </script>

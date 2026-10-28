@@ -260,7 +260,7 @@ async function remove(q) {
 }
 
 const when = (iso) => new Date(iso).toLocaleString()
-const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+const btn = 'dci-btn'
 </script>
 
 <template>
@@ -320,7 +320,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
         ><span class="w-10 h-1 rounded bg-border group-hover:bg-muted-foreground" /></div>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <button v-if="!tab.running" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="!org.version" title="Ctrl+Enter or Cmd+Enter; runs the selection when there is one" @click="run(editor()?.selection(), tab)">
+        <button v-if="!tab.running" class="dci-btn-primary" :disabled="!org.version" title="Ctrl+Enter or Cmd+Enter; runs the selection when there is one" @click="run(editor()?.selection(), tab)">
           Run
         </button>
         <button v-else :class="btn" @click="cancel()">Stop waiting</button>

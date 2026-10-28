@@ -134,7 +134,7 @@ function bulkSheets() {
 
 const yn = (v) => (v == null ? '' : v ? 'yes' : 'no')
 const card = 'border rounded-md bg-card'
-const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+const btn = 'dci-btn'
 </script>
 
 <template>
@@ -161,7 +161,7 @@ const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm ho
         <label class="text-muted-foreground" for="bulk-seg">Segment</label>
         <select id="bulk-seg" v-model="segmentName" class="border rounded-md px-2 py-1 bg-background"><option value="">none</option><option v-for="s in segments" :key="s.apiName" :value="s.apiName">{{ s.label }}</option></select>
         <button v-if="!items.length" class="text-link hover:underline disabled:opacity-50" :disabled="sampling || !org.version" @click="useSamples">{{ sampling ? 'Picking…' : 'Use 10 random examples' }}</button>
-        <button class="px-3 py-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50" :disabled="!items.length || job?.status === 'running' || !org.version || (valuesAs === 'field' && !fieldName)" @click="run">{{ job?.status === 'running' ? 'Checking…' : 'Check' }}</button>
+        <button class="dci-btn-primary" :disabled="!items.length || job?.status === 'running' || !org.version || (valuesAs === 'field' && !fieldName)" @click="run">{{ job?.status === 'running' ? 'Checking…' : 'Check' }}</button>
       </div>
       <p v-if="job?.status === 'running'" class="text-sm text-muted-foreground">Checking {{ job.progress || '' }}. You can use other pages meanwhile.</p>
       <p v-if="job?.status === 'failed'" class="text-sm text-destructive">{{ job.error }}</p>

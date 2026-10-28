@@ -136,7 +136,7 @@ const THEMES = [
 ]
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : '')
 const card = 'border rounded-md bg-card p-4 space-y-3'
-const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+const btn = 'dci-btn'
 const savedCount = computed(() => queries.saved.length)
 const apiConsole = useApiConsole()
 const tips = ref(tipsOn())

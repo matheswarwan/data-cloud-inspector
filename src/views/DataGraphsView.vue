@@ -84,8 +84,8 @@ async function fetchRecord() {
     ? { data: JSON.stringify(expandJson(res.data), null, 2) }
     : { error: res.status === 404 ? `No graph for ${id}. Use the ${g.primaryObjectLabel || 'primary object'} record ID; a graph that has not finished building has no records yet.` : res.error || `HTTP ${res.status}` }
 }
-const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2 -mb-px', tab.value === t ? 'border-foreground font-medium' : 'border-transparent text-muted-foreground hover:text-foreground']
-const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent'
+const tabBtn = (t) => ['dci-tab', tab.value === t ? 'is-on' : '']
+const btn = 'dci-btn'
 
 // Downloads (feedback #149): the list, and one graph with its objects and SQL
 const listCols = [
@@ -120,7 +120,7 @@ const graphDoc = () => docFrom({ title: `Data graph: ${labelOf(graph.value)}`, i
         <h2 class="font-semibold">Data graphs</h2>
         <HelpTip topic="graphs" />
         <span class="ml-auto"><DownloadMenu small label="" :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="data-graphs" :disabled="!list.length" /></span>
-        <button class="p-1.5 rounded-md border hover:bg-accent" title="Load again" aria-label="Load the data graphs again" @click="load(true)"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
+        <button class="dci-btn-icon" title="Load again" aria-label="Load the data graphs again" @click="load(true)"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
       </div>
       <input v-model="filter" placeholder="Search data graphs" class="w-full border rounded-md px-2 py-1 bg-background text-sm" />
       <p v-if="error" class="text-xs text-destructive">{{ error }}</p>

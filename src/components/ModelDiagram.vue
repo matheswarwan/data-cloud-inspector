@@ -225,10 +225,10 @@ const relCount = computed(() => graph.value.edges.filter((e) => e.kind === 'rel'
       </div>
       <span class="text-xs text-muted-foreground">{{ graph.nodes.length }} boxes, {{ relCount }} relationships</span>
       <div class="ml-auto flex items-center gap-1">
-        <button class="p-1.5 rounded-md border hover:bg-accent" title="Zoom in (+)" aria-label="Zoom in" @click="zoomButton(1.2)"><ZoomIn class="w-4 h-4" /></button>
-        <button class="p-1.5 rounded-md border hover:bg-accent" title="Zoom out (-)" aria-label="Zoom out" @click="zoomButton(1 / 1.2)"><ZoomOut class="w-4 h-4" /></button>
-        <button class="p-1.5 rounded-md border hover:bg-accent" title="Fit to the window (0)" aria-label="Fit" @click="fit"><Maximize class="w-4 h-4" /></button>
-        <button class="p-1.5 rounded-md border hover:bg-accent" title="Lay out again (undoes moved boxes)" aria-label="Lay out again" @click="relayout"><RotateCcw class="w-4 h-4" /></button>
+        <button class="dci-btn-icon" title="Zoom in (+)" aria-label="Zoom in" @click="zoomButton(1.2)"><ZoomIn class="w-4 h-4" /></button>
+        <button class="dci-btn-icon" title="Zoom out (-)" aria-label="Zoom out" @click="zoomButton(1 / 1.2)"><ZoomOut class="w-4 h-4" /></button>
+        <button class="dci-btn-icon" title="Fit to the window (0)" aria-label="Fit" @click="fit"><Maximize class="w-4 h-4" /></button>
+        <button class="dci-btn-icon" title="Lay out again (undoes moved boxes)" aria-label="Lay out again" @click="relayout"><RotateCcw class="w-4 h-4" /></button>
         <div class="relative" data-export-menu>
           <button class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50" :disabled="!graph.nodes.length" :aria-expanded="menu" @click="menu = !menu"><Download class="w-4 h-4" /> Export</button>
           <div v-if="menu" role="menu" class="absolute right-0 z-20 mt-1 w-60 border rounded-xl bg-card shadow-lg py-1">

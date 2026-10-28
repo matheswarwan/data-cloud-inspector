@@ -9,7 +9,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
 import { useRoute, useRouter } from 'vue-router'
-import { RefreshCw } from 'lucide-vue-next'
+import { RefreshCw, Search } from 'lucide-vue-next'
 import { useOrg, currentOrg, orgTitle } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
@@ -137,7 +137,7 @@ async function copy(text, what) { await navigator.clipboard.writeText(text); not
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : '')
 const num = (n) => (typeof n === 'number' ? n.toLocaleString() : '')
 const card = 'border rounded-md bg-card'
-const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+const btn = 'dci-btn'
 const versionCols = [
   { key: 'at', label: 'Published', kind: 'date', value: (v) => when(v.at), sortValue: (v) => v.at, filter: false },
   { key: 'size', label: 'Members', align: 'right', kind: 'number' },
@@ -174,8 +174,8 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
   <section class="flex gap-4 min-h-0">
     <ListPanel name="segments" label="segments list">
       <div class="flex gap-2">
-        <input v-model="filter" placeholder="Search segments" class="flex-1 border rounded-md px-2 py-1 bg-background text-sm" />
-        <button class="p-1.5 rounded-md border hover:bg-accent" title="Load the segments again" @click="load(true)">
+        <label class="dci-search flex-1"><Search class="w-4 h-4 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden="true" /><input v-model="filter" placeholder="Search segments" /></label>
+        <button class="dci-btn-icon" title="Load the segments again" @click="load(true)">
           <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" />
         </button>
       </div>
@@ -275,7 +275,7 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
           <h3 class="p-3 border-b font-medium" data-help="segment-check">Is this person in the segment? <HelpTip topic="segment-check" /></h3>
           <form class="p-3 flex gap-2" @submit.prevent="check">
             <input v-model="who" placeholder="Email, phone, name or ID" class="flex-1 border rounded-md px-2 py-1 bg-background text-sm" />
-            <button class="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="checking || !who.trim()">{{ checking ? 'Checking…' : 'Check' }}</button>
+            <button class="dci-btn-primary" :disabled="checking || !who.trim()">{{ checking ? 'Checking…' : 'Check' }}</button>
           </form>
           <div v-if="checkResult" class="px-3 pb-3 space-y-2 text-sm">
             <p v-if="checkResult.note" class="text-xs text-muted-foreground">{{ checkResult.note }}</p>

@@ -106,10 +106,10 @@ const cut = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s)
       </g>
     </svg>
     <div class="absolute right-2 top-2 flex gap-1" @pointerdown.stop>
-      <button class="p-1 rounded border bg-card hover:bg-accent" aria-label="Zoom in" @click="zoomBtn(1.2)"><ZoomIn class="w-3.5 h-3.5" /></button>
-      <button class="p-1 rounded border bg-card hover:bg-accent" aria-label="Zoom out" @click="zoomBtn(1 / 1.2)"><ZoomOut class="w-3.5 h-3.5" /></button>
-      <button class="p-1 rounded border bg-card hover:bg-accent" aria-label="Fit" @click="fit"><Maximize class="w-3.5 h-3.5" /></button>
-      <button class="p-1 rounded border bg-card hover:bg-accent" aria-label="Lay out again" title="Lay out again" @click="layout(false)"><RotateCcw class="w-3.5 h-3.5" /></button>
+      <button class="dci-btn-icon dci-btn-sm" aria-label="Zoom in" @click="zoomBtn(1.2)"><ZoomIn class="w-3.5 h-3.5" /></button>
+      <button class="dci-btn-icon dci-btn-sm" aria-label="Zoom out" @click="zoomBtn(1 / 1.2)"><ZoomOut class="w-3.5 h-3.5" /></button>
+      <button class="dci-btn-icon dci-btn-sm" aria-label="Fit" @click="fit"><Maximize class="w-3.5 h-3.5" /></button>
+      <button class="dci-btn-icon dci-btn-sm" aria-label="Lay out again" title="Lay out again" @click="layout(false)"><RotateCcw class="w-3.5 h-3.5" /></button>
     </div>
   </div>
 </template>

@@ -54,7 +54,7 @@ defineExpose({ load })
       </ol>
       <div class="flex flex-wrap gap-2">
         <input v-model="clientId" placeholder="Client ID (consumer key)" aria-label="Client ID (consumer key)" class="flex-1 min-w-64 border rounded-md px-2 py-1 bg-background text-sm font-mono" />
-        <button class="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="busy || !clientId.trim()" @click="login">{{ busy ? 'Waiting for login…' : 'Log in with OAuth' }}</button>
+        <button class="dci-btn-primary" :disabled="busy || !clientId.trim()" @click="login">{{ busy ? 'Waiting for login…' : 'Log in with OAuth' }}</button>
         <button v-if="oauth.active" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent" @click="logout">Log out of OAuth</button>
       </div>
       <p v-if="msg" class="text-sm">{{ msg }}</p>

@@ -103,11 +103,11 @@ const TYPE = { string: '#047857', number: '#0369a1', boolean: '#6d28d9', null: '
       </g>
     </svg>
     <div class="absolute right-2 top-2 flex gap-1" @pointerdown.stop>
-      <button class="p-1 rounded border bg-card hover:bg-accent" aria-label="Zoom in" @click="zoomBtn(1.2)"><ZoomIn class="w-3.5 h-3.5" /></button>
-      <button class="p-1 rounded border bg-card hover:bg-accent" aria-label="Zoom out" @click="zoomBtn(1 / 1.2)"><ZoomOut class="w-3.5 h-3.5" /></button>
-      <button class="p-1 rounded border bg-card hover:bg-accent" aria-label="Fit" @click="fit"><Maximize class="w-3.5 h-3.5" /></button>
+      <button class="dci-btn-icon dci-btn-sm" aria-label="Zoom in" @click="zoomBtn(1.2)"><ZoomIn class="w-3.5 h-3.5" /></button>
+      <button class="dci-btn-icon dci-btn-sm" aria-label="Zoom out" @click="zoomBtn(1 / 1.2)"><ZoomOut class="w-3.5 h-3.5" /></button>
+      <button class="dci-btn-icon dci-btn-sm" aria-label="Fit" @click="fit"><Maximize class="w-3.5 h-3.5" /></button>
       <div class="relative">
-        <button class="p-1 rounded border bg-card hover:bg-accent" aria-label="Download the graph" title="Download the graph as an image" :aria-expanded="menu" :disabled="!graph.nodes.length" @click="menu = !menu"><Download class="w-3.5 h-3.5" /></button>
+        <button class="dci-btn-icon dci-btn-sm" aria-label="Download the graph" title="Download the graph as an image" :aria-expanded="menu" :disabled="!graph.nodes.length" @click="menu = !menu"><Download class="w-3.5 h-3.5" /></button>
         <div v-if="menu" class="absolute right-0 mt-1 z-10 w-40 rounded-xl border bg-card shadow-lg py-1 text-xs" role="menu">
           <button role="menuitem" class="block w-full text-left px-3 py-1.5 hover:bg-accent" @click="download('png')">PNG image (.png)</button>
           <button role="menuitem" class="block w-full text-left px-3 py-1.5 hover:bg-accent" @click="download('svg')">SVG image (.svg)</button>

@@ -126,8 +126,8 @@ const detailPairs = computed(() => (ci.value ? [
 const DOT = { fail: 'bg-red-500', warn: 'bg-amber-400', running: 'bg-sky-500', idle: 'bg-gray-400', ok: 'bg-green-500' }
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : '—')
 const words = (s) => String(s || '').replace(/_/g, ' ').toLowerCase()
-const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'border-primary font-medium' : 'border-transparent text-muted-foreground hover:text-foreground']
-const btn = 'inline-flex items-center px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+const tabBtn = (t) => ['dci-tab', tab.value === t ? 'is-on' : '']
+const btn = 'dci-btn'
 
 // Downloads (feedback #149): the list as filtered, and one insight
 const listDoc = () => docFrom({ title: 'Calculated insights', intro: `${orgTitle(org.orgId)}, data space ${org.dataSpace || 'default'}. ${list.value.length} items.`, sections: [{ columns: listCols, rows: list.value }] })
@@ -158,7 +158,7 @@ const ciDoc = () => docFrom({ title: `Calculated insight: ${ci.value.label}`, in
       <div class="ml-auto flex items-center gap-2 text-sm">
         <input v-model="search" placeholder="Search this list" class="border rounded-md px-2 py-1 bg-background w-60" />
         <select v-model="status" class="border rounded-md px-2 py-1 bg-background"><option value="">All statuses</option><option v-for="s in statuses" :key="s" :value="s">{{ words(s) }}</option></select>
-        <button class="p-1.5 rounded-md border hover:bg-accent" title="Refresh" @click="load({ refresh: true })"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
+        <button class="dci-btn-icon" title="Refresh" @click="load({ refresh: true })"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
         <DownloadMenu :get-doc="listDoc" :get-sheets="listSheets" file-name="calculated-insights" :disabled="!list.length" />
       </div>
     </div>

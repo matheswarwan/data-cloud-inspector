@@ -252,7 +252,7 @@ const sheets = () => [
 ]
 
 const sel = 'border rounded-md px-2 py-1 bg-background text-sm font-mono max-w-[16rem]'
-const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+const btn = 'dci-btn'
 </script>
 
 <template>
@@ -323,7 +323,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
         </div>
         </details>
         <div class="flex flex-wrap items-center gap-2">
-          <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="busy || !ready" @click="read"><RefreshCw class="w-4 h-4" /> {{ result ? 'Read again' : 'Read consumption' }}</button>
+          <button class="dci-btn-primary" :disabled="busy || !ready" @click="read"><RefreshCw class="w-4 h-4" /> {{ result ? 'Read again' : 'Read consumption' }}</button>
           <button :class="btn" :disabled="!ready" @click="sqlShown = !sqlShown">{{ sqlShown ? 'Hide SQL' : 'Show SQL' }}</button>
           <span class="text-xs text-muted-foreground">Runs 2 to 4 read-only queries, which use a few query credits themselves.</span>
         </div>

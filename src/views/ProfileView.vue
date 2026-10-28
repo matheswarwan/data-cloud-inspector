@@ -230,7 +230,7 @@ const profileMd = () => profileMarkdown({ ruleset: ruleset.value, profile: profi
 
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : '')
 const card = 'border rounded-md bg-card'
-const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50'
+const btn = 'dci-btn'
 </script>
 
 <template>
@@ -242,7 +242,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
         <option v-if="!rulesets.length" value="">No identity resolution rulesets</option>
         <option v-for="r in rulesets" :key="r.id" :value="r.id">{{ r.label }} ({{ r.id }}), last run {{ r.lastJobStatus.toLowerCase() || 'unknown' }}</option>
       </select>
-      <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50" :disabled="searching || !org.version">
+      <button class="dci-btn-primary" :disabled="searching || !org.version">
         {{ searching ? 'Searching…' : 'Search' }}
       </button>
       <RouterLink to="/bulk" class="text-sm text-link hover:underline">Bulk lookup</RouterLink>
