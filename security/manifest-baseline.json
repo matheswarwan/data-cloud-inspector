@@ -1,0 +1,52 @@
+{
+  "_about": "Reviewed security baseline for scripts/manifest-guard.mjs. Change only in a reviewed pull request.",
+  "manifest": {
+    "permissions": [
+      "activeTab",
+      "cookies",
+      "identity",
+      "storage"
+    ],
+    "host_permissions": [
+      "https://*.my.salesforce.com/*"
+    ],
+    "optional_host_permissions": [
+      "https://*.cloudforce.com/*"
+    ],
+    "content_security_policy": {
+      "extension_pages": "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.my.salesforce.com https://*.cloudforce.com; frame-src 'self' blob: data:; worker-src 'self'"
+    },
+    "storage": {
+      "managed_schema": "managed_schema.json"
+    },
+    "background": {
+      "service_worker": "background.js",
+      "type": "module"
+    }
+  },
+  "urlHosts": [
+    "admin.salesforce.com",
+    "developer.salesforce.com",
+    "diagramforce.com",
+    "docs.oasis-open.org",
+    "login.salesforce.com",
+    "medium.com",
+    "openoffice.org",
+    "purl.oclc.org",
+    "purl.org",
+    "rolldown.rs",
+    "schemas.microsoft.com",
+    "schemas.openxmlformats.org",
+    "sheetjs.com",
+    "sheetjs.openxmlformats.org",
+    "stuk.github.io",
+    "test.salesforce.com",
+    "vuejs.org",
+    "www.linkedin.com",
+    "www.w3.org"
+  ],
+  "networkFiles": [
+    "src/background/fetchProxy.js",
+    "src/background/oauth.js"
+  ]
+}
