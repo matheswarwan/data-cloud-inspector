@@ -6,7 +6,7 @@
 // so cookies are grouped by that prefix (several orgs can be logged in at once).
 
 // Domains the API session can live on. help/login/test pages set their own sid.
-const API_SUFFIXES = ['.salesforce.com', '.cloudforce.com']
+const API_SUFFIXES = ['.my.salesforce.com', '.cloudforce.com']
 const NOT_ORGS = new Set(['help.salesforce.com', 'login.salesforce.com', 'test.salesforce.com', 'trailhead.salesforce.com'])
 
 export function orgIdFromSid(value) {

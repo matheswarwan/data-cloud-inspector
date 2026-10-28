@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "properties": {
+    "authMode": {
+      "title": "How Data Cloud Inspector signs in",
+      "description": "session-or-oauth (default): the Salesforce session already in the browser, or Log in with OAuth. oauth-only: never read the browser session cookie; only OAuth logins through the org's External Client App.",
+      "type": "string",
+      "enum": [
+        "session-or-oauth",
+        "oauth-only"
+      ]
+    },
+    "allowedOrgDomains": {
+      "title": "Orgs the extension may call",
+      "description": "My Domain hosts, for example acme.my.salesforce.com, or *.acme.my.salesforce.com for every host under it (sandboxes use acme--name.sandbox.my.salesforce.com). Empty or missing: any org.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "disableCache": {
+      "title": "Keep no cache after the browser closes",
+      "description": "true: org metadata caches and Health results are kept in session storage only.",
+      "type": "boolean"
+    },
+    "disableQueryHistory": {
+      "title": "Keep no SQL run history",
+      "type": "boolean"
+    },
+    "disableDiagramforce": {
+      "title": "Turn off Open in Diagramforce",
+      "description": "true: no diagram is ever handed to diagramforce.com.",
+      "type": "boolean"
+    }
+  }
+}

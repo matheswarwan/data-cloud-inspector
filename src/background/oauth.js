@@ -2,7 +2,12 @@
 // External Client App (client ID entered in Settings, callback URL from getRedirectURL()),
 // authorization code flow with PKCE through chrome.identity.launchWebAuthFlow. The access
 // token is kept in chrome.storage.session (gone when the browser closes) and used in place
-// of the sid cookie for that org.
+// of the sid cookie for that org. Log out revokes it in Salesforce too. Only the access
+// token is kept: a refresh token, if the app grants one, is dropped. No scope parameter is
+// sent, so the scopes are the ones the admin gave the External Client App.
+
+import { readManagedPolicy, hostAllowed } from '../lib/policy.js'
+import { isApiHost, toApiHost } from './orgs.js'
 
 const TOKEN = (orgId) => `dci_oauth_${orgId}`
 const CLIENT = (orgId) => `dci_oauthClient_${orgId}`
@@ -62,8 +67,9 @@ export function redirectUri() {
 }
 
 export async function oauthStatus(orgId) {
-  const t = await sessionGet(TOKEN(orgId))
-  return { active: !!t, since: t?.at || null, clientId: await localGet(CLIENT(orgId)), redirectUri: redirectUri() }
+  const t = orgId ? await sessionGet(TOKEN(orgId)) : null
+  const policy = await readManagedPolicy()
+  return { active: !!t, since: t?.at || null, clientId: orgId ? await localGet(CLIENT(orgId)) : '', redirectUri: redirectUri(), authMode: policy.authMode }
 }
 
 /** `{ host, sid }` from a stored OAuth token, or null. */
@@ -72,16 +78,44 @@ export async function oauthSession(orgId) {
   return t ? { host: t.host, sid: t.accessToken, oauth: true } : null
 }
 
-export async function forgetToken(orgId) {
-  await sessionRemove(TOKEN(orgId))
+/** `[{ orgId, host, oauth: true }]` for every org with an OAuth token this browser session. */
+export async function oauthOrgs() {
+  const all = await new Promise((resolve) => { try { chrome.storage.session.get(null, (r) => resolve(r || {})) } catch { resolve({}) } })
+  return Object.entries(all)
+    .filter(([k, v]) => k.startsWith('dci_oauth_') && v?.host)
+    .map(([k, v]) => ({ orgId: k.slice('dci_oauth_'.length), host: v.host, oauth: true }))
 }
 
-export async function oauthLogin({ orgId, host, clientId }, deps = {}) {
+/** Forgets the token; with `revoke`, also asks Salesforce to revoke it (Log out). */
+export async function forgetToken(orgId, { revoke = false, fetch: fetchFn = fetch } = {}) {
+  const t = revoke ? await sessionGet(TOKEN(orgId)) : null
+  await sessionRemove(TOKEN(orgId))
+  if (t?.accessToken && t.host) {
+    try {
+      await fetchFn(`https://${t.host}/services/oauth2/revoke`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ token: t.accessToken }).toString(),
+        credentials: 'omit',
+      })
+    } catch { /* offline: the token still expires with the Salesforce session */ }
+  }
+}
+
+/**
+ * Logs in to `host`. `orgId` is known when the org already has a browser session; without it
+ * (authMode 'oauth-only', a My Domain typed in) it comes from the token.
+ */
+export async function oauthLogin({ orgId = null, host, clientId }, deps = {}) {
   const launch = deps.launchWebAuthFlow || ((opts) => chrome.identity.launchWebAuthFlow(opts))
   const fetchFn = deps.fetch || fetch
   const redirect = deps.redirectUri || redirectUri()
+  const policy = await (deps.policy || readManagedPolicy)()
+  host = toApiHost(String(host || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, ''))
+  if (!isApiHost(host)) throw new Error('Enter the org\'s My Domain, for example acme.my.salesforce.com.')
+  if (!hostAllowed(host, policy.allowedOrgDomains)) throw new Error(`Your administrator does not allow ${host} in Data Cloud Inspector.`)
   if (!clientId?.trim()) throw new Error('Enter the client ID of your External Client App first.')
-  await localSet({ [CLIENT(orgId)]: clientId.trim() })
+  await localSet({ [CLIENT(orgId || host)]: clientId.trim() })
   const { verifier, challenge } = await pkcePair()
   const state = base64url(crypto.getRandomValues(new Uint8Array(16)))
   const answer = await launch({ url: authorizeUrl({ host, clientId: clientId.trim(), redirectUri: redirect, challenge, state }), interactive: true })
@@ -96,8 +130,12 @@ export async function oauthLogin({ orgId, host, clientId }, deps = {}) {
   const token = await res.json().catch(() => ({}))
   if (!res.ok || !token.access_token) throw new Error(token.error_description || token.error || `Token request failed (HTTP ${res.status})`)
   const tokenOrg = orgIdOfToken(token)
-  if (tokenOrg && tokenOrg !== orgId) throw new Error(`You logged in to a different org (${tokenOrg}). Log in to ${host}.`)
+  if (orgId && tokenOrg && tokenOrg !== orgId) throw new Error(`You logged in to a different org (${tokenOrg}). Log in to ${host}.`)
+  const id = orgId || tokenOrg
+  if (!id) throw new Error('Salesforce did not say which org the login belongs to.')
   const instance = token.instance_url ? new URL(token.instance_url).host : host
-  await sessionSet({ [TOKEN(orgId)]: { accessToken: token.access_token, host: instance, at: new Date().toISOString(), scope: token.scope || '' } })
-  return { ok: true, scope: token.scope || '' }
+  if (!isApiHost(instance) || !hostAllowed(instance, policy.allowedOrgDomains)) throw new Error(`The login answered for ${instance}, which is not allowed.`)
+  if (!orgId) await localSet({ [CLIENT(id)]: clientId.trim() })
+  await sessionSet({ [TOKEN(id)]: { accessToken: token.access_token, host: instance, at: new Date().toISOString(), scope: token.scope || '' } })
+  return { ok: true, orgId: id, scope: token.scope || '' }
 }

@@ -6,5 +6,7 @@ import App from './App.vue'
 import { createAppRouter } from './router.js'
 
 import './useSettings.js' // applies the theme
+import { loadPolicy } from '../lib/policy.js'
 
-createApp(App).use(createAppRouter()).mount('#app')
+// The administrator policy (chrome.storage.managed) is read before anything loads.
+loadPolicy().finally(() => createApp(App).use(createAppRouter()).mount('#app'))

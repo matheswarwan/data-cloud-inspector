@@ -25,13 +25,19 @@
   "permissions": [
     "cookies",
     "storage",
-    "unlimitedStorage",
-    "identity"
+    "identity",
+    "activeTab"
   ],
   "host_permissions": [
-    "https://*.salesforce.com/*",
-    "https://*.force.com/*",
-    "https://*.salesforce-setup.com/*",
+    "https://*.my.salesforce.com/*"
+  ],
+  "optional_host_permissions": [
     "https://*.cloudforce.com/*"
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.my.salesforce.com https://*.cloudforce.com; frame-src 'self' blob: data:; worker-src 'self'"
+  },
+  "storage": {
+    "managed_schema": "managed_schema.json"
+  }
 }

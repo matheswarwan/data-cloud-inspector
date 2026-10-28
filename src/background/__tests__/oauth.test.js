@@ -1,4 +1,4 @@
-import { base64url, pkcePair, authorizeUrl, codeFromRedirect, orgIdOfToken, oauthLogin } from '../oauth.js'
+import { base64url, pkcePair, authorizeUrl, codeFromRedirect, orgIdOfToken, oauthLogin, forgetToken, oauthOrgs } from '../oauth.js'
 import { sessionProblem, dataCloudProblem } from '../../lib/orgStatus.js'
 
 describe('oauth helpers', () => {
@@ -41,7 +41,7 @@ describe('oauthLogin', () => {
     const launchWebAuthFlow = async ({ url }) => { authUrl = new URL(url); return `https://abc.chromiumapp.org/?code=THECODE&state=${authUrl.searchParams.get('state')}` }
     const fetch = async (url, opts) => { tokenBody = new URLSearchParams(opts.body); return { ok: true, status: 200, json: async () => ({ access_token: 'AT', instance_url: 'https://acme.my.salesforce.com', id: 'https://login.salesforce.com/id/00D000000000001AAA/005', scope: 'api cdp_query_api' }) } }
     const res = await oauthLogin({ orgId: '00D000000000001', host: 'acme.my.salesforce.com', clientId: ' CID ' }, { launchWebAuthFlow, fetch, redirectUri: 'https://abc.chromiumapp.org/' })
-    expect(res).toEqual({ ok: true, scope: 'api cdp_query_api' })
+    expect(res).toEqual({ ok: true, orgId: '00D000000000001', scope: 'api cdp_query_api' })
     expect(tokenBody.get('grant_type')).toBe('authorization_code')
     expect(tokenBody.get('code')).toBe('THECODE')
     expect(tokenBody.get('client_id')).toBe('CID')
@@ -54,6 +54,37 @@ describe('oauthLogin', () => {
     const launchWebAuthFlow = async ({ url }) => `https://abc.chromiumapp.org/?code=C&state=${new URL(url).searchParams.get('state')}`
     const fetch = async () => ({ ok: true, status: 200, json: async () => ({ access_token: 'AT', id: 'https://login.salesforce.com/id/00D999999999999AAA/005' }) })
     await expect(oauthLogin({ orgId: '00D000000000001', host: 'acme.my.salesforce.com', clientId: 'CID' }, { launchWebAuthFlow, fetch, redirectUri: 'r' })).rejects.toThrow(/different org/)
+  })
+
+  it('logs in by My Domain alone, taking the org ID from the token, and never keeps a refresh token', async () => {
+    const launchWebAuthFlow = async ({ url }) => `https://abc.chromiumapp.org/?code=C&state=${new URL(url).searchParams.get('state')}`
+    const fetch = async () => ({ ok: true, status: 200, json: async () => ({ access_token: 'AT2', refresh_token: 'RT', instance_url: 'https://beta.my.salesforce.com', id: 'https://login.salesforce.com/id/00D000000000002AAA/005' }) })
+    const res = await oauthLogin({ host: 'https://beta.lightning.force.com/one', clientId: 'CID' }, { launchWebAuthFlow, fetch, redirectUri: 'r' })
+    expect(res).toMatchObject({ ok: true, orgId: '00D000000000002' })
+    expect(store.dci_oauth_00D000000000002).toMatchObject({ accessToken: 'AT2', host: 'beta.my.salesforce.com' })
+    expect(JSON.stringify(store)).not.toContain('RT')
+  })
+
+  it('refuses hosts the administrator did not allow, and non-Salesforce hosts', async () => {
+    const launchWebAuthFlow = async () => { throw new Error('should not open') }
+    const policy = async () => ({ authMode: 'session-or-oauth', allowedOrgDomains: ['*.acme.my.salesforce.com', 'acme.my.salesforce.com'] })
+    await expect(oauthLogin({ host: 'other.my.salesforce.com', clientId: 'CID' }, { launchWebAuthFlow, policy, redirectUri: 'r' })).rejects.toThrow(/does not allow/)
+    await expect(oauthLogin({ host: 'evil.example.com', clientId: 'CID' }, { launchWebAuthFlow, policy, redirectUri: 'r' })).rejects.toThrow(/My Domain/)
+  })
+
+  it('revokes the token in Salesforce on log out', async () => {
+    store.dci_oauth_00D000000000003 = { accessToken: 'AT3', host: 'acme.my.salesforce.com' }
+    let called
+    await forgetToken('00D000000000003', { revoke: true, fetch: async (url, opts) => { called = { url, body: opts.body } } })
+    expect(called.url).toBe('https://acme.my.salesforce.com/services/oauth2/revoke')
+    expect(called.body).toBe('token=AT3')
+    expect(store.dci_oauth_00D000000000003).toBeUndefined()
+  })
+
+  it('lists the orgs with a token', async () => {
+    store.dci_oauth_00D000000000004 = { accessToken: 'x', host: 'd.my.salesforce.com' }
+    chrome.storage.session.get = (k, cb) => cb(k === null ? { ...store } : { [k]: store[k] })
+    expect(await oauthOrgs()).toContainEqual({ orgId: '00D000000000004', host: 'd.my.salesforce.com', oauth: true })
   })
 })
 
