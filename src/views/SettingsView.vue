@@ -255,7 +255,8 @@ function showTipsAgain() { setTipsOn(true); resetTips(); tips.value = true }
       <h3 class="font-medium">About</h3>
       <p class="text-sm text-muted-foreground">
         Data Cloud Inspector {{ version }}. Read only: it uses your Salesforce login in this browser and never changes data or setup.
-        The session stays in the extension's background worker.
+        The session stays in the extension's background worker. Published by Ateko.
+        <a href="privacy.html" target="_blank" rel="noopener" class="text-link hover:underline">Privacy policy</a>
       </p>
     </div>
   </section>

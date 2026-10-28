@@ -30,6 +30,6 @@ const showTipsAgain = () => { setTipsOn(true); resetTips() }
         <p class="text-sm text-muted-foreground">{{ HELP[id].text }}</p>
       </div>
     </div>
-    <p class="text-xs text-muted-foreground border-t pt-3">Created by <a href="https://www.linkedin.com/in/mathesk/" target="_blank" rel="noopener" class="text-link hover:underline">Mathes</a>, Ateko.</p>
+    <p class="text-xs text-muted-foreground border-t pt-3">Created by <a href="https://www.linkedin.com/in/mathesk/" target="_blank" rel="noopener" class="text-link hover:underline">Mathes</a>, Ateko. <a href="privacy.html" target="_blank" rel="noopener" class="text-link hover:underline">Privacy policy</a></p>
   </section>
 </template>
