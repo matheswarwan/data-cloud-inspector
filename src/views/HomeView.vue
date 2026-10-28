@@ -1,8 +1,8 @@
 <script setup>
-// Home (design option D, 2026-10-28): a search box over everything, the pages to start with,
-// your orgs and recent queries. Connection, user, what was loaded, privacy, OAuth and the
+// Home (design option D, 2026-10-28): a search box over everything with its results right
+// under it, the pages to start with, your orgs and recent queries. Connection, user, what was loaded, privacy, OAuth and the
 // list of every page sit in the Session and setup menu, each opening in a panel.
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, SlidersHorizontal, ChevronDown, Plug, User, Database, ShieldCheck, KeyRound, Menu, X } from 'lucide-vue-next'
 import { useOrg, loadOrgs, orgName } from '../app/useOrg.js'
@@ -15,32 +15,46 @@ import PrivacyNote from '../components/home/PrivacyNote.vue'
 import AllPages from '../components/home/AllPages.vue'
 import { ensureCatalog } from '../app/useCatalog.js'
 import { useQueries, loadQueries } from '../app/useQueries.js'
-import { openPalette } from '../app/usePalette.js'
+import { loadSearchIndex, useSearchItems } from '../app/useSearchIndex.js'
+import { searchPalette } from '../lib/palette.js'
 import { NAV } from '../app/router.js'
 import { navIcon, PAGE_TOPIC } from '../app/navIcons.js'
 import { HELP } from '../lib/help.js'
-import { topVisits } from '../lib/visits.js'
+import { topVisits, fillCards } from '../lib/visits.js'
 
 const router = useRouter()
 const org = useOrg()
 const queries = useQueries()
-onMounted(() => { ensureCatalog(); loadQueries(); document.addEventListener('visibilitychange', onVisible); document.addEventListener('mousedown', onOutside); window.addEventListener('keydown', onKey) })
+onMounted(() => { ensureCatalog(); loadQueries(); loadSearchIndex(); document.addEventListener('visibilitychange', onVisible); document.addEventListener('mousedown', onOutside); window.addEventListener('keydown', onKey) })
 onBeforeUnmount(() => { document.removeEventListener('visibilitychange', onVisible); document.removeEventListener('mousedown', onOutside); window.removeEventListener('keydown', onKey) })
 const connected = computed(() => !!org.orgId && !!org.version && !org.problem)
 // Back from logging in to an org in another tab: look for its session again (feedback #109).
 function onVisible() { if (document.visibilityState === 'visible' && !connected.value && !org.loading) loadOrgs() }
 
-// Search: opens the Ctrl/Cmd+K search with the text (pages, objects, fields, segments, saved
-// queries, or Find person).
+// Search (same index as Ctrl/Cmd+K: pages, objects, fields, segments, saved queries, and Find
+// person), results listed under the box; arrows move, Enter opens, Esc closes.
 const text = ref('')
-const search = () => openPalette(text.value.trim())
+const searchBox = ref(null)
+const resultsOpen = ref(false)
+const active = ref(0)
+const items = useSearchItems()
+const results = computed(() => (text.value.trim() ? searchPalette(items.value, text.value, { limit: 10 }) : []))
+watch(text, (t) => { active.value = 0; resultsOpen.value = !!t.trim() })
+function openResult(r) { if (!r) return; resultsOpen.value = false; router.push(r.to) }
+const search = () => openResult(results.value[active.value])
+function onSearchKey(e) {
+  if (!resultsOpen.value || !results.value.length) return
+  if (e.key === 'ArrowDown') { active.value = Math.min(active.value + 1, results.value.length - 1); e.preventDefault() }
+  else if (e.key === 'ArrowUp') { active.value = Math.max(active.value - 1, 0); e.preventDefault() }
+}
 
-// The pages to start with: the most used ones once there are visits, else a fixed six.
+// Always six cards: the most used pages first, then the usual places to start, then the rest
+// of the sidebar.
 const pages = NAV.filter((n) => n.path !== '/')
 const byPath = new Map(pages.map((n) => [n.path, n]))
 const most = computed(() => topVisits(6).filter((v) => byPath.has(v.path)).map((v) => ({ ...byPath.get(v.path), n: v.n })))
-const starters = ['/profile', '/sql', '/objects', '/segments', '/health', '/models'].map((p) => byPath.get(p)).filter(Boolean)
-const cards = computed(() => (most.value.length ? most.value : starters))
+const STARTERS = ['/profile', '/sql', '/objects', '/segments', '/health', '/models']
+const cards = computed(() => fillCards(most.value, STARTERS, pages))
 // One colour per page; the shadow is the same hue (r,g,b).
 const TONES = {
   violet: ['bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300', 'border-violet-100 dark:border-violet-500/25', '124,58,237'],
@@ -71,8 +85,11 @@ const menuBox = ref(null)
 const panel = ref(null) // id of the open panel
 const panelTitle = computed(() => (panel.value === 'all' ? 'Everything in the tool' : MENU.find((m) => m.id === panel.value)?.title || ''))
 function openPanel(id) { menuOpen.value = false; panel.value = id }
-function onOutside(e) { if (menuOpen.value && menuBox.value && !menuBox.value.contains(e.target)) menuOpen.value = false }
-function onKey(e) { if (e.key === 'Escape') { if (panel.value) panel.value = null; else menuOpen.value = false } }
+function onOutside(e) {
+  if (menuOpen.value && menuBox.value && !menuBox.value.contains(e.target)) menuOpen.value = false
+  if (resultsOpen.value && searchBox.value && !searchBox.value.contains(e.target)) resultsOpen.value = false
+}
+function onKey(e) { if (e.key === 'Escape') { if (panel.value) panel.value = null; else { menuOpen.value = false; resultsOpen.value = false } } }
 </script>
 
 <template>
@@ -99,13 +116,33 @@ function onKey(e) { if (e.key === 'Escape') { if (panel.value) panel.value = nul
         <p v-if="org.orgId" class="text-[15px] text-muted-foreground">Find anything in <span class="font-semibold text-foreground">{{ orgName(org.orgId) }}</span>: a person, an object, a field or a segment.</p>
         <p v-else class="text-[15px] text-muted-foreground">Find a person, an object, a field or a segment in your Data Cloud org.</p>
       </div>
-      <form class="relative w-full max-w-[720px]" role="search" @submit.prevent="search">
+      <form ref="searchBox" class="relative w-full max-w-[720px] text-left" role="search" @submit.prevent="search">
         <label for="home-search" class="sr-only">Search your org</label>
         <div class="flex items-center gap-3 h-[60px] pl-5 pr-2 rounded-full border border-teal-200 dark:border-teal-500/30 bg-card shadow-[0_0_0_6px_rgba(13,148,136,0.07),0_16px_36px_-18px_rgba(13,148,136,0.45)]">
           <Search class="w-5 h-5 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden="true" />
-          <input id="home-search" v-model="text" type="text" placeholder="Search profiles, objects, fields, segments…" class="flex-1 min-w-0 bg-transparent outline-none text-base" />
-          <button type="submit" class="h-11 px-5 rounded-full bg-teal-700 hover:bg-teal-800 text-white text-sm font-semibold">Search</button>
+          <input
+            id="home-search" v-model="text" type="text" autocomplete="off" placeholder="Search profiles, objects, fields, segments…"
+            class="flex-1 min-w-0 bg-transparent outline-none text-base" role="combobox" aria-controls="home-results" :aria-expanded="resultsOpen && results.length > 0"
+            :aria-activedescendant="resultsOpen && results.length ? `home-result-${active}` : undefined"
+            @keydown="onSearchKey" @focus="resultsOpen = !!text.trim()"
+          />
+          <button type="submit" class="h-11 px-5 rounded-full bg-teal-700 hover:bg-teal-800 text-white text-sm font-semibold disabled:opacity-60" :disabled="!results.length">Search</button>
         </div>
+        <ul
+          v-if="resultsOpen && results.length" id="home-results" role="listbox" aria-label="Search results"
+          class="absolute z-20 left-0 right-0 top-[70px] max-h-[420px] overflow-y-auto rounded-2xl border border-teal-100 dark:border-teal-500/25 bg-card p-1.5 shadow-[0_20px_40px_-16px_rgba(13,148,136,0.35)]"
+        >
+          <li
+            v-for="(r, i) in results" :id="`home-result-${i}`" :key="`${r.kind}${r.label}${r.detail}`" role="option" :aria-selected="i === active"
+            :class="['flex items-baseline gap-3 px-3 py-2 rounded-lg cursor-pointer text-sm', i === active ? 'bg-teal-50 dark:bg-teal-500/10' : '']"
+            @mouseenter="active = i" @mousedown.prevent="openResult(r)"
+          >
+            <span class="w-16 shrink-0 text-xs text-muted-foreground">{{ r.kind }}</span>
+            <span class="truncate font-medium">{{ r.label }}</span>
+            <span class="ml-auto truncate text-xs text-muted-foreground font-mono max-w-[45%]">{{ r.detail }}</span>
+          </li>
+        </ul>
+        <p v-else-if="resultsOpen && text.trim()" class="absolute z-20 left-0 right-0 top-[70px] rounded-2xl border bg-card px-4 py-3 text-sm text-muted-foreground shadow-lg">Nothing found.</p>
       </form>
     </div>
 

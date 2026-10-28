@@ -2,43 +2,25 @@
 // Ctrl/Cmd+K search over everything (see lib/palette.js).
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { NAV } from '../app/router.js'
-import { useOrg } from '../app/useOrg.js'
-import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
-import { useQueries, loadQueries } from '../app/useQueries.js'
-import { loadSegments } from '../lib/segments.js'
-import { orgCached } from '../lib/store.js'
-import { paletteItems, searchPalette } from '../lib/palette.js'
-import { registerPalette } from '../app/usePalette.js'
+import { searchPalette } from '../lib/palette.js'
+import { loadSearchIndex, useSearchItems } from '../app/useSearchIndex.js'
 
 const router = useRouter()
-const org = useOrg()
-const catalog = useCatalog()
-const queries = useQueries()
 const open = ref(false)
 const text = ref('')
 const active = ref(0)
 const input = ref(null)
-const segments = ref([])
 
-async function show(initial = '') {
+async function show() {
   open.value = true
-  text.value = typeof initial === 'string' ? initial : ''
+  text.value = ''
   active.value = 0
   await nextTick()
   input.value?.focus()
-  ensureCatalog()
-  loadQueries()
-  if (org.version) {
-    const key = `dci_s_${org.orgId}_${org.dataSpace || 'default'}_segmentsList`
-    segments.value = await orgCached(key, 10 * 60 * 1000, () => loadSegments(orgCall(), org.version).then((l) => l.map((s) => ({ apiName: s.apiName, label: s.label })))).catch(() => [])
-  }
+  loadSearchIndex()
 }
 
-const items = computed(() => paletteItems({
-  pages: [...NAV, { path: '/help', label: 'Help' }, { path: '/settings', label: 'Settings' }],
-  objects: catalog.objects, segments: segments.value, saved: queries.saved,
-}))
+const items = useSearchItems()
 const results = computed(() => searchPalette(items.value, text.value))
 watch(text, () => { active.value = 0 })
 
@@ -60,14 +42,14 @@ function onKey(e) {
   else if (e.key === 'ArrowUp') { active.value = Math.max(active.value - 1, 0); e.preventDefault() }
   else if (e.key === 'Enter') { go(results.value[active.value]); e.preventDefault() }
 }
-onMounted(() => { window.addEventListener('keydown', onKey, true); registerPalette(show) })
+onMounted(() => window.addEventListener('keydown', onKey, true))
 onUnmounted(() => window.removeEventListener('keydown', onKey, true))
 defineExpose({ show })
 </script>
 
 <template>
   <div v-if="open" class="fixed inset-0 z-50 bg-black/40 flex items-start justify-center pt-24 px-4" @mousedown.self="open = false">
-    <div class="w-full max-w-2xl rounded-md border bg-card shadow-2xl" role="dialog" aria-label="Search">
+    <div class="w-full max-w-2xl rounded-xl border bg-card shadow-2xl" role="dialog" aria-label="Search">
       <input
         ref="input" v-model="text" placeholder="Search pages, objects, fields, segments, saved queries, or a person"
         class="w-full px-4 py-3 bg-transparent border-b outline-none text-sm"

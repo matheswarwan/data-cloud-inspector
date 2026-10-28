@@ -23,3 +23,13 @@ export function recordVisit(path, navPaths, now = Date.now()) {
 export function topVisits(limit = 6, visits = readVisits()) {
   return Object.entries(visits).sort(([, a], [, b]) => b.n - a.n || b.at - a.at).slice(0, limit).map(([path, x]) => ({ path, ...x }))
 }
+
+/** Exactly `n` pages for Home's cards: `most` first, then `starters` (paths), then the rest of `pages`. */
+export function fillCards(most, starters, pages, n = 6) {
+  const out = [...most]
+  const seen = new Set(out.map((p) => p.path))
+  const add = (p) => { if (p && !seen.has(p.path) && out.length < n) { seen.add(p.path); out.push(p) } }
+  starters.forEach((path) => add(pages.find((p) => p.path === path)))
+  pages.forEach(add)
+  return out.slice(0, n)
+}

@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Search } from 'lucide-vue-next'
+import { Search, Loader2 } from 'lucide-vue-next'
 import AppSidebar from '../components/AppSidebar.vue'
 import ConnectionMenu from '../components/ConnectionMenu.vue'
 import FeedbackModal from '../components/feedback/FeedbackModal.vue'
@@ -43,18 +43,16 @@ watchEffect(() => { document.title = org.orgId ? `${orgName(org.orgId)} · Data 
           Feedback
         </button>
       </div>
-      <div v-if="busy" class="absolute left-0 right-0 bottom-0 h-0.5 overflow-hidden" role="progressbar" aria-label="Loading from Salesforce"><div class="dci-progress h-full w-1/3 bg-primary/70" /></div>
-      <div v-if="busy && busyText" class="absolute right-4 top-full mt-1 max-w-[60vw] truncate rounded-md border bg-card/95 px-2 py-0.5 text-xs text-muted-foreground shadow-sm" role="status" aria-live="polite" :title="busyText">Loading {{ busyText }}</div>
     </header>
 
     <div class="flex flex-1 min-h-0">
     <AppSidebar />
     <div class="flex-1 min-w-0 flex flex-col">
-    <div v-if="!org.loading && !org.orgs.length" class="m-4 p-4 rounded-md border bg-card text-sm">
+    <div v-if="!org.loading && !org.orgs.length" class="m-4 p-4 rounded-xl border bg-card text-sm">
       No Salesforce session found. Log in to your org (the one with Data Cloud) in this browser,
       then choose Find orgs again in the connection menu (top right). Data Cloud Inspector uses that login and only reads.
     </div>
-    <div v-else-if="org.problem" class="m-4 p-3 rounded-md border border-amber-400 bg-card text-sm">
+    <div v-else-if="org.problem" class="m-4 p-3 rounded-xl border border-amber-400 bg-card text-sm">
       {{ org.problem.message }}
       <RouterLink v-if="org.problem.kind === 'rejected'" to="/settings" class="text-link hover:underline ml-1">Open Settings</RouterLink>
     </div>
@@ -67,6 +65,11 @@ watchEffect(() => { document.title = org.orgId ? `${orgName(org.orgId)} · Data 
     </main>
     </div>
     </div>
+    <!-- Loading from Salesforce: a small spinner and what is loading, bottom right (feedback). -->
+    <div
+      v-if="busy" :class="['fixed right-4 z-30 flex items-center gap-2 max-w-[min(28rem,60vw)] rounded-full border bg-card/95 pl-2 pr-3 py-1 text-xs text-muted-foreground shadow-md', apiConsoleOn ? 'bottom-14' : 'bottom-4']"
+      role="status" aria-live="polite" :title="busyText ? `Loading ${busyText}` : 'Loading from Salesforce'"
+    ><Loader2 class="w-3.5 h-3.5 shrink-0 animate-spin text-primary" aria-hidden="true" /><span class="truncate">{{ busyText ? `Loading ${busyText}` : 'Loading' }}</span></div>
     <CommandPalette ref="palette" />
     <DialogHost />
     <FeatureTips />

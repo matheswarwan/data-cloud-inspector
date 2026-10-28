@@ -25,3 +25,12 @@ describe('visits', () => {
     expect(topVisits(5, { '/a': { n: 1, at: 1 }, '/b': { n: 1, at: 5 } }).map((v) => v.path)).toEqual(['/b', '/a'])
   })
 })
+
+describe('fillCards', () => {
+  const pages = ['/a', '/b', '/c', '/d', '/e', '/f', '/g', '/h'].map((path) => ({ path }))
+  it('always gives six: most used first, then starters, then the rest', async () => {
+    const { fillCards } = await import('../visits.js')
+    expect(fillCards([{ path: '/g', n: 3 }], ['/b', '/g', '/x'], pages).map((p) => p.path)).toEqual(['/g', '/b', '/a', '/c', '/d', '/e'])
+    expect(fillCards([], ['/b'], pages.slice(0, 3))).toHaveLength(3)
+  })
+})
