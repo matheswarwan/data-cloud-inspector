@@ -9,6 +9,7 @@ import { useQueries, loadQueries } from '../app/useQueries.js'
 import { loadSegments } from '../lib/segments.js'
 import { orgCached } from '../lib/store.js'
 import { paletteItems, searchPalette } from '../lib/palette.js'
+import { registerPalette } from '../app/usePalette.js'
 
 const router = useRouter()
 const org = useOrg()
@@ -20,9 +21,9 @@ const active = ref(0)
 const input = ref(null)
 const segments = ref([])
 
-async function show() {
+async function show(initial = '') {
   open.value = true
-  text.value = ''
+  text.value = typeof initial === 'string' ? initial : ''
   active.value = 0
   await nextTick()
   input.value?.focus()
@@ -59,7 +60,7 @@ function onKey(e) {
   else if (e.key === 'ArrowUp') { active.value = Math.max(active.value - 1, 0); e.preventDefault() }
   else if (e.key === 'Enter') { go(results.value[active.value]); e.preventDefault() }
 }
-onMounted(() => window.addEventListener('keydown', onKey, true))
+onMounted(() => { window.addEventListener('keydown', onKey, true); registerPalette(show) })
 onUnmounted(() => window.removeEventListener('keydown', onKey, true))
 defineExpose({ show })
 </script>

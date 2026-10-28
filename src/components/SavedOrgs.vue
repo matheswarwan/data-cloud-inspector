@@ -46,14 +46,17 @@ const when = (iso) => (iso ? new Date(iso).toLocaleDateString() : '')
 </script>
 
 <template>
-  <div :class="bare ? '' : 'border rounded-md bg-card'">
-    <div :class="['flex flex-wrap items-center gap-2', bare ? 'pb-2' : 'p-3 border-b']">
-      <h3 v-if="!bare" class="font-medium text-sm">Your orgs</h3>
-      <span class="text-xs text-muted-foreground">Orgs you connected to in this browser. Log in to one in a new tab, then come back: this page checks again.</span>
-      <button class="ml-auto inline-flex items-center gap-1 text-xs text-link hover:underline" :disabled="checking" @click="check"><RefreshCw class="w-3 h-3" :class="{ 'animate-spin': checking }" /> Check again</button>
+  <div :class="bare ? '' : 'border rounded-xl bg-card'">
+    <div :class="['flex flex-wrap items-start gap-x-3 gap-y-1', bare ? 'pb-2' : 'px-5 pt-5 pb-3']">
+      <div class="flex-1 min-w-60 space-y-1">
+        <h2 v-if="!bare" class="text-lg font-semibold">Your orgs</h2>
+        <p class="text-[13px] text-muted-foreground">Orgs you connected to in this browser. Log in to one in a new tab, then come back: this page checks again.</p>
+      </div>
+      <button class="inline-flex items-center gap-1.5 py-1.5 text-[13px] text-link hover:underline" :disabled="checking" @click="check"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': checking }" /> Check again</button>
     </div>
-    <p v-if="!rows.length" class="p-3 text-sm text-muted-foreground">None yet. Log in to a Salesforce org with Data Cloud in this browser; it is listed here after it connects.</p>
-    <table v-else class="w-full text-sm">
+    <p v-if="!rows.length" :class="['text-sm text-muted-foreground', bare ? 'p-3' : 'px-5 pb-5']">None yet. Log in to a Salesforce org with Data Cloud in this browser; it is listed here after it connects.</p>
+    <div v-else :class="['overflow-x-auto', bare ? '' : 'px-5 pb-2']">
+    <table class="w-full min-w-[40rem] text-sm">
       <thead class="text-left text-muted-foreground text-xs">
         <tr>
           <th class="p-2 w-8"><input type="checkbox" :checked="allPicked" aria-label="Select every org" @change="pickAll" /></th>
@@ -61,7 +64,7 @@ const when = (iso) => (iso ? new Date(iso).toLocaleDateString() : '')
         </tr>
       </thead>
       <tbody>
-        <tr v-for="r in rows" :key="r.orgId" class="border-t align-top">
+        <tr v-for="r in rows" :key="r.orgId" :class="['border-t align-top', r.status === 'connected' ? 'bg-green-50/60 dark:bg-green-500/5' : '']">
           <td class="p-2"><input type="checkbox" :checked="picked.has(r.orgId)" :aria-label="`Select ${r.name || r.host}`" @change="toggle(r.orgId)" /></td>
           <td class="p-2 min-w-0">
             <div class="flex items-center gap-1.5">
@@ -81,6 +84,7 @@ const when = (iso) => (iso ? new Date(iso).toLocaleDateString() : '')
         </tr>
       </tbody>
     </table>
+    </div>
     <div v-if="picked.size" class="p-2 border-t flex items-center gap-3 text-sm">
       <span class="text-muted-foreground">{{ picked.size }} selected</span>
       <button class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary text-primary-foreground" @click="loginPicked"><LogIn class="w-3.5 h-3.5" /> Log in to selected</button>

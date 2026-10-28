@@ -2,7 +2,8 @@
 // Left sidebar (feedback #95, as in Marketing Cloud Toolkit): the pages in groups with
 // dividers, a dot for background jobs, and a collapse to icons only (remembered).
 import { ref, watch } from 'vue'
-import { Boxes, Database, ListChecks, User, ArrowDownToLine, Network, Fingerprint, Users, Send, Calculator, LayoutTemplate, GitCompare, Terminal, HeartPulse, Plug, Blocks, Share2, Home, Gauge, Workflow, Megaphone, Settings, CircleHelp, Circle, PanelLeftOpen, PanelLeftClose } from 'lucide-vue-next'
+import { Settings, CircleHelp, PanelLeftOpen, PanelLeftClose } from 'lucide-vue-next'
+import { navIcon as icon } from '../app/navIcons.js'
 import { NAV } from '../app/router.js'
 import { jobBadge } from '../app/useJobs.js'
 
@@ -10,10 +11,8 @@ const KEY = 'dci_sidebarCollapsed'
 const read = () => { try { return localStorage.getItem(KEY) === '1' } catch { return false } }
 const collapsed = ref(read())
 watch(collapsed, (v) => { try { localStorage.setItem(KEY, v ? '1' : '0') } catch { /* private window */ } })
-const ICONS = { Boxes, Database, ListChecks, User, ArrowDownToLine, Network, Fingerprint, Users, Send, Calculator, LayoutTemplate, GitCompare, Terminal, HeartPulse, Plug, Blocks, Share2, Home, Gauge, Workflow, Megaphone }
 // At the bottom, like the SFMC Toolkit (feedback #107).
 const FOOTER = [{ path: '/help', label: 'Help', icon: CircleHelp }, { path: '/settings', label: 'Settings', icon: Settings }]
-const icon = (name) => ICONS[name] || Circle
 </script>
 
 <template>

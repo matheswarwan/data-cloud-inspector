@@ -35,7 +35,7 @@ watchEffect(() => { document.title = org.orgId ? `${orgName(org.orgId)} · Data 
 <template>
   <div class="min-h-screen flex flex-col">
     <header class="sticky top-0 z-30 h-[49px] flex items-center gap-2 border-b px-4 bg-card">
-      <h1 class="font-semibold text-base mr-2 whitespace-nowrap">Data Cloud Inspector</h1>
+      <h1 class="flex items-center gap-2.5 font-semibold text-base mr-2 whitespace-nowrap"><img src="/images/ateko-mark.svg" alt="Ateko" class="h-[22px] w-auto dark:invert" />Data Cloud Inspector</h1>
       <div class="ml-auto flex items-center gap-2 text-sm">
         <button class="p-1.5 rounded-md hover:bg-accent" title="Search everything (Ctrl+K or Cmd+K)" aria-label="Search" @click="palette?.show()"><Search class="w-4 h-4" /></button>
         <ConnectionMenu />
