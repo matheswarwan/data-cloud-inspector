@@ -49,3 +49,17 @@ export function safePath(path) {
   if (!qs) return p
   return `${p}?${qs.split('&').map((kv) => kv.split('=')[0]).join('&')}`
 }
+
+/** The feedback as plain text for an email: kind, message, details, then the technical details. */
+export function feedbackText({ kind, message, details, meta }) {
+  const parts = [`Kind: ${kind}`, '', String(message || '').trim()]
+  if (String(details || '').trim()) parts.push('', 'More details:', String(details).trim())
+  if (meta) parts.push('', 'Technical details:', ...metadataLines(meta).map(([k, v]) => `${k}: ${v}`))
+  return parts.join('\n')
+}
+
+/** A mailto: link. Mail apps cut long links, so the body is shortened (the full text is copied). */
+export function feedbackMailto(to, subject, body, max = 1800) {
+  const short = body.length > max ? `${body.slice(0, max)}\n\n[Shortened: paste the full text from the clipboard.]` : body
+  return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(short)}`
+}
