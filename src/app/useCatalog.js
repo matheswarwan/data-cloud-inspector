@@ -9,7 +9,7 @@ import { loadRecordIds } from '../lib/links.js'
 import { loadUsage } from '../lib/usage.js'
 import { fetchAllPages } from '../lib/pages.js'
 import { withDataSpace } from '../lib/dataSpace.js'
-import { storeGet, storeSet, storeRemove, orgCached, forgetCached } from '../lib/store.js'
+import { cacheGet, cacheSet, orgCached, forgetCached } from '../lib/store.js'
 import { loadDataGraphs } from '../lib/dataGraphs.js'
 import { ensureSegments } from './useSegments.js'
 import { useOrg, currentDataSpaceId } from './useOrg.js'
@@ -70,7 +70,7 @@ async function loadCatalogState({ refresh = false } = {}) {
   state.error = ''
   if (refresh) await forgetCached(`dci_s_${orgId}_`)
   if (!refresh) {
-    const cached = await storeGet(cacheKey(orgId))
+    const cached = await cacheGet(cacheKey(orgId))
     if (cached?.objects?.length) {
       Object.assign(state, cached)
       return
@@ -81,7 +81,7 @@ async function loadCatalogState({ refresh = false } = {}) {
     const catalog = await loadCatalog(orgCall(), version)
     if (state.key !== key) return
     Object.assign(state, catalog, { streams: null, mappings: null, recordIds: null, usage: null })
-    if (catalog.objects.length) await storeSet(cacheKey(orgId), catalog)
+    if (catalog.objects.length) await cacheSet(cacheKey(orgId), catalog)
   } catch (err) {
     state.error = err.message
   } finally {
@@ -137,7 +137,7 @@ export function ensureUsage({ refresh = false } = {}) {
 
 /** Forget the cached metadata of an org (Settings). */
 export async function forgetCatalog(orgId) {
-  await storeRemove(cacheKey(orgId))
+  await forgetCached(cacheKey(orgId))
   await forgetCached(`dci_s_${orgId}_`)
   if (state.orgId === orgId) Object.assign(state, { key: null, orgId: null, objects: [], errors: [], loadedAt: '', streams: null, mappings: null, recordIds: null })
 }

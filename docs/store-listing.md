@@ -159,22 +159,19 @@ Data Cloud Inspector lets Salesforce Data Cloud users inspect their own org, rea
 
 ## Permission justifications (Privacy practices tab)
 
-- **cookies:** the extension calls the user's Salesforce org with the session they already have in this browser. It reads the Salesforce `sid` cookie of the org's own domain and sends it only to that org, as the API's authorization header. It also reads the cookie of the current Salesforce tab to know which org that tab belongs to. The session is never stored or sent anywhere else.
-- **storage:** settings, saved queries, query history, the list of orgs connected to (domain, ID, username, an optional name), and a cache of the org's Data Cloud metadata (object and field names) are stored locally in the browser.
-- **identity:** only for the optional "Log in with OAuth" in Settings, for orgs that block API calls from browser sessions. It opens the org's own Salesforce login window (`chrome.identity.launchWebAuthFlow`) for the user's External Client App and receives the authorization code. The resulting access token is kept in session storage, used only for that org, and gone when the browser closes.
-- **unlimitedStorage:** the metadata cache is several hundred KB per org, and users who work in many orgs can pass the default local storage limit.
-- **Host permissions:**
-  - `https://*.salesforce.com/*`, `https://*.cloudforce.com/*`: the org's own API domain (`<my domain>.my.salesforce.com`), which the extension calls on the user's behalf, and where the session cookie lives.
-  - `https://*.force.com/*`, `https://*.salesforce-setup.com/*`: Lightning and Setup pages. When the user clicks the toolbar icon on one of these tabs, the extension reads that tab's session cookie to open on the right org. Nothing is injected into these pages.
-- **Remote code:** none. All code is in the package.
+- **cookies:** the extension calls the user's Salesforce org with the session they already have in this browser. It reads only the Salesforce `sid` cookie of the org's own My Domain (`*.my.salesforce.com`) and sends it only to that org, as the API's authorization header. The session is never stored or sent anywhere else. An administrator can turn this off by policy (OAuth only).
+- **storage:** settings, saved queries, query history, the list of orgs connected to (domain, ID, username, an optional name) and a cache of the org's Data Cloud metadata are stored locally in the browser. Bulk lookup and Compare results are kept in session storage only, until the browser closes. `storage.managed` holds the administrator policy.
+- **identity:** only for the optional "Log in with OAuth", for orgs that block API calls from browser sessions or when the administrator allows OAuth only. It opens the org's own Salesforce login window (`chrome.identity.launchWebAuthFlow`, authorization code with PKCE, no client secret) for the user's External Client App. The access token is kept in session storage, used only for that org, revoked on log out and gone when the browser closes. No refresh token is kept.
+- **activeTab:** when the user clicks the toolbar icon on a Salesforce tab, the extension reads that tab's address to open on the same org. Nothing is injected into the page.
+- **Host permissions:** `https://*.my.salesforce.com/*`, the org's own API domain, which the extension calls on the user's behalf and where the session cookie lives. Optional, requested from Settings only when the user turns it on: `https://*.cloudforce.com/*` for older orgs on that domain.
+- **Remote code:** none. All code is in the package; the extension pages have a strict Content Security Policy (`script-src 'self'`, `object-src 'none'`, network calls only to Salesforce).
 
 ## Data usage (Privacy practices tab)
 
 - **Authentication information:** yes. The Salesforce session cookie is read to call the user's own org, and is not stored or transmitted anywhere else. If the user chooses Log in with OAuth, the access token is kept in session storage until the browser closes and sent only to that org.
-- **Personally identifiable information:** yes, shown only. Profiles and query results display records from the user's org (names, emails, phones). They are not stored and not sent anywhere except between the browser and the user's own org. A name or email typed into the feedback form, and any screenshot the user chooses to attach, are sent with that feedback.
-- **Website content:** the org's Data Cloud metadata (object and field names) is cached locally. Query results are not stored.
-- **Personally identifiable information, stored:** the Salesforce username of each org the user connected to is kept in the browser (Home, Your orgs), with the org's domain. It is never sent anywhere.
-- **Usage data:** none. No analytics.
+- **Personally identifiable information:** yes. Profiles and query results display records from the user's org (names, emails, phones). Bulk lookup and Compare results are kept in the browser's session storage until it closes; nothing else holding records is stored. Nothing is sent anywhere except between the browser and the user's own org. The Salesforce username of each org the user connected to is kept in the browser (Home, Your orgs).
+- **Website content:** the org's Data Cloud metadata (object and field names) is cached locally.
+- **Usage data:** none. No analytics. Feedback opens an email in the user's own mail app; the extension sends nothing itself.
 - Certify: data is not sold, not used for unrelated purposes, and not used for creditworthiness or lending.
 
 ## Screenshots (1280x800, in `docs/store/`; the store takes at most five)

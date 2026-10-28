@@ -3,6 +3,7 @@
 
 import { reactive } from 'vue'
 import { storeGet, storeSet } from '../lib/store.js'
+import { policy } from '../lib/policy.js'
 
 const SAVED = 'dci_savedQueries'
 const HISTORY = 'dci_history'
@@ -14,6 +15,7 @@ export async function loadQueries() {
   if (state.loaded) return
   state.saved = await storeGet(SAVED, [])
   state.history = await storeGet(HISTORY, [])
+  if (policy().disableQueryHistory && state.history.length) { state.history = []; await storeSet(HISTORY, []) }
   state.loaded = true
 }
 
@@ -32,6 +34,7 @@ export async function deleteQuery(id) {
 }
 
 export async function addHistory({ sql, host, rows, error }) {
+  if (policy().disableQueryHistory) return // administrator policy
   const entry = { sql, host, rows, error: error || '', at: new Date().toISOString() }
   state.history = [entry, ...state.history.filter((h) => h.sql !== sql)].slice(0, HISTORY_MAX)
   await storeSet(HISTORY, JSON.parse(JSON.stringify(state.history)))

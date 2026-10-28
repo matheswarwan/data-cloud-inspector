@@ -1,10 +1,17 @@
-// Background jobs for slow pages (Health, Compare): a job keeps running while you use other
-// pages, and its result waits for you. Finished results are also kept in
-// chrome.storage.local (feedback #147: no wait screen after reopening the browser; before
-// that, chrome.storage.session, still read as a fallback). The nav shows a running job and an
-// unseen result.
+// Background jobs for slow pages (Health, Compare, Bulk lookup): a job keeps running while you
+// use other pages, and its result waits for you. Finished results are also stored: Health
+// (metadata and statuses, no records) in chrome.storage.local so reopening the browser needs no
+// wait (feedback #147), unless the administrator policy disableCache is set. Results that hold
+// people's data (Compare, Bulk lookup) only in chrome.storage.session, gone when the browser
+// closes. The nav shows a running job and an unseen result.
 
 import { reactive } from 'vue'
+import { policy } from '../lib/policy.js'
+
+/** Where a finished job is kept: 'local' only for Health without disableCache. */
+export function jobArea(id, p = policy()) {
+  return String(id).startsWith('health:') && !p.disableCache ? 'local' : 'session'
+}
 
 const jobs = reactive({}) // id -> job
 const restored = new Set()
@@ -21,7 +28,7 @@ export function useJob(id) {
   if (!restored.has(id)) {
     restored.add(id)
     const get = (area) => chrome.storage?.[area]?.get?.(storeKey(id)).then((r) => r?.[storeKey(id)]) ?? Promise.resolve(null)
-    get('local').then((saved) => saved || get('session')).then((saved) => {
+    get(jobArea(id)).then((saved) => saved || (jobArea(id) === 'local' ? get('session') : null)).then((saved) => {
       if (saved && jobs[id].status === 'idle') Object.assign(jobs[id], saved, { seen: true })
     }).catch(() => {})
   }
@@ -45,7 +52,7 @@ export function startJob(id, run, { params = null } = {}) {
     })
     .then(() => {
       const { status, startedAt, finishedAt, result, error, params: p } = job
-      chrome.storage?.local?.set?.({ [storeKey(id)]: JSON.parse(JSON.stringify({ status, startedAt, finishedAt, result, error, params: p })) }).catch(() => {})
+      chrome.storage?.[jobArea(id)]?.set?.({ [storeKey(id)]: JSON.parse(JSON.stringify({ status, startedAt, finishedAt, result, error, params: p })) }).catch(() => {})
     })
   return job
 }

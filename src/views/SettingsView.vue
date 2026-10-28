@@ -14,6 +14,33 @@ import { askConfirm } from '../app/useDialog.js'
 import { useQueries, loadQueries, saveQuery, clearHistory, reloadQueries } from '../app/useQueries.js'
 import { storeAll, storeRemove } from '../lib/store.js'
 import { FEEDBACK_CONTACT_KEY } from '../lib/feedbackContact.js'
+import { diagramforceAllowed, diagramforceOn, setDiagramforceOn } from '../lib/diagramforce.js'
+import { policy, policyOverrides } from '../lib/policy.js'
+import { isOn } from '../lib/features.js'
+
+// Administrator policy (chrome.storage.managed): shown read only.
+const managed = policy()
+const POLICY_TEXT = {
+  authMode: (v) => (v === 'oauth-only' ? 'Log in with OAuth only: the browser session is never used.' : ''),
+  allowedOrgDomains: (v) => `Only these orgs: ${v.join(', ')}.`,
+  disableCache: () => 'Org metadata and Health results are kept only until the browser closes.',
+  disableQueryHistory: () => 'No query history is kept.',
+  disableDiagramforce: () => 'Open in Diagramforce is turned off.',
+}
+const managedLines = policyOverrides(managed).map((k) => POLICY_TEXT[k](managed[k]))
+
+const diagramforce = ref(diagramforceOn())
+function toggleDiagramforce(on) { setDiagramforceOn(on); diagramforce.value = diagramforceOn() }
+
+// Orgs on *.cloudforce.com (older instances) need an optional host permission.
+const CLOUDFORCE = { origins: ['https://*.cloudforce.com/*'] }
+const cloudforce = ref(false)
+chrome.permissions?.contains?.(CLOUDFORCE).then((v) => { cloudforce.value = v }).catch(() => {})
+async function toggleCloudforce(on) {
+  try {
+    cloudforce.value = on ? await chrome.permissions.request(CLOUDFORCE) : !(await chrome.permissions.remove(CLOUDFORCE))
+  } catch { /* not in an extension */ }
+}
 
 const settings = useSettings()
 const org = useOrg()
@@ -124,6 +151,13 @@ function showTipsAgain() { setTipsOn(true); resetTips(); tips.value = true }
     <h2 class="text-lg font-semibold">Settings</h2>
     <p v-if="notice" class="text-sm text-muted-foreground">{{ notice }}</p>
 
+    <div v-if="managedLines.length" :class="card">
+      <h3 class="font-medium">Set by your administrator</h3>
+      <ul class="text-sm list-disc pl-5 space-y-0.5">
+        <li v-for="l in managedLines" :key="l">{{ l }}</li>
+      </ul>
+    </div>
+
     <div :class="card">
       <h3 class="font-medium">Appearance</h3>
       <div class="flex gap-2" role="radiogroup" aria-label="Theme">
@@ -150,6 +184,14 @@ function showTipsAgain() { setTipsOn(true); resetTips(); tips.value = true }
         <input type="checkbox" class="mt-1" :checked="tips" @change="toggleTips($event.target.checked)" />
         <span>Tips on first visits<span class="block text-xs text-muted-foreground">Point out features that are easy to miss the first time a page opens. <button class="text-link hover:underline" @click.prevent="showTipsAgain">Show all tips again</button></span></span>
       </label>
+      <label v-if="isOn('diagramforce')" class="flex items-start gap-2 text-sm" :class="diagramforceAllowed() ? '' : 'opacity-60'">
+        <input type="checkbox" class="mt-1" :checked="diagramforce" :disabled="!diagramforceAllowed()" @change="toggleDiagramforce($event.target.checked)" />
+        <span>Open in Diagramforce<span class="block text-xs text-muted-foreground">Adds Open in Diagramforce to data model and stream diagrams. It hands the diagram's object, field and relationship names (no records, no session) to diagramforce.com, a free diagram editor run by a third party.{{ diagramforceAllowed() ? '' : ' Turned off by your administrator.' }}</span></span>
+      </label>
+      <label class="flex items-start gap-2 text-sm">
+        <input type="checkbox" class="mt-1" :checked="cloudforce" @change="toggleCloudforce($event.target.checked)" />
+        <span>Orgs on cloudforce.com<span class="block text-xs text-muted-foreground">Only for older orgs whose domain ends in cloudforce.com. Chrome asks you to allow the extension to read and change data on those sites.</span></span>
+      </label>
     </div>
 
     <div :class="card">
@@ -159,8 +201,8 @@ function showTipsAgain() { setTipsOn(true); resetTips(); tips.value = true }
         <button v-if="storage?.groups.length" :class="[btn, 'ml-auto']" @click="removeAll">Delete everything</button>
       </div>
       <p class="text-sm text-muted-foreground">
-        Everything Data Cloud Inspector keeps, only in this browser. No records or query results are stored.
-        Session items are also deleted when the browser closes.
+        Everything Data Cloud Inspector keeps, only in this browser. Records and query results are not kept after the
+        browser closes: Bulk lookup and Compare results are session items. Session items are deleted when the browser closes.
       </p>
       <p v-if="storage && !storage.groups.length" class="text-sm text-muted-foreground">Nothing stored.</p>
       <table v-if="storage?.groups.length" class="w-full text-sm">
