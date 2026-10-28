@@ -10,7 +10,7 @@ import DataTable from '../components/DataTable.vue'
 import DownloadMenu from '../components/DownloadMenu.vue'
 import JsonViewer from '../components/JsonViewer.vue'
 import { useRoute } from 'vue-router'
-import { ArrowRight, ExternalLink, RefreshCw, Send, Users } from 'lucide-vue-next'
+import { ArrowRight, ExternalLink, RefreshCw, Search, Send, Users } from 'lucide-vue-next'
 import { useOrg, currentOrg, orgName, orgTitle } from '../app/useOrg.js'
 import { orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
@@ -75,6 +75,13 @@ const listCols = [
 ]
 const listSections = () => [{ heading: 'Activations', columns: listCols, rows: list.value }]
 const listDoc = () => docFrom({ title: 'Activations', intro: `${orgTitle(org.orgId)}, data space ${org.dataSpace || 'default'}. ${list.value.length} activations.`, sections: listSections() })
+// Attributes sent: filter by object, field, label or output name.
+const attrText = ref('')
+const attrRows = computed(() => {
+  const t = attrText.value.trim().toLowerCase()
+  const all = act.value?.attributes || []
+  return t ? all.filter((x) => [x.entity, x.name, x.label, x.output].some((v) => String(v || '').toLowerCase().includes(t))) : all
+})
 const attrCols = [
   { key: 'field', label: 'Field', value: (x) => `${x.entity.replace(/^ssot__|__dlm$/g, '')}.${x.name} ${x.label || ''}`, sortValue: (x) => `${x.entity}.${x.name}` },
   { key: 'output', label: 'Sent as' },
@@ -144,10 +151,13 @@ const attrCols = [
         </div>
         <div class="grid xl:grid-cols-[3fr_2fr] gap-4 items-start">
           <div class="dci-card">
-            <h3 class="px-5 py-3.5 border-b text-base font-semibold flex items-center gap-2">Attributes sent <span class="dci-count">{{ act.attributes.length }}</span></h3>
-            <DataTable :columns="attrCols" :rows="act.attributes" :row-key="(x) => x.entity + x.name" :bordered="false" text-size="text-xs" box-class="max-h-[60vh]">
-              <template #cell-field="{ row: x }"><span class="font-mono whitespace-nowrap">{{ x.entity.replace(/^ssot__|__dlm$/g, '') }}.{{ x.name }}</span><div class="text-muted-foreground">{{ x.label }}</div></template>
-              <template #cell-output="{ value }"><span class="font-mono whitespace-nowrap">{{ value }}</span></template>
+            <div class="px-5 py-3 border-b flex flex-wrap items-center gap-3">
+              <h3 class="text-base font-semibold flex items-center gap-2">Attributes sent <span class="dci-count">{{ act.attributes.length }}</span></h3>
+              <label class="dci-search ml-auto w-64"><Search class="w-4 h-4 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden="true" /><input v-model="attrText" placeholder="Filter attributes" aria-label="Filter attributes" /></label>
+            </div>
+            <DataTable :columns="attrCols" :rows="attrRows" :row-key="(x) => x.entity + x.name" :bordered="false" text-size="text-sm" box-class="max-h-[70vh]">
+              <template #cell-field="{ row: x }"><span class="inline-flex flex-wrap items-center gap-1.5"><span class="dci-badge">{{ x.entity.replace(/^ssot__|__dlm$/g, '') }}</span><span class="font-mono text-[13px] whitespace-nowrap">{{ x.name }}</span></span><div class="mt-0.5 text-xs text-muted-foreground">{{ x.label }}</div></template>
+              <template #cell-output="{ value }"><span class="inline-flex items-center gap-2 font-mono text-[13px] text-teal-700 dark:text-teal-300 whitespace-nowrap"><ArrowRight class="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />{{ value }}</span></template>
             </DataTable>
           </div>
           <div class="space-y-4">

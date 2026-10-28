@@ -3,7 +3,7 @@ import DownloadMenu from '../components/DownloadMenu.vue'
 import HelpTip from '../components/HelpTip.vue'
 import { ref, shallowRef, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Search, Copy, ChevronRight, ChevronDown } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight, Code, Copy, Search, ShieldCheck, Workflow } from 'lucide-vue-next'
 import RelatedTable from '../components/RelatedTable.vue'
 import { channelOf, actionOf, engagementSummary, loadConsent, consentFacts } from '../lib/marketing.js'
 import { addressesFrom, loadCrmConsent } from '../lib/crmConsent.js'
@@ -309,7 +309,7 @@ const btn = 'dci-btn'
         <!-- Unified record -->
         <div v-if="profile.unified" :class="card">
           <h3 class="px-5 py-3.5 border-b text-base font-semibold">Unified record</h3>
-          <dl class="p-3 grid grid-cols-[minmax(10rem,auto)_1fr] gap-x-3 gap-y-1 text-sm">
+          <dl class="px-5 py-4 grid grid-cols-[minmax(10rem,auto)_1fr] gap-x-3 gap-y-1 text-sm">
             <template v-for="[k, v] in filled(profile.unified)" :key="k">
               <dt class="font-mono text-xs text-muted-foreground">{{ k }}</dt><dd class="break-all"><RecordLink :value="v" /></dd>
             </template>
@@ -318,9 +318,9 @@ const btn = 'dci-btn'
 
         <!-- Source records -->
         <div :class="[card, profile.unified ? '' : 'lg:col-span-2']">
-          <h3 class="px-5 py-3.5 border-b text-base font-semibold">Source records ({{ profile.sources.length }})</h3>
+          <h3 class="px-5 py-3.5 border-b text-base font-semibold flex items-center gap-2">Source records <span class="dci-count">{{ profile.sources.length }}</span></h3>
           <div v-for="s in profile.sources" :key="s.ssot__Id__c" class="border-b last:border-0">
-            <button class="w-full text-left p-3 flex items-start gap-2 hover:bg-accent" @click="open[s.ssot__Id__c] = !open[s.ssot__Id__c]">
+            <button class="w-full text-left px-5 py-3 flex items-start gap-2 hover:bg-accent" @click="open[s.ssot__Id__c] = !open[s.ssot__Id__c]">
               <component :is="open[s.ssot__Id__c] ? ChevronDown : ChevronRight" class="w-4 h-4 mt-0.5 shrink-0" />
               <div class="min-w-0">
                 <div class="font-medium flex items-center gap-2">
@@ -329,8 +329,10 @@ const btn = 'dci-btn'
                     {{ recordKind(s.ssot__Id__c) }}
                   </a>
                 </div>
-                <div class="text-xs text-muted-foreground font-mono break-all">
-                  {{ s.ssot__Id__c }} · {{ s.ssot__DataSourceId__c }} / {{ s.ssot__DataSourceObjectId__c }}
+                <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-mono break-all">
+                  <span class="dci-badge font-mono">{{ s.ssot__Id__c }}</span>
+                  <span v-if="s.ssot__DataSourceId__c" class="dci-badge dci-badge-blue font-mono">{{ s.ssot__DataSourceId__c }}</span>
+                  <span v-if="s.ssot__DataSourceObjectId__c" class="text-muted-foreground">/ {{ s.ssot__DataSourceObjectId__c }}</span>
                 </div>
                 <div v-if="linkFor(s.ssot__Id__c)?.MatchKeys__c" class="text-xs mt-1">
                   Match keys: <span class="font-mono">{{ linkFor(s.ssot__Id__c).MatchKeys__c }}</span>
@@ -352,7 +354,7 @@ const btn = 'dci-btn'
       <!-- Why these records are together -->
       <div v-if="ruleset" :class="card">
         <h3 class="px-5 py-3.5 border-b text-base font-semibold" data-help="profile-rules">Match rules of {{ ruleset.label }} <HelpTip topic="profile-rules" /></h3>
-        <div class="p-3 space-y-4 text-sm">
+        <div class="p-5 space-y-4 text-sm">
           <p v-if="profile.sources.length < 2" class="text-muted-foreground">
             One source record, so there is nothing to match. These are the values the rules compare; see Possible missed matches below for others that share an email.
           </p>
@@ -392,9 +394,9 @@ const btn = 'dci-btn'
 
       <!-- Possible missed matches -->
       <div v-if="missed.length" :class="card">
-        <h3 class="px-5 py-3.5 border-b text-base font-semibold flex items-center gap-2" data-help="profile-missed">Possible missed matches ({{ missed.length }}) <HelpTip topic="profile-missed" /></h3>
-        <p class="px-3 pt-3 text-xs text-muted-foreground">Other people with the same email who are not in this profile. That is expected when the other criteria differ (for example the names); check the match rules above.</p>
-        <ul class="p-3 text-sm space-y-1">
+        <h3 class="px-5 py-3.5 border-b text-base font-semibold flex items-center gap-2" data-help="profile-missed">Possible missed matches <span class="dci-count">{{ missed.length }}</span> <HelpTip topic="profile-missed" /></h3>
+        <p class="px-5 pt-4 text-xs text-muted-foreground">Other people with the same email who are not in this profile. That is expected when the other criteria differ (for example the names); check the match rules above.</p>
+        <ul class="px-5 py-4 text-sm space-y-1">
           <li v-for="m in missed" :key="m.id">
             <button class="text-link hover:underline" @click="go(`/profile/s/${m.id}`)">{{ m.name }}</button>
             <span class="text-muted-foreground ml-1.5">also has {{ m.shared }}</span>
@@ -405,11 +407,11 @@ const btn = 'dci-btn'
       <!-- Contact points -->
       <div v-if="contactPoints.length" :class="card">
         <h3 class="px-5 py-3.5 border-b text-base font-semibold">Contact points</h3>
-        <div v-for="r in contactPoints" :key="r.object + r.otherField" class="border-b last:border-0 p-3 space-y-1">
+        <div v-for="r in contactPoints" :key="r.object + r.otherField" class="border-b last:border-0 px-5 py-4 space-y-2">
           <div class="text-sm flex items-center gap-2">
             <RouterLink :to="`/objects/${r.object}`" class="font-mono text-link hover:underline">{{ r.object }}</RouterLink>
-            <span class="text-muted-foreground">{{ r.rows.length }}{{ r.more ? '+' : '' }} rows</span>
-            <button v-if="r.sql" class="ml-auto text-xs inline-flex items-center gap-1 hover:underline" @click="toSql(r.sql)">SQL</button>
+            <span class="dci-count">{{ r.rows.length }}{{ r.more ? '+' : '' }} rows</span>
+            <button v-if="r.sql" class="ml-auto dci-btn dci-btn-sm" @click="toSql(r.sql)"><Code class="w-3.5 h-3.5" /> SQL</button>
           </div>
           <p v-if="r.error" class="text-xs text-destructive">{{ r.error }}</p>
           <RelatedTable :rows="r.rows" />
@@ -419,8 +421,10 @@ const btn = 'dci-btn'
       <!-- Consent (Marketing Cloud Next): through the contact points -->
       <div v-if="consent.length || consentLoading || crmConsent" :class="card">
         <h3 class="px-5 py-3.5 border-b text-base font-semibold">Consent</h3>
-        <div v-if="crmConsent" class="border-b p-3 space-y-1">
-          <div class="text-sm">In Salesforce <span class="text-muted-foreground">for {{ [...crmConsent.addresses.emails, ...crmConsent.addresses.phones].join(', ') }}</span></div>
+        <div v-if="crmConsent" class="mx-5 mt-4 rounded-xl bg-muted/60 p-4 flex gap-3">
+          <ShieldCheck class="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <div class="space-y-1 min-w-0">
+          <div class="text-sm"><b>In Salesforce</b> <span class="text-muted-foreground">for <span class="font-mono">{{ [...crmConsent.addresses.emails, ...crmConsent.addresses.phones].join(', ') }}</span></span></div>
           <p v-for="(e, i) in crmConsent.errors" :key="i" class="text-xs text-destructive">{{ e }}</p>
           <p v-if="!crmConsent.rows.length && !crmConsent.errors.length" class="text-sm text-muted-foreground">No subscription or data use consent records for these addresses.</p>
           <ul v-else class="text-sm space-y-0.5">
@@ -431,61 +435,65 @@ const btn = 'dci-btn'
               <a :href="recordUrl(currentOrg()?.host, r.id)" target="_blank" rel="noopener" class="ml-1.5 text-xs text-link hover:underline">Open</a>
             </li>
           </ul>
+          </div>
         </div>
-        <p v-if="consentLoading" class="p-3 text-sm text-muted-foreground">Looking for consent records on the contact points…</p>
-        <div v-for="r in consent" :key="r.object + r.sql" class="border-b last:border-0 p-3 space-y-1">
+        <p v-if="consentLoading" class="px-5 py-3 text-sm text-muted-foreground">Looking for consent records on the contact points…</p>
+        <div v-for="r in consent" :key="r.object + r.sql" class="border-b last:border-0 px-5 py-4 space-y-2">
           <div class="text-sm flex items-center gap-2">
             <RouterLink :to="`/objects/${r.object}`" class="font-mono text-link hover:underline">{{ r.object }}</RouterLink>
-            <span class="text-muted-foreground">via {{ r.via }} · {{ r.rows.length }}{{ r.more ? '+' : '' }} rows</span>
-            <button v-if="r.sql" class="ml-auto text-xs inline-flex items-center gap-1 hover:underline" @click="toSql(r.sql)">SQL</button>
+            <span class="text-muted-foreground">via <span class="font-mono">{{ r.via }}</span></span> <span class="dci-count">{{ r.rows.length }}{{ r.more ? '+' : '' }} rows</span>
+            <button v-if="r.sql" class="ml-auto dci-btn dci-btn-sm" @click="toSql(r.sql)"><Code class="w-3.5 h-3.5" /> SQL</button>
           </div>
           <p v-if="r.error" class="text-xs text-destructive">{{ r.error }}</p>
-          <ul v-if="r.rows.length" class="text-sm space-y-0.5">
-            <li v-for="(row, i) in r.rows.slice(0, 20)" :key="i">
-              <b :class="/out|revok|unsub/i.test(consentFacts(row).status) ? 'text-destructive' : ''">{{ consentFacts(row).status || 'no status field' }}</b>
-              <span class="text-muted-foreground ml-1.5">{{ [consentFacts(row).subscription, consentFacts(row).channel, consentFacts(row).when && when(consentFacts(row).when)].filter(Boolean).join(' · ') }}</span>
+          <ul v-if="r.rows.length" class="grid sm:grid-cols-3 xl:grid-cols-5 gap-2.5 text-sm">
+            <li v-for="(row, i) in r.rows.slice(0, 20)" :key="i" class="rounded-xl border p-3 space-y-1.5 min-w-0">
+              <div class="text-xs font-bold uppercase tracking-wide truncate" :title="consentFacts(row).subscription">{{ consentFacts(row).subscription || consentFacts(row).channel || 'Consent' }}</div>
+              <div :class="['px-2 py-1 rounded-md text-xs font-semibold', /out|revok|unsub/i.test(consentFacts(row).status) ? 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300' : consentFacts(row).status ? 'bg-green-50 text-green-700 dark:bg-green-500/15 dark:text-green-300' : 'bg-muted text-muted-foreground']">{{ consentFacts(row).status || 'No status field' }}</div>
+              <div v-if="consentFacts(row).channel || consentFacts(row).when" class="text-xs text-muted-foreground truncate">{{ [consentFacts(row).channel, consentFacts(row).when && when(consentFacts(row).when)].filter(Boolean).join(' · ') }}</div>
             </li>
           </ul>
-          <details class="text-xs"><summary class="cursor-pointer text-muted-foreground">All fields</summary><RelatedTable :rows="r.rows" /></details>
+          <details class="text-xs"><summary class="cursor-pointer font-semibold text-link">All fields</summary><RelatedTable :rows="r.rows" /></details>
         </div>
       </div>
 
       <!-- Engagement -->
       <div :class="card">
-        <h3 class="px-5 py-3.5 border-b text-base font-semibold">{{ MCN ? 'Message history and engagement' : 'Engagement' }} ({{ events.length }})</h3>
-        <div v-if="MCN && channels.length" class="px-3 pt-2 flex flex-wrap gap-1.5 text-xs" aria-label="Channels">
-          <button :class="['px-2 py-0.5 rounded-full border', !channelPick ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="channelPick = ''">All {{ events.length }}</button>
-          <button v-for="c in channels" :key="c.channel" :class="['px-2 py-0.5 rounded-full border', channelPick === c.channel ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="channelPick = channelPick === c.channel ? '' : c.channel">{{ c.channel }} {{ c.count }}</button>
+        <h3 class="px-5 py-3.5 border-b text-base font-semibold flex items-center gap-2">{{ MCN ? 'Message history and engagement' : 'Engagement' }} <span class="dci-count">{{ events.length }}</span></h3>
+        <div v-if="MCN && channels.length" class="px-5 pt-4 flex flex-wrap gap-1.5" aria-label="Channels">
+          <button :class="['dci-chip h-8 px-3 text-[13px]', !channelPick ? '!bg-primary !text-primary-foreground !border-primary' : '']" :aria-pressed="!channelPick" @click="channelPick = ''">All {{ events.length }}</button>
+          <button v-for="c in channels" :key="c.channel" :class="['dci-chip h-8 px-3 text-[13px]', channelPick === c.channel ? '!bg-primary !text-primary-foreground !border-primary' : '']" :aria-pressed="channelPick === c.channel" @click="channelPick = channelPick === c.channel ? '' : c.channel">{{ c.channel }} {{ c.count }}</button>
         </div>
-        <div v-if="pickedChannel?.actions.length" class="px-3 pt-1.5 flex flex-wrap gap-1.5 text-xs" aria-label="Actions">
-          <button v-for="a in pickedChannel.actions" :key="a.action" :class="['px-2 py-0.5 rounded border', actionPick === a.action ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="actionPick = actionPick === a.action ? '' : a.action">{{ a.action }} {{ a.count }}</button>
+        <div v-if="pickedChannel?.actions.length" class="px-5 pt-2 flex flex-wrap gap-1.5" aria-label="Actions">
+          <button v-for="a in pickedChannel.actions" :key="a.action" :class="['dci-chip', actionPick === a.action ? 'is-on' : '']" :aria-pressed="actionPick === a.action" @click="actionPick = actionPick === a.action ? '' : a.action">{{ a.action }} {{ a.count }}</button>
         </div>
-        <p v-if="!events.length && !loading" class="p-3 text-sm text-muted-foreground">No engagement rows for these source records.</p>
-        <ul class="text-sm">
-          <li v-for="(ev, i) in shownEvents.slice(0, 200)" :key="i" class="border-b last:border-0">
-            <button class="w-full text-left px-3 py-1.5 flex gap-3 hover:bg-accent" @click="open[`ev${i}`] = !open[`ev${i}`]">
-              <span class="font-mono text-xs w-44 shrink-0 text-muted-foreground">{{ ev.time ? when(ev.time) : 'no time' }}</span>
-              <span class="w-48 shrink-0 truncate">{{ ev.label }}<span v-if="ev.action" class="text-muted-foreground"> · {{ ev.action }}</span></span>
-              <span class="truncate text-muted-foreground">{{ eventSummary(ev.row) }}</span>
+        <p v-if="!events.length && !loading" class="px-5 py-4 text-sm text-muted-foreground">No engagement rows for these source records.</p>
+        <ul class="text-sm mt-2">
+          <li v-for="(ev, i) in shownEvents.slice(0, 200)" :key="i" class="border-t mx-5">
+            <button class="w-full text-left py-3 flex gap-4 hover:bg-accent/60 rounded-md" @click="open[`ev${i}`] = !open[`ev${i}`]">
+              <span class="w-36 shrink-0"><span class="block text-[13px] font-semibold">{{ ev.time ? new Date(ev.time).toLocaleDateString() : 'no time' }}</span><span class="block text-xs text-muted-foreground">{{ ev.time ? new Date(ev.time).toLocaleTimeString() : '' }}</span></span>
+              <span class="min-w-0 flex-1">
+                <span class="flex items-center gap-1.5"><Workflow class="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />{{ ev.label }}<span v-if="ev.action" class="text-muted-foreground"> · {{ ev.action }}</span></span>
+                <span class="mt-1 block truncate font-mono text-xs text-muted-foreground">{{ eventSummary(ev.row) }}</span>
+              </span>
             </button>
-            <dl v-if="open[`ev${i}`]" class="px-3 pb-2 grid grid-cols-[minmax(10rem,auto)_1fr] gap-x-3 text-xs">
+            <dl v-if="open[`ev${i}`]" class="pb-3 grid grid-cols-[minmax(10rem,auto)_1fr] gap-x-3 text-xs">
               <template v-for="[k, v] in filled(ev.row)" :key="k"><dt class="font-mono text-muted-foreground">{{ k }}</dt><dd class="break-all"><RecordLink :value="v" /></dd></template>
             </dl>
           </li>
         </ul>
-        <p v-for="r in engagementErrors" :key="r.object" class="px-3 pb-2 text-xs text-destructive">{{ r.object }}: {{ r.error }}</p>
+        <p v-for="r in engagementErrors" :key="r.object" class="px-5 pb-3 text-xs text-destructive">{{ r.object }}: {{ r.error }}</p>
       </div>
 
       <!-- Segment membership and the rest -->
       <div v-for="group in [{ title: 'Segment membership', list: segments }, { title: 'Other related records', list: others }]" :key="group.title">
         <div v-if="group.list.length" :class="card">
           <h3 class="px-5 py-3.5 border-b text-base font-semibold">{{ group.title }}</h3>
-          <div v-for="r in group.list" :key="r.object + r.otherField" class="border-b last:border-0 p-3 space-y-1">
+          <div v-for="r in group.list" :key="r.object + r.otherField" class="border-b last:border-0 px-5 py-4 space-y-2">
             <div class="text-sm flex items-center gap-2">
               <RouterLink :to="`/objects/${r.object}`" class="text-link hover:underline">{{ byName.get(r.object)?.label || r.object }}</RouterLink>
               <span class="font-mono text-xs text-muted-foreground">{{ r.object }} by {{ r.otherField }}</span>
-              <span class="text-muted-foreground text-xs">{{ r.rows.length }}{{ r.more ? '+' : '' }} rows</span>
-              <button v-if="r.sql" class="ml-auto text-xs inline-flex items-center gap-1 hover:underline" @click="toSql(r.sql)">SQL</button>
+              <span class="dci-count">{{ r.rows.length }}{{ r.more ? '+' : '' }} rows</span>
+              <button v-if="r.sql" class="ml-auto dci-btn dci-btn-sm" @click="toSql(r.sql)"><Code class="w-3.5 h-3.5" /> SQL</button>
             </div>
             <p v-if="r.error" class="text-xs text-destructive">{{ r.error }}</p>
             <RelatedTable :rows="r.rows" />

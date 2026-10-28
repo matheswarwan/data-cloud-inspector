@@ -6,7 +6,7 @@ import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Boxes, Copy, Database, ExternalLink, Key, KeyRound, Network, RefreshCw, Search } from 'lucide-vue-next'
+import { Boxes, ChevronDown, Copy, Database, ExternalLink, Key, KeyRound, Network, RefreshCw, Search } from 'lucide-vue-next'
 import { useOrg, currentOrg, orgName, orgTitle } from '../app/useOrg.js'
 import { recordUrl, dmoUrl } from '../lib/links.js'
 import { useCatalog, ensureCatalog, ensureStreams, ensureAllMappings, ensureRecordIds, ensureUsage, orgCall } from '../app/useCatalog.js'
@@ -30,6 +30,8 @@ const kinds = ref([])
 const category = ref('')
 const tab = ref('fields')
 const fieldText = ref('')
+const onlyUsed = ref(false) // Fields tab: only fields something uses
+const openUses = ref({}) // Fields tab: Used by lists shown in full
 watch(() => route.query.field, (f) => { if (typeof f === 'string') { fieldText.value = f; tab.value = 'fields' } })
 const notice = ref('')
 const counts = reactive({}) // object name -> number | 'counting' | error text
@@ -70,7 +72,7 @@ const byName = computed(() => new Map(catalog.objects.map((o) => [o.name, o])))
 const selected = computed(() => byName.value.get(route.params.name) || null)
 const fields = computed(() => {
   const t = fieldText.value.trim().toLowerCase()
-  const all = selected.value?.fields || []
+  const all = (selected.value?.fields || []).filter((f) => !onlyUsed.value || (fieldUses.value.get(f.name) || []).length)
   return t ? all.filter((f) => f.name.toLowerCase().includes(t) || f.label.toLowerCase().includes(t)) : all
 })
 const used = computed(() => (selected.value ? usageOf(selected.value.name, catalog.usage) : null))
@@ -341,17 +343,25 @@ const tabBtn = (t) => ['dci-tab', tab.value === t ? 'is-on' : '']
 
         <!-- Fields -->
         <div v-if="tab === 'fields'" class="space-y-2">
-          <input v-model="fieldText" placeholder="Filter fields" class="border rounded-md px-2 py-1 bg-background text-sm w-72" />
+          <div class="flex flex-wrap items-center gap-3">
+            <label class="dci-search w-full max-w-sm"><Search class="w-4 h-4 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden="true" /><input v-model="fieldText" placeholder="Filter fields" aria-label="Filter fields" /></label>
+            <label class="inline-flex items-center gap-2 text-sm"><input v-model="onlyUsed" type="checkbox" /> Only fields in use</label>
+          </div>
           <DataTable :columns="fieldCols" :rows="fields" row-key="name" row-class="hover:bg-accent">
             <template #cell-name="{ row: f }">
               <button class="inline-flex items-center gap-1 hover:underline font-mono text-xs" title="Copy the API name" @click="copy(f.name, f.name)">
-                <Key v-if="f.primaryKey" class="w-3.5 h-3.5 text-muted-foreground" />{{ f.name }}
+                <Key v-if="f.primaryKey" class="w-3.5 h-3.5 text-amber-600" aria-label="Primary key" />{{ f.name }}
               </button>
             </template>
             <template #cell-type="{ value }"><span class="text-xs">{{ value }}</span></template>
             <template #cell-role="{ value }"><span class="text-xs">{{ value }}</span></template>
             <template #cell-keyQualifier="{ value }"><span class="font-mono text-xs text-muted-foreground">{{ value }}</span></template>
-            <template #cell-usedBy="{ value }"><span class="text-xs text-muted-foreground">{{ value.join(', ') }}</span></template>
+            <template #cell-usedBy="{ row: f, value }">
+              <span v-if="value.length" class="text-xs">
+                {{ value[0] }}<button v-if="value.length > 1" class="ml-1.5 inline-flex items-center gap-0.5 font-semibold text-teal-700 dark:text-teal-300 hover:underline" :aria-expanded="!!openUses[f.name]" @click="openUses = { ...openUses, [f.name]: !openUses[f.name] }">+{{ value.length - 1 }} more<ChevronDown class="w-3 h-3" /></button>
+                <span v-if="openUses[f.name]" class="mt-1.5 block rounded-lg bg-muted/60 px-2.5 py-1.5 space-y-0.5"><span v-for="u in value.slice(1)" :key="u" class="block">{{ u }}</span></span>
+              </span>
+            </template>
           </DataTable>
         </div>
 
