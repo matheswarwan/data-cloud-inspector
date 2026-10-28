@@ -11,7 +11,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ExternalLink, RefreshCw, Search } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight, ExternalLink, RefreshCw, Search } from 'lucide-vue-next'
 import { useOrg, currentOrg, orgTitle } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
@@ -49,6 +49,9 @@ onMounted(() => { ensureCatalog(); load() })
 watch(() => [org.orgId, org.version, org.dataSpace], () => load())
 
 // Sort (feedback #121), remembered in this browser.
+// Criteria fold (feedback #1025): folded until opened, remembered in this browser.
+const criteriaOpen = ref((() => { try { return localStorage.getItem('dci_segCriteriaOpen') === '1' } catch { return false } })())
+watch(criteriaOpen, (v) => { try { localStorage.setItem('dci_segCriteriaOpen', v ? '1' : '0') } catch { /* private window */ } })
 const sortBy = ref((() => { try { return localStorage.getItem('dci_segmentSort') || 'name' } catch { return 'name' } })())
 watch(sortBy, (v) => { try { localStorage.setItem('dci_segmentSort', v) } catch { /* private window */ } })
 const sortDate = (s) => {
@@ -225,30 +228,6 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
         </div>
         <p v-if="notice" class="text-sm text-muted-foreground">{{ notice }}</p>
 
-        <dl class="dci-card dci-kv px-5 pt-1 pb-2">
-          <div><dt>Segment on</dt><dd><RouterLink :to="`/objects/${seg.on}`" class="text-link hover:underline font-mono text-[13px]">{{ seg.on }}</RouterLink></dd></div>
-          <div><dt>Status</dt><dd class="inline-flex items-center gap-1.5"><span :class="['w-2 h-2 rounded-full', /active/i.test(seg.status) ? 'bg-green-600' : 'bg-gray-400']" />{{ seg.status.toLowerCase() }}</dd></div>
-          <div><dt>Last published</dt><dd>{{ when(seg.lastPublished) || 'never' }} ({{ seg.publishStatus.toLowerCase() || 'not published' }})</dd></div>
-          <div><dt>Schedule</dt><dd>{{ seg.publishInterval.replace(/_/g, ' ').toLowerCase() }}</dd></div>
-          <div><dt>Members at publish</dt><dd class="font-semibold">{{ num(seg.lastCount) }}</dd></div>
-          <div><dt>Type</dt><dd>{{ seg.type }}{{ seg.lookback ? `, lookback ${seg.lookback}` : '' }}</dd></div>
-          <div><dt>Created</dt><dd>{{ when(seg.created) }}</dd></div>
-          <div><dt>Modified</dt><dd>{{ when(seg.modified) }}</dd></div>
-        </dl>
-
-        <div :class="card">
-          <h3 class="px-5 py-3.5 border-b text-base font-semibold flex items-center">Criteria
-            <button class="ml-auto text-xs text-link hover:underline font-semibold" @click="showRaw = !showRaw">{{ showRaw ? 'Hide' : 'Show' }} raw JSON</button>
-          </h3>
-          <div class="p-5 space-y-1 text-sm">
-            <div v-for="(l, i) in lines" :key="i" :style="{ paddingLeft: `${l.depth * 1.25}rem` }">
-              <span class="font-mono text-xs">{{ l.text }}</span>
-              <pre v-if="l.raw" class="text-xs text-muted-foreground whitespace-pre-wrap">{{ l.raw }}</pre>
-            </div>
-            <div v-if="showRaw" class="mt-2"><JsonViewer :value="{ include: seg.criteria, exclude: seg.excludeCriteria }" :file-name="`segment-${seg.apiName || seg.label}-criteria`" :open-depth="4" box-class="max-h-96" /></div>
-          </div>
-        </div>
-
         <div :class="card">
           <h3 class="px-5 py-3.5 border-b text-base font-semibold" data-help="segment-counts">Counts <HelpTip topic="segment-counts" /></h3>
           <div class="p-5 space-y-3 text-sm">
@@ -322,6 +301,31 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
           </DataTable>
           <p v-if="detail?.history" class="px-3 pb-3 pt-1 text-xs text-muted-foreground">From <RouterLink :to="`/objects/${detail.history}`" class="text-link hover:underline font-mono">{{ detail.history }}</RouterLink>.</p>
         </div>
+        <dl class="dci-card dci-kv px-5 pt-1 pb-2">
+          <div><dt>Segment on</dt><dd><RouterLink :to="`/objects/${seg.on}`" class="text-link hover:underline font-mono text-[13px]">{{ seg.on }}</RouterLink></dd></div>
+          <div><dt>Status</dt><dd class="inline-flex items-center gap-1.5"><span :class="['w-2 h-2 rounded-full', /active/i.test(seg.status) ? 'bg-green-600' : 'bg-gray-400']" />{{ seg.status.toLowerCase() }}</dd></div>
+          <div><dt>Last published</dt><dd>{{ when(seg.lastPublished) || 'never' }} ({{ seg.publishStatus.toLowerCase() || 'not published' }})</dd></div>
+          <div><dt>Schedule</dt><dd>{{ seg.publishInterval.replace(/_/g, ' ').toLowerCase() }}</dd></div>
+          <div><dt>Members at publish</dt><dd class="font-semibold">{{ num(seg.lastCount) }}</dd></div>
+          <div><dt>Type</dt><dd>{{ seg.type }}{{ seg.lookback ? `, lookback ${seg.lookback}` : '' }}</dd></div>
+          <div><dt>Created</dt><dd>{{ when(seg.created) }}</dd></div>
+          <div><dt>Modified</dt><dd>{{ when(seg.modified) }}</dd></div>
+        </dl>
+
+        <div :class="card">
+          <h3 :class="['px-5 py-3.5 text-base font-semibold flex items-center gap-2', criteriaOpen ? 'border-b' : '']">
+            <button class="inline-flex items-center gap-1.5 hover:underline" :aria-expanded="criteriaOpen" @click="criteriaOpen = !criteriaOpen"><component :is="criteriaOpen ? ChevronDown : ChevronRight" class="w-4 h-4" /> Criteria</button>
+            <button v-if="criteriaOpen" class="ml-auto text-xs text-link hover:underline font-semibold" @click="showRaw = !showRaw">{{ showRaw ? 'Hide' : 'Show' }} raw JSON</button>
+          </h3>
+          <div v-if="criteriaOpen" class="p-5 space-y-1 text-sm">
+            <div v-for="(l, i) in lines" :key="i" :style="{ paddingLeft: `${l.depth * 1.25}rem` }">
+              <span class="font-mono text-xs">{{ l.text }}</span>
+              <pre v-if="l.raw" class="text-xs text-muted-foreground whitespace-pre-wrap">{{ l.raw }}</pre>
+            </div>
+            <div v-if="showRaw" class="mt-2"><JsonViewer :value="{ include: seg.criteria, exclude: seg.excludeCriteria }" :file-name="`segment-${seg.apiName || seg.label}-criteria`" :open-depth="4" box-class="max-h-96" /></div>
+          </div>
+        </div>
+
       </template>
     </div>
   </section>
