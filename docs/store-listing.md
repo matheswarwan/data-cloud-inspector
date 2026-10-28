@@ -171,7 +171,7 @@ Data Cloud Inspector lets Salesforce Data Cloud users inspect their own org, rea
 - **Authentication information:** yes. The Salesforce session cookie is read to call the user's own org, and is not stored or transmitted anywhere else. If the user chooses Log in with OAuth, the access token is kept in session storage until the browser closes and sent only to that org.
 - **Personally identifiable information:** yes. Profiles and query results display records from the user's org (names, emails, phones). Bulk lookup and Compare results are kept in the browser's session storage until it closes; nothing else holding records is stored. Nothing is sent anywhere except between the browser and the user's own org. The Salesforce username of each org the user connected to is kept in the browser (Home, Your orgs).
 - **Website content:** the org's Data Cloud metadata (object and field names) is cached locally.
-- **Usage data:** none. No analytics. Feedback opens an email in the user's own mail app; the extension sends nothing itself.
+- **Usage data:** none. No analytics. Feedback is sent to the developer only when the user presses Send (message, optional name, email, screenshot and technical details).
 - Certify: data is not sold, not used for unrelated purposes, and not used for creditworthiness or lending.
 
 ## Screenshots (1280x800, in `docs/store/`; the store takes at most five)

@@ -14,7 +14,7 @@
       "https://*.cloudforce.com/*"
     ],
     "content_security_policy": {
-      "extension_pages": "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.my.salesforce.com https://*.cloudforce.com; frame-src 'self' blob: data:; worker-src 'self'"
+      "extension_pages": "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.my.salesforce.com https://*.cloudforce.com https://query-saver-feedback.mathes-btech.workers.dev; frame-src 'self' blob: data:; worker-src 'self'"
     },
     "storage": {
       "managed_schema": "managed_schema.json"
@@ -34,6 +34,7 @@
     "openoffice.org",
     "purl.oclc.org",
     "purl.org",
+    "query-saver-feedback.mathes-btech.workers.dev",
     "rolldown.rs",
     "schemas.microsoft.com",
     "schemas.openxmlformats.org",
@@ -47,6 +48,7 @@
   ],
   "networkFiles": [
     "src/background/fetchProxy.js",
-    "src/background/oauth.js"
+    "src/background/oauth.js",
+    "src/components/feedback/FeedbackModal.vue"
   ]
 }

@@ -56,6 +56,7 @@ The extension reads these keys from `chrome.storage.managed` (schema: `public/ma
 | `disableCache` | boolean | `false` | Org metadata caches and the Health result are kept only until the browser closes. |
 | `disableQueryHistory` | boolean | `false` | No SQL run history (existing history is cleared). |
 | `disableDiagramforce` | boolean | `false` | Open in Diagramforce (sends diagram names to diagramforce.com) is unavailable, even if a user turns it on. |
+| `disableFeedbackUpload` | boolean | `false` | The Feedback form only opens an email in the user's mail app; nothing is posted to the developer's feedback service. |
 
 **Google Admin console:** Apps and extensions, select the extension, "Policy for extensions", paste JSON (values only):
 
@@ -65,7 +66,8 @@ The extension reads these keys from `chrome.storage.managed` (schema: `public/ma
   "allowedOrgDomains": { "Value": ["acme.my.salesforce.com", "*.sandbox.my.salesforce.com"] },
   "disableCache": { "Value": true },
   "disableQueryHistory": { "Value": true },
-  "disableDiagramforce": { "Value": true }
+  "disableDiagramforce": { "Value": true },
+  "disableFeedbackUpload": { "Value": true }
 }
 ```
 
@@ -79,7 +81,7 @@ The extension reads these keys from `chrome.storage.managed` (schema: `public/ma
 { "3rdparty": { "extensions": { "EXTENSION_ID": {
   "authMode": "oauth-only",
   "allowedOrgDomains": ["acme.my.salesforce.com"],
-  "disableCache": true, "disableQueryHistory": true, "disableDiagramforce": true
+  "disableCache": true, "disableQueryHistory": true, "disableDiagramforce": true, "disableFeedbackUpload": true
 } } } }
 ```
 
@@ -110,4 +112,4 @@ Chrome Web Store extensions update automatically, and Chrome has no policy to pi
 
 - The first time, a tab with Home: the org they are logged in to, or a Log in prompt (OAuth only: a My Domain and client ID form).
 - Settings, Storage: everything kept in the browser, with Delete.
-- No data is sent outside your Salesforce org. See `PRIVACY.md` and `docs/security-summary.md`.
+- No data is sent outside your Salesforce org, except feedback a user chooses to send (turn it off with `disableFeedbackUpload`). See `PRIVACY.md` and `docs/security-summary.md`.

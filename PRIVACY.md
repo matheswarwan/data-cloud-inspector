@@ -24,23 +24,23 @@ No other records or query results are stored. The user can see and delete everyt
 
 ## What it sends
 
-- The extension's only network calls go to the user's own Salesforce org. Its Content Security Policy blocks calls anywhere else.
+- The extension's network calls go to the user's own Salesforce org, and to the developer's feedback service only when the user sends feedback. Its Content Security Policy blocks calls anywhere else.
 - **Open in Diagramforce** is off unless the user turns it on in Settings, and an administrator can block it. When on, and only when the user clicks it on a data model or data stream diagram, the diagram's object names, field names and relationships (no records and no session) are handed to diagramforce.com, a free diagram editor run by a third party, which opens in a new tab.
-- **Feedback**: the extension sends none itself. The Feedback form opens an email in the user's own mail app (or copies the text) with what the user wrote and, if ticked, technical details: extension version, page, the org's domain and API version, and the paths and statuses of recent API calls. The user decides whether to send it.
+- **Feedback**, only when the user sends it from the Feedback form: the message, more details, an optional name and email address, an optional screenshot (which the user can mark up to hide anything private), and, if ticked, technical details (extension version, page, the org's domain and API version, and the paths and statuses of recent API calls, never their content). It goes to the developer's feedback service on Cloudflare (`query-saver-feedback.mathes-btech.workers.dev`, stored in a Cloudflare D1 database) and is used only to answer and fix what was reported. The user can choose Open email instead, which sends nothing from the extension. An administrator can turn sending off (`disableFeedbackUpload`).
 
 There is no analytics, telemetry or tracking. Nothing is collected in the background.
 
 ## Sharing
 
-Data is not sold, and is not shared with third parties, apart from the diagram the user chooses to open in Diagramforce. It is not used for advertising, for creditworthiness or lending, or for any purpose other than the extension's features.
+Data is not sold, and is not shared with third parties, apart from the diagram the user chooses to open in Diagramforce. Feedback stays with the developer. It is not used for advertising, for creditworthiness or lending, or for any purpose other than the extension's features.
 
 ## Administrators
 
-Organizations can manage the extension through Chrome policy: install it for their users, restrict it to their own org domains, allow OAuth only, and turn off the cache, query history and Diagramforce. See `docs/enterprise-deployment.md` in the source repository.
+Organizations can manage the extension through Chrome policy: install it for their users, restrict it to their own org domains, allow OAuth only, and turn off the cache, query history, Diagramforce and sending feedback. See `docs/enterprise-deployment.md` in the source repository.
 
 ## Changes from earlier versions
 
-- **1.0.7 and earlier** also kept the last Bulk lookup and Compare results in the browser's local storage after the browser closed (version 1.0.8 deletes them when it is installed); sent feedback, when the user chose to, to the developer's feedback service on Cloudflare (the message, optional name, email, screenshot and technical details); and offered Open in Diagramforce without the Settings switch.
+- **1.0.7 and earlier** also kept the last Bulk lookup and Compare results in the browser's local storage after the browser closed (version 1.0.8 deletes them when it is installed), and offered Open in Diagramforce without the Settings switch.
 
 ## Contact
 

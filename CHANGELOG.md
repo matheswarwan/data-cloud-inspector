@@ -8,10 +8,10 @@ Security and privacy changes for enterprise review (`security/audits/1.0.7-0b0cf
 
 **Permissions: narrower.** Removed `unlimitedStorage` and the hosts `*.salesforce.com`, `*.force.com`, `*.salesforce-setup.com`; `*.cloudforce.com` is now optional (Settings). Added `activeTab` (no install warning). Host access is `https://*.my.salesforce.com/*` only. Chrome does not ask users to approve anything for this update.
 
-- Explicit Content Security Policy: scripts from the package only, network calls only to Salesforce.
+- Explicit Content Security Policy: scripts from the package only, network calls only to Salesforce and the feedback service.
 - Administrator policy through Chrome (`managed_schema.json`): `authMode` (`oauth-only` never reads the browser session cookie), `allowedOrgDomains`, `disableCache`, `disableQueryHistory`, `disableDiagramforce`. Settings shows the policies in force.
 - Bulk lookup and Compare results (people's records) are kept only until the browser closes; copies kept by earlier versions are deleted on update.
-- Feedback opens an email in your own mail app (text also copied, screenshot downloaded to attach); the extension no longer sends feedback to a server.
+- Feedback: Send posts to the developer's feedback service as before, or Open email starts a message in your own mail app; administrators can turn sending off (`disableFeedbackUpload`).
 - Open in Diagramforce is off until turned on in Settings.
 - Log in with OAuth: log in to an org by its My Domain without a browser session; Log out revokes the token in Salesforce.
 - Read-only guard: only `/services/data/` paths (Apex REST and other `/services/` paths refused).

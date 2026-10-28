@@ -7,6 +7,7 @@
 //   disableCache         true: org metadata caches and Health results end with the browser session
 //   disableQueryHistory  true: no SQL run history
 //   disableDiagramforce  true: no Open in Diagramforce
+//   disableFeedbackUpload true: the feedback form only opens an email (nothing sent to the feedback service)
 
 export const DEFAULT_POLICY = Object.freeze({
   authMode: 'session-or-oauth',
@@ -14,6 +15,7 @@ export const DEFAULT_POLICY = Object.freeze({
   disableCache: false,
   disableQueryHistory: false,
   disableDiagramforce: false,
+  disableFeedbackUpload: false,
 })
 
 /** A clean policy from whatever chrome.storage.managed holds (wrong types are ignored). */
@@ -29,6 +31,7 @@ export function normalizePolicy(raw) {
     disableCache: bool('disableCache'),
     disableQueryHistory: bool('disableQueryHistory'),
     disableDiagramforce: bool('disableDiagramforce'),
+    disableFeedbackUpload: bool('disableFeedbackUpload'),
   }
 }
 

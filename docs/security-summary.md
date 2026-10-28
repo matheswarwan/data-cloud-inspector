@@ -94,11 +94,12 @@ Not requested: `tabs`, `scripting`, `webRequest`, `declarativeNetRequest`, `<all
 ```
 default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none';
 frame-ancestors 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;
-font-src 'self' data:; connect-src 'self' https://*.my.salesforce.com https://*.cloudforce.com;
+font-src 'self' data:; connect-src 'self' https://*.my.salesforce.com https://*.cloudforce.com
+https://query-saver-feedback.mathes-btech.workers.dev;
 frame-src 'self' blob: data:; worker-src 'self'
 ```
 
-No `eval`, `new Function` or remote code in the source or the bundle; every script and font is in the package. `'unsafe-inline'` applies to styles only (the editor and charts set inline styles). `connect-src` stops any call to a host other than Salesforce, even if a dependency tried one.
+No `eval`, `new Function` or remote code in the source or the bundle; every script and font is in the package. `'unsafe-inline'` applies to styles only (the editor and charts set inline styles). `connect-src` stops any call to a host other than Salesforce and the feedback service, even if a dependency tried one.
 
 ## Storage
 
@@ -121,11 +122,12 @@ Settings, Storage lists everything with its size and a Delete per item and for e
 |---|---|---|
 | `https://<org>.my.salesforce.com/services/data/...` | every page | the request path and, for SQL, the query; `Authorization: Bearer`; `Sforce-Call-Options: client=DataCloudInspector` |
 | `https://<org>.my.salesforce.com/services/oauth2/token`, `/revoke` | Log in with OAuth, Log out | code, PKCE verifier, client ID; the token to revoke |
+| `https://query-saver-feedback.mathes-btech.workers.dev/feedback` | only when the user presses Send in the Feedback form (off under `disableFeedbackUpload`) | the message and details, optional name, email and screenshot, and, if ticked, extension version, page, org domain, API version and recent API paths with statuses (no query values, no records). Stored in the developer's Cloudflare D1 database. |
 
 Nothing else. No analytics, telemetry, error reporting, CDN fonts or scripts. Two user actions open other sites in a new tab, outside the extension's network calls:
 
 - **Open in Diagramforce** (off by default; blocked by `disableDiagramforce`): opens diagramforce.com and passes the diagram's object, field and relationship names with `postMessage`. No records or session.
-- **Feedback**: opens a `mailto:` email in the user's own mail app. The extension sends nothing.
+- **Open email** in the Feedback form: a `mailto:` email in the user's own mail app, as an alternative to Send.
 
 Links in Help open developer.salesforce.com, admin.salesforce.com and similar documentation pages.
 
@@ -140,6 +142,7 @@ Through Chrome policy (`chrome.storage.managed`, schema `public/managed_schema.j
 | `disableCache` | Metadata caches and Health results are kept only until the browser closes. |
 | `disableQueryHistory` | No SQL run history is kept (and any existing history is cleared). |
 | `disableDiagramforce` | Open in Diagramforce is unavailable. |
+| `disableFeedbackUpload` | The Feedback form only opens an email; nothing is posted to the feedback service. |
 
 Settings shows the policies in force under "Set by your administrator". Chrome's own `ExtensionSettings` (`runtime_allowed_hosts`, `runtime_blocked_hosts`) adds a browser-enforced host limit on top.
 

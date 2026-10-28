@@ -26,6 +26,7 @@ const POLICY_TEXT = {
   disableCache: () => 'Org metadata and Health results are kept only until the browser closes.',
   disableQueryHistory: () => 'No query history is kept.',
   disableDiagramforce: () => 'Open in Diagramforce is turned off.',
+  disableFeedbackUpload: () => 'Feedback opens an email only; nothing is sent to the feedback service.',
 }
 const managedLines = policyOverrides(managed).map((k) => POLICY_TEXT[k](managed[k]))
 

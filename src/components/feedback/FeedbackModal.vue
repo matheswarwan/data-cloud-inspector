@@ -1,16 +1,19 @@
 <script setup>
 // Feedback: what happened, more details, an optional marked-up screenshot, and optional
-// technical details (shown before use). The extension sends nothing itself: Open email starts
-// a message in the user's own mail app (the full text is also copied), and the screenshot is
-// downloaded to attach by hand. No call leaves the browser except to Salesforce.
+// technical details (shown before sending). Send posts it to the developer's feedback service
+// (the Marketing Cloud Toolkit's Worker, D1 table fb_data_cloud_inspector) with
+// app = 'data-cloud-inspector'; Open email starts a message in the user's own mail app instead.
+// The administrator policy disableFeedbackUpload leaves only the email.
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
-import { X, Camera, MonitorUp, ImageUp, Trash2, Loader2, ChevronDown, ChevronRight, Mail, Copy, Download } from 'lucide-vue-next'
+import { X, Camera, MonitorUp, ImageUp, Trash2, Loader2, ChevronDown, ChevronRight, Mail, Copy, Download, Send } from 'lucide-vue-next'
 import ScreenshotEditor from './ScreenshotEditor.vue'
 import { useOrg, currentOrg } from '../../app/useOrg.js'
 import { recentCalls } from '../../lib/api.js'
 import { collectFeedbackMetadata, metadataLines, pagePath, feedbackText, feedbackMailto } from '../../lib/feedbackMeta.js'
 import { capturePage, captureDisplay, loadImage, fileToDataUrl, toUploadableDataUrl } from '../../lib/screenshot.js'
-import { FEEDBACK_EMAIL, LINKEDIN_URL } from '../../lib/contact.js'
+import { FEEDBACK_EMAIL, LINKEDIN_URL, FEEDBACK_ENDPOINT } from '../../lib/contact.js'
+import { loadFeedbackContact, saveFeedbackContact } from '../../lib/feedbackContact.js'
+import { policy } from '../../lib/policy.js'
 
 const props = defineProps({ screen: { type: String, default: 'unknown' } })
 const emit = defineEmits(['close'])
@@ -23,6 +26,12 @@ const details = ref('')
 const includeMeta = ref(true)
 const showMeta = ref(false)
 const done = ref('') // what the last action did
+const canSend = !policy().disableFeedbackUpload
+const name = ref('')
+const email = ref('')
+const state = ref('idle') // idle | sending | sent | error
+const sendError = ref('')
+const sentNote = ref('') // e.g. the screenshot could not be attached
 
 const image = ref(null) // canvas or <img> being marked up
 const editor = ref(null)
@@ -31,7 +40,10 @@ const hidden = ref(false) // while capturing this page
 const shotError = ref('')
 const fileInput = ref(null)
 
-onMounted(() => window.addEventListener('paste', onPaste))
+onMounted(() => {
+  window.addEventListener('paste', onPaste)
+  if (canSend) loadFeedbackContact().then((c) => { if (!name.value) name.value = c.name; if (!email.value) email.value = c.email })
+})
 onUnmounted(() => window.removeEventListener('paste', onPaste))
 
 const meta = computed(() => collectFeedbackMetadata({
@@ -82,6 +94,43 @@ const version = () => chrome?.runtime?.getManifest?.()?.version ?? 'unknown'
 const text = () => feedbackText({ kind: kind.value, message: message.value, details: details.value, meta: includeMeta.value ? meta.value : null })
 const subject = () => `Data Cloud Inspector ${version()} feedback: ${KINDS.find((k) => k.id === kind.value)?.label || kind.value}`
 
+async function submit() {
+  if (!message.value.trim() || !canSend) return
+  state.value = 'sending'
+  sendError.value = ''
+  sentNote.value = ''
+  try {
+    // A picture the browser cannot export is left out rather than failing the whole send.
+    let screenshot = null
+    if (image.value && editor.value) {
+      try { screenshot = toUploadableDataUrl(editor.value.getResult()) } catch (e) { sentNote.value = `The screenshot could not be attached (${e.message}).` }
+    }
+    const res = await fetch(FEEDBACK_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'omit',
+      body: JSON.stringify({
+        message: message.value.trim(),
+        details: details.value.trim() || null,
+        kind: kind.value,
+        screen: `data-cloud-inspector/${pagePath(props.screen).replace(/^\/+/, '')}`,
+        app: 'data-cloud-inspector',
+        version: version(),
+        name: name.value.trim() || null,
+        email: email.value.trim() || null,
+        metadata: includeMeta.value ? meta.value : null,
+        screenshot,
+      }),
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    saveFeedbackContact({ name: name.value, email: email.value })
+    state.value = 'sent'
+  } catch (e) {
+    sendError.value = e.message
+    state.value = 'error'
+  }
+}
+
 async function copyText() {
   try { await navigator.clipboard.writeText(text()); return true } catch { return false }
 }
@@ -115,15 +164,23 @@ const KINDS = [
 </script>
 
 <template>
-  <div v-show="!hidden" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @mousedown.self="emit('close')">
+  <div v-show="!hidden" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @mousedown.self="state === 'sending' || emit('close')">
     <div class="w-full max-w-3xl max-h-[92vh] flex flex-col rounded-xl border border-border bg-card shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
       <div class="flex items-center gap-2 px-5 py-3 border-b border-border">
         <h2 id="feedback-title" class="flex-1 text-base font-semibold">Send feedback</h2>
         <button class="p-1 rounded hover:bg-accent" title="Close" @click="emit('close')"><X class="h-4 w-4" /></button>
       </div>
 
-      <form class="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4 text-sm" @submit.prevent="openEmail">
-        <p class="text-xs text-muted-foreground">Nothing is sent from the extension: Open email starts a message to <a :href="`mailto:${FEEDBACK_EMAIL}`" class="text-link hover:underline">{{ FEEDBACK_EMAIL }}</a> in your own mail app, so you see everything before it goes. Or reach out on <a :href="LINKEDIN_URL" target="_blank" rel="noopener" class="text-link hover:underline">LinkedIn</a>.</p>
+      <div v-if="state === 'sent'" class="p-8 text-center">
+        <p class="text-base font-semibold">Thank you, it's sent.</p>
+        <p v-if="sentNote" class="text-sm text-amber-700 dark:text-amber-400 mt-1">{{ sentNote }} Use Upload an image to send one.</p>
+        <p class="text-sm text-muted-foreground mt-1">{{ email ? 'You may get a reply at ' + email + '.' : 'Add your email next time if you would like a reply.' }}</p>
+        <button class="dci-btn-primary mt-4" @click="emit('close')">Close</button>
+      </div>
+
+      <form v-else class="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4 text-sm" @submit.prevent="canSend ? submit() : openEmail()">
+        <p v-if="canSend" class="text-xs text-muted-foreground">Send goes to the developer's feedback service. You can also email <a :href="`mailto:${FEEDBACK_EMAIL}`" class="text-link hover:underline">{{ FEEDBACK_EMAIL }}</a> or reach out on <a :href="LINKEDIN_URL" target="_blank" rel="noopener" class="text-link hover:underline">LinkedIn</a>.</p>
+        <p v-else class="text-xs text-muted-foreground">Open email starts a message to <a :href="`mailto:${FEEDBACK_EMAIL}`" class="text-link hover:underline">{{ FEEDBACK_EMAIL }}</a> in your own mail app, so you see everything before it goes. Or reach out on <a :href="LINKEDIN_URL" target="_blank" rel="noopener" class="text-link hover:underline">LinkedIn</a>.</p>
         <div class="flex gap-2" role="radiogroup" aria-label="Kind of feedback">
           <button v-for="k in KINDS" :key="k.id" type="button" role="radio" :aria-checked="kind === k.id"
             class="h-8 px-3 rounded-md border text-xs" :class="kind === k.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-accent'"
@@ -160,7 +217,7 @@ const KINDS = [
           <div v-if="image" class="mt-1.5">
             <ScreenshotEditor ref="editor" :image="image" />
             <div class="flex items-center gap-2 mt-1.5">
-              <p class="flex-1 text-xs text-amber-700 dark:text-amber-400">Screenshots can show customer data. Draw over anything private before you attach it.</p>
+              <p class="flex-1 text-xs text-amber-700 dark:text-amber-400">Screenshots can show customer data. Draw over anything private before you send it.</p>
               <button type="button" class="flex items-center gap-1 h-7 px-2 rounded-md border border-border text-xs hover:bg-accent" @click="downloadShot"><Download class="h-3.5 w-3.5" /> Download screenshot</button>
               <button type="button" class="flex items-center gap-1 h-7 px-2 rounded-md border border-border text-xs hover:bg-accent" @click="image = null"><Trash2 class="h-3.5 w-3.5" /> Remove</button>
             </div>
@@ -174,18 +231,28 @@ const KINDS = [
               <span class="text-xs text-muted-foreground">Version, browser, the page you are on, the org's domain and API version, and the last API calls (paths and statuses only: no SQL or data).</span></span>
           </label>
           <button v-if="includeMeta" type="button" class="mt-1 ml-6 flex items-center gap-1 text-xs text-link hover:underline" :aria-expanded="showMeta" @click="showMeta = !showMeta">
-            <ChevronDown v-if="showMeta" class="h-3 w-3" /><ChevronRight v-else class="h-3 w-3" /> See exactly what goes in the email
+            <ChevronDown v-if="showMeta" class="h-3 w-3" /><ChevronRight v-else class="h-3 w-3" /> See exactly what is sent
           </button>
           <dl v-if="includeMeta && showMeta" class="mt-1 ml-6 grid grid-cols-[9rem_1fr] gap-x-3 gap-y-0.5 text-xs rounded-md border border-border bg-muted/30 p-2">
             <template v-for="([k, v], i) in metaLines" :key="i"><dt class="text-muted-foreground">{{ k }}</dt><dd class="break-all">{{ v }}</dd></template>
           </dl>
         </section>
 
+        <div v-if="canSend" class="grid grid-cols-2 gap-3">
+          <label class="block"><span class="text-xs text-muted-foreground">Name (optional)</span>
+            <input v-model="name" maxlength="100" class="mt-0.5 w-full h-8 rounded-md border border-border bg-background px-2" /></label>
+          <label class="block"><span class="text-xs text-muted-foreground">Email, if you'd like a reply (optional)</span>
+            <input v-model="email" type="email" maxlength="200" class="mt-0.5 w-full h-8 rounded-md border border-border bg-background px-2" /></label>
+        </div>
         <p v-if="done" class="text-sm" role="status">{{ done }}</p>
-        <div class="flex justify-end gap-2 pt-1">
-          <button type="button" class="h-9 px-4 rounded-md border border-border text-sm hover:bg-accent" @click="emit('close')">Close</button>
-          <button type="button" class="h-9 px-4 rounded-md border border-border text-sm hover:bg-accent disabled:opacity-50 flex items-center gap-1.5" :disabled="!message.trim()" @click="copyOnly"><Copy class="h-4 w-4" /> Copy text</button>
-          <button type="submit" class="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50 flex items-center gap-1.5" :disabled="!message.trim()"><Mail class="h-4 w-4" /> Open email</button>
+        <p v-if="state === 'error'" class="text-sm text-red-600" role="alert">Could not send ({{ sendError }}). Try again, or use Open email.</p>
+        <div class="flex flex-wrap justify-end gap-2 pt-1">
+          <button type="button" class="dci-btn" @click="emit('close')">Close</button>
+          <button type="button" class="dci-btn" :disabled="!message.trim()" @click="copyOnly"><Copy class="h-4 w-4" /> Copy text</button>
+          <button :type="canSend ? 'button' : 'submit'" :class="canSend ? 'dci-btn' : 'dci-btn-primary'" :disabled="!message.trim()" @click="canSend && openEmail()"><Mail class="h-4 w-4" /> Open email</button>
+          <button v-if="canSend" type="submit" class="dci-btn-primary" :disabled="!message.trim() || state === 'sending'">
+            <Loader2 v-if="state === 'sending'" class="h-4 w-4 animate-spin" /><Send v-else class="h-4 w-4" /> Send
+          </button>
         </div>
       </form>
     </div>

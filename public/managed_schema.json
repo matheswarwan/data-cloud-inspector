@@ -31,6 +31,11 @@
       "title": "Turn off Open in Diagramforce",
       "description": "true: no diagram is ever handed to diagramforce.com.",
       "type": "boolean"
+    },
+    "disableFeedbackUpload": {
+      "title": "Do not send feedback to the developer's service",
+      "description": "true: the Feedback form only opens an email in the user's mail app; nothing is posted to the feedback service.",
+      "type": "boolean"
     }
   }
 }
