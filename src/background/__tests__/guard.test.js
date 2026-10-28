@@ -19,6 +19,12 @@ describe('checkRequest (read only)', () => {
   it('refuses paths outside /services and tricks', () => {
     expect(checkRequest('GET', 'https://evil.example/services/data')).toMatch(/Only/)
     expect(checkRequest('GET', '/lightning/setup')).toMatch(/Only/)
-    expect(checkRequest('GET', '/services/../secur/frontdoor.jsp')).toMatch(/not allowed/)
+    expect(checkRequest('GET', '/services/../secur/frontdoor.jsp')).toMatch(/Only/)
+    expect(checkRequest('GET', '/services/data/../../secur/frontdoor.jsp')).toMatch(/not allowed/)
+  })
+  it('refuses Apex REST and other /services paths, even GET', () => {
+    expect(checkRequest('GET', '/services/apexrest/anything')).toMatch(/Only/)
+    expect(checkRequest('GET', '/services/oauth2/userinfo')).toMatch(/Only/)
+    expect(checkRequest('GET', '/services/data/v65.0/ssot/data-spaces')).toBeNull()
   })
 })
