@@ -108,7 +108,7 @@ const TYPE = { string: '#047857', number: '#0369a1', boolean: '#6d28d9', null: '
       <button class="p-1 rounded border bg-card hover:bg-accent" aria-label="Fit" @click="fit"><Maximize class="w-3.5 h-3.5" /></button>
       <div class="relative">
         <button class="p-1 rounded border bg-card hover:bg-accent" aria-label="Download the graph" title="Download the graph as an image" :aria-expanded="menu" :disabled="!graph.nodes.length" @click="menu = !menu"><Download class="w-3.5 h-3.5" /></button>
-        <div v-if="menu" class="absolute right-0 mt-1 z-10 w-40 rounded-md border bg-card shadow-lg py-1 text-xs" role="menu">
+        <div v-if="menu" class="absolute right-0 mt-1 z-10 w-40 rounded-xl border bg-card shadow-lg py-1 text-xs" role="menu">
           <button role="menuitem" class="block w-full text-left px-3 py-1.5 hover:bg-accent" @click="download('png')">PNG image (.png)</button>
           <button role="menuitem" class="block w-full text-left px-3 py-1.5 hover:bg-accent" @click="download('svg')">SVG image (.svg)</button>
         </div>

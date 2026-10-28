@@ -242,7 +242,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
           <button class="text-xs text-link hover:underline" @click="exportOpen = !exportOpen">Export data model</button>
           <span class="ml-auto"><DownloadMenu small label="List" :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="objects" :disabled="!list.length" /></span>
         </div>
-        <div v-if="exportOpen" class="mt-1 p-2 border rounded-md bg-card text-xs space-y-1.5">
+        <div v-if="exportOpen" class="mt-1 p-2 border rounded-xl bg-card text-xs space-y-1.5">
           <div class="flex gap-3">
             <label v-for="k in ['DMO', 'DLO', 'CI']" :key="k" class="flex items-center gap-1"><input v-model="exportOpts.kinds" type="checkbox" :value="k" /> {{ k }}s</label>
           </div>
@@ -260,7 +260,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
         {{ list.length }} of {{ catalog.objects.length }} objects
         <span v-if="catalog.loadedAt"> · metadata from {{ time(catalog.loadedAt) }}</span>
       </div>
-      <div v-if="lookupTarget" class="text-xs p-2 border rounded-md bg-card space-y-1.5">
+      <div v-if="lookupTarget" class="text-xs p-2 border rounded-xl bg-card space-y-1.5">
         <p>Not in this list<span v-if="catalog.loadedAt"> (read {{ time(catalog.loadedAt) }})</span>. Refresh the list, or ask Data Cloud whether it can read <span class="font-mono">{{ lookupTarget }}</span>.</p>
         <button class="px-2 py-1 rounded-md border hover:bg-accent disabled:opacity-50" :disabled="lookup?.loading" @click="lookUp">{{ lookup?.loading ? 'Looking…' : 'Look it up in Data Cloud' }}</button>
         <template v-if="lookup && !lookup.loading">
@@ -361,7 +361,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
           <Loading v-if="!catalog.usage" text="Reading calculated insights, segments and activations…" />
           <template v-else>
             <p v-if="!usedCount" class="text-muted-foreground">No calculated insight or segment uses this object.</p>
-            <div v-if="used.insights.length" class="border rounded-md bg-card">
+            <div v-if="used.insights.length" class="border rounded-xl bg-card">
               <h4 class="p-2 border-b font-medium">Calculated insights ({{ used.insights.length }})</h4>
               <div v-for="ci in used.insights" :key="ci.name" class="p-2 border-b last:border-0">
                 <button v-if="byName.has(ci.name)" class="text-link hover:underline" @click="pick(ci.name)">{{ ci.label }}</button>
@@ -370,7 +370,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
                 <div class="text-xs text-muted-foreground mt-0.5">{{ ci.fields.length ? `Uses ${ci.fields.join(', ')}` : 'Uses the object' }}</div>
               </div>
             </div>
-            <div v-if="used.segments.length" class="border rounded-md bg-card">
+            <div v-if="used.segments.length" class="border rounded-xl bg-card">
               <h4 class="p-2 border-b font-medium">Segments ({{ used.segments.length }})</h4>
               <div v-for="sg in used.segments" :key="sg.name" class="p-2 border-b last:border-0">
                 <RouterLink :to="`/segments/${sg.name}`" class="text-link hover:underline">{{ sg.label }}</RouterLink>
@@ -391,7 +391,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
           <Loading v-if="mappings.loading" text="Loading mappings…" />
           <p v-else-if="mappings.error" class="text-sm text-destructive">{{ mappings.error }}</p>
           <p v-else-if="mappings.list && !mappings.list.length" class="text-sm text-muted-foreground">Nothing is mapped to this DMO.</p>
-          <div v-for="m in mappings.list || []" :key="m.name" class="border rounded-md bg-card">
+          <div v-for="m in mappings.list || []" :key="m.name" class="border rounded-xl bg-card">
             <div class="p-2 border-b flex flex-wrap items-center gap-2 text-sm">
               <button v-if="byName.has(m.source)" class="font-mono text-link hover:underline" @click="pick(m.source)">{{ m.source }}</button>
               <span v-else class="font-mono">{{ m.source }}</span>
@@ -409,7 +409,7 @@ const tabBtn = (t) => ['px-3 py-1.5 text-sm border-b-2', tab.value === t ? 'bord
         <div v-else-if="selected.kind === 'DLO'" class="space-y-3">
           <Loading v-if="!catalog.streams" text="Loading data streams…" />
           <p v-else-if="!streamsFor.length" class="text-sm text-muted-foreground">No data stream writes to this DLO (it may be filled by a transform or a system process).</p>
-          <div v-for="s in streamsFor" :key="s.name" class="border rounded-md bg-card p-3 text-sm grid grid-cols-[10rem_1fr] gap-x-3 gap-y-1">
+          <div v-for="s in streamsFor" :key="s.name" class="border rounded-xl bg-card p-3 text-sm grid grid-cols-[10rem_1fr] gap-x-3 gap-y-1">
             <span class="text-muted-foreground">Stream</span><span>{{ s.label }} <span class="font-mono text-xs text-muted-foreground">{{ s.name }}</span>
               <a v-if="s.recordId" :href="recordUrl(currentOrg()?.host, s.recordId)" target="_blank" rel="noopener" class="ml-2 text-xs text-link hover:underline inline-flex items-center gap-1">Open stream</a></span>
             <span class="text-muted-foreground">Source</span><span>{{ s.connector }}{{ s.sourceObject ? `: ${s.sourceObject}` : '' }}{{ s.dataSource ? ` (${s.dataSource})` : '' }}</span>

@@ -23,7 +23,7 @@ const isUsed = (name) => props.used.includes(name)
 </script>
 
 <template>
-  <div class="flex flex-col h-full min-h-0 border rounded-md bg-card">
+  <div class="flex flex-col h-full min-h-0 border rounded-xl bg-card">
     <div class="p-2 border-b">
       <label class="flex items-center gap-1.5 border rounded-md px-2 py-1 bg-background">
         <Search class="w-3.5 h-3.5 text-muted-foreground" />

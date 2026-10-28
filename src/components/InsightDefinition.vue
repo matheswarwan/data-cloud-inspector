@@ -30,7 +30,7 @@ const fieldCols = [
 <template>
   <div class="space-y-3 text-sm">
             <p v-if="ci.description && (show === 'all' || show === 'details')" class="text-muted-foreground">{{ ci.description }}</p>
-            <div v-if="show === 'all' || show === 'details'" class="border rounded-md bg-card p-3 grid grid-cols-[10rem_1fr] md:grid-cols-[10rem_1fr_10rem_1fr] gap-x-3 gap-y-1">
+            <div v-if="show === 'all' || show === 'details'" class="border rounded-xl bg-card p-3 grid grid-cols-[10rem_1fr] md:grid-cols-[10rem_1fr_10rem_1fr] gap-x-3 gap-y-1">
               <span class="text-muted-foreground">Status</span><span>{{ [ci.status, ci.definitionStatus].filter(Boolean).join(', ').toLowerCase() }}{{ ci.enabled ? '' : ' (disabled)' }}</span>
               <span class="text-muted-foreground">Type</span><span>{{ ci.type.replace(/_/g, ' ').toLowerCase() }}{{ ci.fromPackage ? ', from a package' : '' }}</span>
               <span class="text-muted-foreground">Schedule</span><span>{{ ci.schedule.replace(/_/g, ' ').toLowerCase() || 'none' }}</span>
@@ -38,7 +38,7 @@ const fieldCols = [
               <span class="text-muted-foreground">Partitioned by</span><span class="font-mono text-xs">{{ partitionBy || 'none' }}</span>
               <span class="text-muted-foreground">Dialect</span><span>{{ ci.dialect }}</span>
             </div>
-            <div v-if="show === 'all' || show === 'sql'" class="border rounded-md bg-card">
+            <div v-if="show === 'all' || show === 'sql'" class="border rounded-xl bg-card">
               <div class="p-2 border-b flex items-center gap-2">
                 <span class="font-medium">SQL</span>
                 <button class="ml-auto text-xs text-link hover:underline" @click="copySql(ci.sql)">{{ copied ? 'Copied' : 'Copy SQL' }}</button>

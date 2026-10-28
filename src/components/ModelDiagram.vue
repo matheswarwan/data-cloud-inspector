@@ -219,7 +219,7 @@ const relCount = computed(() => graph.value.edges.filter((e) => e.kind === 'rel'
       <label v-if="!streams" class="flex items-center gap-1.5"><input v-model="sources" type="checkbox" /> Data lake objects mapped in</label>
       <div class="relative">
         <input v-model="search" placeholder="Find a box" class="border rounded-md px-2 py-1 bg-background w-48" @keydown.enter="onSearchEnter" />
-        <ul v-if="matches.length && search.trim()" class="absolute z-20 mt-1 w-72 max-h-60 overflow-auto border rounded-md bg-card shadow-lg text-sm">
+        <ul v-if="matches.length && search.trim()" class="absolute z-20 mt-1 w-72 max-h-60 overflow-auto border rounded-xl bg-card shadow-lg text-sm">
           <li v-for="n in matches.slice(0, 20)" :key="n.id"><button class="w-full text-left px-2 py-1 hover:bg-accent" @click="focusNode(n.id); search = ''">{{ n.label }} <span class="font-mono text-xs text-muted-foreground">{{ n.name }}</span></button></li>
         </ul>
       </div>
@@ -231,7 +231,7 @@ const relCount = computed(() => graph.value.edges.filter((e) => e.kind === 'rel'
         <button class="p-1.5 rounded-md border hover:bg-accent" title="Lay out again (undoes moved boxes)" aria-label="Lay out again" @click="relayout"><RotateCcw class="w-4 h-4" /></button>
         <div class="relative" data-export-menu>
           <button class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50" :disabled="!graph.nodes.length" :aria-expanded="menu" @click="menu = !menu"><Download class="w-4 h-4" /> Export</button>
-          <div v-if="menu" role="menu" class="absolute right-0 z-20 mt-1 w-60 border rounded-md bg-card shadow-lg py-1">
+          <div v-if="menu" role="menu" class="absolute right-0 z-20 mt-1 w-60 border rounded-xl bg-card shadow-lg py-1">
             <button v-for="[k, label] in EXPORTS" :key="k" role="menuitem" class="block w-full text-left px-3 py-1.5 text-sm hover:bg-accent" @click="doExport(k)">{{ label }}</button>
           </div>
         </div>
@@ -289,7 +289,7 @@ const relCount = computed(() => graph.value.edges.filter((e) => e.kind === 'rel'
         </div>
       </div>
 
-      <aside v-if="selNode" class="w-72 shrink-0 border rounded-md bg-card p-3 text-sm space-y-2 overflow-auto h-[calc(100vh-14rem)] min-h-96" aria-label="Selected object">
+      <aside v-if="selNode" class="w-72 shrink-0 border rounded-xl bg-card p-3 text-sm space-y-2 overflow-auto h-[calc(100vh-14rem)] min-h-96" aria-label="Selected object">
         <div>
           <div class="font-medium">{{ selNode.label }}</div>
           <div class="font-mono text-xs text-muted-foreground break-all">{{ selNode.name }}</div>

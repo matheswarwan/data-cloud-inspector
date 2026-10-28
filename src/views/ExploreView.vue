@@ -88,7 +88,7 @@ const text = computed(() => {
       v-if="method === 'POST'" v-model="body" rows="5" spellcheck="false"
       class="w-full border rounded-md p-2 bg-background font-mono text-xs"
     />
-    <details class="border rounded-md bg-card" :open="examplesOpen" @toggle="examplesOpen = $event.target.open">
+    <details class="border rounded-xl bg-card" :open="examplesOpen" @toggle="examplesOpen = $event.target.open">
       <summary class="px-3 py-2 cursor-pointer text-sm font-medium">Examples</summary>
       <div class="px-3 pb-3 grid md:grid-cols-2 gap-x-6 gap-y-3">
         <div v-for="g in EXAMPLES" :key="g.group">

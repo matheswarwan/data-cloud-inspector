@@ -177,7 +177,7 @@ const ciDoc = () => docFrom({ title: `Calculated insight: ${ci.value.label}`, in
     <Loading v-if="!ci && loading" text="Loading" />
     <p v-else-if="!ci" class="text-sm text-muted-foreground">This calculated insight is not in the selected data space.</p>
     <template v-else>
-      <div class="border rounded-md bg-card p-3 space-y-3">
+      <div class="border rounded-xl bg-card p-3 space-y-3">
         <div class="flex flex-wrap items-start gap-3">
           <div>
             <div class="text-xs text-muted-foreground">Calculated Insight</div>
@@ -205,7 +205,7 @@ const ciDoc = () => docFrom({ title: `Calculated insight: ${ci.value.label}`, in
         <button :class="tabBtn('usedby')" @click="tab = 'usedby'">Used by</button>
       </nav>
 
-      <dl v-if="tab === 'details'" class="border rounded-md bg-card p-4 grid md:grid-cols-2 gap-x-10 gap-y-3 text-sm">
+      <dl v-if="tab === 'details'" class="border rounded-xl bg-card p-4 grid md:grid-cols-2 gap-x-10 gap-y-3 text-sm">
         <div v-for="[label, value] in detailPairs" :key="label" class="border-b pb-2">
           <dt class="text-xs text-muted-foreground">{{ label }}</dt><dd :class="label === 'API Name' ? 'font-mono text-xs' : ''">{{ value || '—' }}</dd>
         </div>
@@ -228,7 +228,7 @@ const ciDoc = () => docFrom({ title: `Calculated insight: ${ci.value.label}`, in
       </div>
 
       <div v-else-if="tab === 'usedby'" class="grid lg:grid-cols-2 gap-4 text-sm">
-        <div class="border rounded-md bg-card">
+        <div class="border rounded-xl bg-card">
           <h3 class="p-3 border-b font-medium">Reads from</h3>
           <div v-for="r in reads" :key="r.object" class="p-3 border-b last:border-0">
             <RouterLink :to="`/objects/${r.object}`" class="font-mono text-xs text-link hover:underline">{{ r.object }}</RouterLink>
@@ -236,7 +236,7 @@ const ciDoc = () => docFrom({ title: `Calculated insight: ${ci.value.label}`, in
           </div>
           <p v-if="!reads.length" class="p-3 text-muted-foreground">No objects found in its SQL.</p>
         </div>
-        <div class="border rounded-md bg-card">
+        <div class="border rounded-xl bg-card">
           <h3 class="p-3 border-b font-medium">Segments that use it</h3>
           <Loading v-if="!catalog.usage" text="Reading segments…" />
           <p v-else-if="!used?.segments.length" class="p-3 text-muted-foreground">No segment uses this insight.</p>

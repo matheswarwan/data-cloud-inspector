@@ -27,7 +27,7 @@ function cancel() { state.dialog?.resolve(state.dialog.kind === 'text' ? null : 
 
 <template>
   <div v-if="state.dialog" class="fixed inset-0 z-[60] bg-black/40 flex items-start justify-center pt-32 px-4" @mousedown.self="cancel" @keydown.esc="cancel">
-    <form class="w-full max-w-md rounded-md border bg-card shadow-2xl" role="dialog" aria-modal="true" :aria-label="state.dialog.title" @submit.prevent="ok()">
+    <form class="w-full max-w-md rounded-xl border bg-card shadow-2xl" role="dialog" aria-modal="true" :aria-label="state.dialog.title" @submit.prevent="ok()">
       <h2 class="px-4 pt-4 font-medium">{{ state.dialog.title }}</h2>
       <div class="px-4 py-3 space-y-2 text-sm">
         <p v-if="state.dialog.message" class="text-muted-foreground whitespace-pre-line">{{ state.dialog.message }}</p>

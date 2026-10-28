@@ -16,7 +16,7 @@ const groups = computed(() => {
   <div class="space-y-2">
     <RouterLink to="/help" class="text-xs text-link hover:underline">Help</RouterLink>
     <div class="grid md:grid-cols-2 gap-3 items-start">
-      <div v-for="(g, gi) in groups" :key="gi" class="border rounded-md bg-card divide-y">
+      <div v-for="(g, gi) in groups" :key="gi" class="border rounded-xl bg-card divide-y">
         <RouterLink v-for="n in g" :key="n.path" :to="n.path" class="block px-3 py-2 hover:bg-accent">
           <div class="text-sm">{{ n.label }}</div>
           <p class="text-xs text-muted-foreground line-clamp-2">{{ HELP[PAGE_TOPIC[n.path]]?.text }}</p>

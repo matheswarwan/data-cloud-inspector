@@ -13,7 +13,7 @@ function download() { saveBlob(new Blob([props.text], { type: 'text/markdown;cha
 
 <template>
   <div class="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-4" @mousedown.self="emit('close')" @keydown.esc="emit('close')">
-    <div class="w-full max-w-4xl max-h-[85vh] flex flex-col rounded-md border bg-card shadow-2xl" role="dialog" aria-modal="true" :aria-label="title">
+    <div class="w-full max-w-4xl max-h-[85vh] flex flex-col rounded-xl border bg-card shadow-2xl" role="dialog" aria-modal="true" :aria-label="title">
       <div class="px-4 py-3 border-b flex items-center gap-2">
         <h2 class="font-medium truncate">{{ title }}</h2>
         <button class="ml-auto px-2.5 py-1 rounded-md border text-sm hover:bg-accent" @click="copy">{{ copied ? 'Copied' : 'Copy' }}</button>

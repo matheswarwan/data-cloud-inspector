@@ -68,7 +68,7 @@ const checkCols = [
       </p>
     </div>
 
-    <div class="border rounded-md bg-card">
+    <div class="border rounded-xl bg-card">
       <h3 class="p-3 border-b font-medium flex items-center gap-2">How this tool connects</h3>
       <p v-if="user.error" class="p-3 text-sm text-destructive">{{ user.error }}</p>
       <div v-else class="p-3 grid md:grid-cols-2 gap-x-8 gap-y-4 text-sm">

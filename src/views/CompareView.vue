@@ -73,7 +73,7 @@ const pairs = [
       <h2 class="text-lg font-semibold">Compare two orgs <HelpTip topic="compare" /></h2>
       <p class="text-sm text-muted-foreground">For example a sandbox and production: objects, fields, segments, calculated insights and data streams that exist in only one, and field type changes. Default data space in each org.</p>
     </div>
-    <p v-if="org.orgs.length < 2" class="text-sm p-3 border rounded-md bg-card">Only one org is logged in in this browser. Log in to the second org in another tab, then choose Find orgs again in the connection menu.</p>
+    <p v-if="org.orgs.length < 2" class="text-sm p-3 border rounded-xl bg-card">Only one org is logged in in this browser. Log in to the second org in another tab, then choose Find orgs again in the connection menu.</p>
     <form class="flex flex-wrap items-center gap-2 text-sm" @submit.prevent="compare">
       <select v-model="a" aria-label="First org" class="border rounded-md px-2 py-1.5 bg-background"><option v-for="o in org.orgs" :key="o.orgId" :value="o.orgId">{{ option(o) }}</option></select>
       <button type="button" class="p-1.5 rounded-md border hover:bg-accent" title="Name this org" aria-label="Name the first org" @click="rename(a)"><Pencil class="w-3.5 h-3.5" /></button>

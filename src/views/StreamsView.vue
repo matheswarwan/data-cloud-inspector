@@ -186,7 +186,7 @@ const fieldCols = [
             <a v-if="stream.recordId" :class="btn" :href="recordUrl(currentOrg()?.host, stream.recordId)" target="_blank" rel="noopener">Open in Salesforce</a>
           </div>
         </div>
-        <dl class="border rounded-md bg-card p-3 grid grid-cols-[10rem_1fr] md:grid-cols-[10rem_1fr_10rem_1fr] gap-x-3 gap-y-1 text-sm">
+        <dl class="border rounded-xl bg-card p-3 grid grid-cols-[10rem_1fr] md:grid-cols-[10rem_1fr_10rem_1fr] gap-x-3 gap-y-1 text-sm">
           <dt class="text-muted-foreground">Source</dt><dd>{{ stream.connector }}{{ stream.sourceObject ? `: ${stream.sourceObject}` : '' }}<span v-if="stream.connectorName" class="text-xs text-muted-foreground"> ({{ stream.connectorName }})</span></dd>
           <dt class="text-muted-foreground">Status</dt><dd>{{ stream.status.toLowerCase() }}{{ stream.enabled ? '' : ', disabled' }}</dd>
           <dt class="text-muted-foreground">Last run</dt><dd>{{ stream.lastRunStatus === 'NONE' ? 'never run' : stream.lastRunStatus.toLowerCase() }}, {{ when(stream.lastRefresh) }}</dd>
@@ -203,13 +203,13 @@ const fieldCols = [
               <button class="ml-1 text-xs text-link hover:underline" @click="router.push({ path: '/sql', query: { sql: latestProblemsSql(stream.problemDlo) } })">Open in SQL</button></template>
           </dd>
         </dl>
-        <div class="border rounded-md bg-card p-3 text-sm">
+        <div class="border rounded-xl bg-card p-3 text-sm">
           <div class="font-medium mb-1">Maps into</div>
           <p v-if="mapsTo === null" class="text-muted-foreground">{{ catalog.mappingsProgress ? `Reading mappings: ${catalog.mappingsProgress}` : 'Reading mappings…' }}</p>
           <p v-else-if="!mapsTo.length" class="text-muted-foreground">Its DLO is not mapped to any DMO.</p>
           <ul v-else class="space-y-0.5"><li v-for="m in mapsTo" :key="m.name"><RouterLink :to="`/objects/${m.target}`" class="font-mono text-xs text-link hover:underline">{{ m.target }}</RouterLink> <span class="text-xs text-muted-foreground">({{ m.fields.length }} fields)</span> <button class="text-xs text-link hover:underline" @click="toSql(m.target)">Create SQL</button></li></ul>
         </div>
-        <div class="border rounded-md bg-card">
+        <div class="border rounded-xl bg-card">
           <div class="p-3 border-b flex items-center gap-2 text-sm">
             <span class="font-medium">Source fields ({{ stream.sourceFields.length }})</span>
             <input v-model="fieldText" placeholder="Filter fields" class="ml-auto border rounded-md px-2 py-0.5 bg-background text-xs w-56" />

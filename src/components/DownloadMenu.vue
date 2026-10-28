@@ -69,7 +69,7 @@ const ITEMS = [
     </button>
     <template v-if="open">
       <div class="fixed inset-0 z-40" @click="open = false" />
-      <div class="absolute right-0 mt-1 w-56 z-50 rounded-md border bg-card shadow-lg py-1" role="menu">
+      <div class="absolute right-0 mt-1 w-56 z-50 rounded-xl border bg-card shadow-lg py-1" role="menu">
         <button v-for="item in ITEMS" :key="item.kind" role="menuitem" class="w-full text-left px-3 py-1.5 text-sm hover:bg-accent" @click="run(item.kind)">{{ item.label }}</button>
         <button v-if="getSheets" role="menuitem" class="w-full text-left px-3 py-1.5 text-sm hover:bg-accent border-t" @click="run('xlsx')">Excel (.xlsx)</button>
       </div>

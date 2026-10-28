@@ -98,5 +98,5 @@ defineExpose({ selection, insert, focus: () => view?.focus() })
 </script>
 
 <template>
-  <div ref="host" class="h-full border rounded-md overflow-hidden bg-card" />
+  <div ref="host" class="h-full border rounded-xl overflow-hidden bg-card" />
 </template>

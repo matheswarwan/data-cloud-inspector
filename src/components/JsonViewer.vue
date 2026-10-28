@@ -71,10 +71,10 @@ const tabBtn = (m) => ['px-2 py-0.5 rounded', mode.value === m ? 'bg-accent font
         <button class="text-link hover:underline" @click="download">Download .json</button>
       </span>
     </div>
-    <div v-if="mode === 'tree' && parsed.ok" :class="['border rounded-md p-2 overflow-auto font-mono bg-card', boxClass]">
+    <div v-if="mode === 'tree' && parsed.ok" :class="['border rounded-xl p-2 overflow-auto font-mono bg-card', boxClass]">
       <JsonNode :value="data" :state="state" />
     </div>
     <JsonGraph v-else-if="mode === 'graph'" :value="data" :copy="copy" :file-name="fileName" />
-    <pre v-else :class="['border rounded-md p-2 overflow-auto font-mono whitespace-pre-wrap break-all bg-card', boxClass]">{{ text }}</pre>
+    <pre v-else :class="['border rounded-xl p-2 overflow-auto font-mono whitespace-pre-wrap break-all bg-card', boxClass]">{{ text }}</pre>
   </div>
 </template>

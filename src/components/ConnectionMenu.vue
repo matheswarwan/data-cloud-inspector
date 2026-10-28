@@ -56,7 +56,7 @@ onUnmounted(() => { document.removeEventListener('mousedown', onDoc); document.r
       <Loader2 v-if="preloadState.running" class="w-3.5 h-3.5 shrink-0 animate-spin text-muted-foreground" :title="`Loading: ${progress.finished} of ${progress.total}`" />
       <ChevronDown class="w-3.5 h-3.5 shrink-0" />
     </button>
-    <div v-if="open" class="absolute right-0 mt-1 w-96 rounded-md border bg-card shadow-lg z-40 text-sm">
+    <div v-if="open" class="absolute right-0 mt-1 w-96 rounded-xl border bg-card shadow-lg z-40 text-sm">
       <div v-if="org.user" class="px-3 pt-3 pb-2 border-b">
         <div class="text-xs text-muted-foreground">Signed in as</div>
         <div class="truncate">{{ org.user.name }}</div>

@@ -39,7 +39,7 @@ const sel = 'border rounded px-1 py-0.5 bg-background text-xs max-w-full'
 </script>
 
 <template>
-  <div :class="['border rounded-md bg-card', complete ? '' : 'border-amber-400']" :data-table="table.id">
+  <div :class="['border rounded-xl bg-card', complete ? '' : 'border-amber-400']" :data-table="table.id">
     <div class="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
       <span class="font-mono text-xs border rounded px-1 text-muted-foreground">{{ alias }}</span>
       <span class="font-medium">{{ obj?.label || table.name }}</span>

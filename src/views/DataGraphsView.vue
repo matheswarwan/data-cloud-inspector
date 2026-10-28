@@ -154,7 +154,7 @@ const graphDoc = () => docFrom({ title: `Data graph: ${labelOf(graph.value)}`, i
           </div>
         </div>
         <p v-if="graph.error" class="text-sm text-destructive">Could not read its definition: {{ graph.error }}</p>
-        <dl class="border rounded-md bg-card p-3 grid grid-cols-[10rem_1fr] md:grid-cols-[10rem_1fr_10rem_1fr] gap-x-3 gap-y-1 text-sm">
+        <dl class="border rounded-xl bg-card p-3 grid grid-cols-[10rem_1fr] md:grid-cols-[10rem_1fr_10rem_1fr] gap-x-3 gap-y-1 text-sm">
           <dt class="text-muted-foreground">Primary object</dt><dd><RouterLink v-if="graph.primaryObjectName" :to="`/objects/${graph.primaryObjectName}`" class="text-link hover:underline">{{ graph.primaryObjectLabel || graph.primaryObjectName }}</RouterLink></dd>
           <dt class="text-muted-foreground">Status</dt><dd>{{ status(graph) || 'unknown' }}</dd>
           <dt class="text-muted-foreground">Records</dt><dd>{{ num(graph.record?.recordCount) }}</dd>
@@ -171,7 +171,7 @@ const graphDoc = () => docFrom({ title: `Data graph: ${labelOf(graph.value)}`, i
           <button :class="tabBtn('record')" @click="tab = 'record'">One record</button>
         </nav>
 
-        <div v-if="tab === 'objects'" class="border rounded-md bg-card overflow-auto">
+        <div v-if="tab === 'objects'" class="border rounded-xl bg-card overflow-auto">
           <table class="w-full text-sm">
             <thead class="text-left text-muted-foreground border-b"><tr><th class="p-2 font-normal">Object</th><th class="p-2 font-normal">Joined to its parent on</th><th class="p-2 font-normal">Fields in the graph</th></tr></thead>
             <tbody>
@@ -197,7 +197,7 @@ const graphDoc = () => docFrom({ title: `Data graph: ${labelOf(graph.value)}`, i
         </div>
 
         <div v-else-if="tab === 'sql'" class="space-y-4">
-          <div class="border rounded-md bg-card">
+          <div class="border rounded-xl bg-card">
             <div class="p-3 border-b flex flex-wrap items-center gap-2">
               <h3 class="font-medium text-sm">The graph's objects joined</h3>
               <span class="text-xs text-muted-foreground">A SELECT over the source objects, joined the way the graph joins them. Related records repeat the primary row once per match.</span>
@@ -205,7 +205,7 @@ const graphDoc = () => docFrom({ title: `Data graph: ${labelOf(graph.value)}`, i
             </div>
             <div class="p-2"><SqlBlock v-if="joinSql.sql" :code="joinSql.sql" box-class="max-h-96" /><p v-else class="p-2 text-sm text-muted-foreground">{{ catalog.objects.length ? 'None of the objects in this graph are in the metadata catalog.' : 'Reading the metadata…' }}</p></div>
           </div>
-          <div v-if="builtSql" class="border rounded-md bg-card">
+          <div v-if="builtSql" class="border rounded-xl bg-card">
             <div class="p-3 border-b flex flex-wrap items-center gap-2">
               <h3 class="font-medium text-sm">The built graph</h3>
               <span class="text-xs text-muted-foreground">The table Data Cloud stores the built graph in: one row per {{ graph.primaryObjectLabel || 'record' }}, the graph as JSON in json_blob__c.</span>
@@ -215,7 +215,7 @@ const graphDoc = () => docFrom({ title: `Data graph: ${labelOf(graph.value)}`, i
           </div>
         </div>
 
-        <div v-else-if="tab === 'record'" class="border rounded-md bg-card p-3 space-y-2">
+        <div v-else-if="tab === 'record'" class="border rounded-xl bg-card p-3 space-y-2">
           <p class="text-sm text-muted-foreground">One record's graph, the way Personalization and Agentforce get it.</p>
           <form class="flex gap-2" @submit.prevent="fetchRecord">
             <input v-model="recordId" :placeholder="`${graph.primaryObjectLabel || 'Primary object'} record ID`" :aria-label="`${graph.primaryObjectLabel || 'Primary object'} record ID`" class="flex-1 max-w-md border rounded-md px-2 py-1 bg-background font-mono text-sm" />

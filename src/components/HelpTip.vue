@@ -31,7 +31,7 @@ onBeforeUnmount(() => { open.value = false })
 <template>
   <button v-if="help" ref="btn" type="button" class="inline-flex align-middle p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent" :aria-label="`What is ${help.title}?`" :aria-expanded="open" @click.stop="toggle"><CircleHelp class="w-3.5 h-3.5" /></button>
   <Teleport to="body">
-    <div v-if="open && help" ref="pop" tabindex="-1" role="dialog" :aria-label="help.title" class="fixed z-50 w-80 border rounded-md bg-card text-foreground shadow-lg p-3 text-sm font-normal space-y-1.5 focus:outline-none" :style="{ top: `${pos.top}px`, left: `${pos.left}px` }">
+    <div v-if="open && help" ref="pop" tabindex="-1" role="dialog" :aria-label="help.title" class="fixed z-50 w-80 border rounded-xl bg-card text-foreground shadow-lg p-3 text-sm font-normal space-y-1.5 focus:outline-none" :style="{ top: `${pos.top}px`, left: `${pos.left}px` }">
       <div class="font-medium">{{ help.title }}</div>
       <p class="text-muted-foreground leading-snug">{{ help.text }}</p>
       <RouterLink :to="`/help#${topic}`" class="text-xs text-link hover:underline" @click="open = false">More in Help</RouterLink>

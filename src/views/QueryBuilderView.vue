@@ -183,7 +183,7 @@ const stepHead = 'w-full flex items-center gap-1.5 px-3 py-2 text-[11px] font-se
         <Splitter v-model="layout.browser" vertical v-bind="SIZES.browser" label="Resize the object list" @reset="layout.browser = SIZES.browser.def" />
 
         <!-- Middle: list of steps, or the canvas -->
-        <div class="flex-1 min-w-[16rem] min-h-0 overflow-auto border rounded-md bg-card/40">
+        <div class="flex-1 min-w-[16rem] min-h-0 overflow-auto border rounded-xl bg-card/40">
           <template v-if="!layout.visual">
             <div class="border-b">
               <button :class="stepHead" :aria-expanded="open.structure" @click="open.structure = !open.structure"><component :is="open.structure ? ChevronDown : ChevronRight" class="w-3.5 h-3.5" /> Step 1 · Query structure <span class="ml-auto font-normal normal-case">{{ q.tables.length }} {{ q.tables.length === 1 ? 'object' : 'objects' }}</span></button>
@@ -207,7 +207,7 @@ const stepHead = 'w-full flex items-center gap-1.5 px-3 py-2 text-[11px] font-se
             <button :class="stepHead" :disabled="!q.tables.length" :aria-expanded="open.output" @click="open.output = !open.output"><component :is="!q.tables.length ? Lock : open.output ? ChevronDown : ChevronRight" class="w-3.5 h-3.5" /> Step 2 · Output fields <span class="ml-auto font-normal normal-case">{{ q.options.groupBy.length ? 'grouped' : `${q.tables.reduce((n, t) => n + picked(t).length, 0)} fields` }}{{ q.options.computed.length ? ` + ${q.options.computed.length} computed` : '' }}</span></button>
             <div v-if="open.output && q.tables.length" :ref="(el) => (stepEls.output = el)" :class="['px-3 pb-3 space-y-3 text-xs', layout.steps.output != null && 'overflow-auto']" :style="stepStyle('output')">
               <p v-if="q.options.groupBy.length" class="text-amber-700 dark:text-amber-400">With GROUP BY (Step 4) the output is the grouped fields and the computed columns.</p>
-              <div v-for="(t, i) in q.tables" :key="t.id" class="border rounded-md bg-card p-2 space-y-1.5">
+              <div v-for="(t, i) in q.tables" :key="t.id" class="border rounded-xl bg-card p-2 space-y-1.5">
                 <div class="flex items-center gap-2">
                   <span class="font-mono border rounded px-1 text-muted-foreground">{{ aliasAt(i) }}</span>
                   <span class="font-medium">{{ objects.find((o) => o.name === t.name)?.label || t.name }}</span>
@@ -289,7 +289,7 @@ const stepHead = 'w-full flex items-center gap-1.5 px-3 py-2 text-[11px] font-se
         <Splitter v-else v-model="layout.sqlHeight" invert v-bind="SIZES.sqlHeight" label="Resize the SQL panel" @reset="layout.sqlHeight = SIZES.sqlHeight.def" />
         <div v-if="expanded" class="fixed inset-0 z-40 bg-black/40" @click="expanded = null" />
         <div
-          :class="['min-h-0 flex flex-col border rounded-md bg-card', expanded === 'sql' ? 'fixed inset-3 z-50 shadow-2xl' : 'shrink-0']"
+          :class="['min-h-0 flex flex-col border rounded-xl bg-card', expanded === 'sql' ? 'fixed inset-3 z-50 shadow-2xl' : 'shrink-0']"
           :style="expanded === 'sql' ? {} : layout.dock === 'right' ? { width: `min(${layout.sqlWidth}px, max(20rem, calc(100% - ${layout.browser}px - 26rem)))` } : { height: `min(${layout.sqlHeight}px, 75%)` }"
           data-builder-sql
         >
@@ -314,7 +314,7 @@ const stepHead = 'w-full flex items-center gap-1.5 px-3 py-2 text-[11px] font-se
           </div>
           <template v-if="result">
             <Splitter v-model="layout.code" v-bind="SIZES.code" label="Resize the SQL box" @reset="layout.code = SIZES.code.def" />
-            <div :class="['min-h-0 flex flex-col gap-1', expanded === 'results' ? 'fixed inset-3 z-50 bg-card border rounded-md shadow-2xl p-3' : 'flex-1 p-2']" data-builder-results>
+            <div :class="['min-h-0 flex flex-col gap-1', expanded === 'results' ? 'fixed inset-3 z-50 bg-card border rounded-xl shadow-2xl p-3' : 'flex-1 p-2']" data-builder-results>
               <div class="flex flex-wrap items-center gap-1.5 text-xs">
                 <span class="text-muted-foreground">{{ result.rows.length.toLocaleString() }} of {{ (result.total ?? result.rows.length).toLocaleString() }} rows · {{ result.ms }} ms</span>
                 <span class="ml-auto flex flex-wrap items-center gap-1.5">

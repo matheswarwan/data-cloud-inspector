@@ -56,7 +56,7 @@ onBeforeUnmount(() => { open.value = false })
   <Teleport to="body">
     <div
       v-if="open" ref="pop" role="dialog" :aria-label="`Filter ${label}`"
-      class="fixed z-50 w-64 border rounded-md bg-card text-foreground font-sans font-normal shadow-lg p-2 space-y-2 text-sm text-left"
+      class="fixed z-50 w-64 border rounded-xl bg-card text-foreground font-sans font-normal shadow-lg p-2 space-y-2 text-sm text-left"
       :style="{ top: `${pos.top}px`, left: `${pos.left}px` }"
     >
       <input v-model="filter.text" placeholder="Contains" class="w-full border rounded-md px-2 py-1 bg-background" />

@@ -54,7 +54,7 @@ function clearAll() { for (const k of Object.keys(filters)) delete filters[k] }
       <span>{{ shown.length.toLocaleString() }} of {{ rows.length.toLocaleString() }} rows</span>
       <button class="text-link hover:underline" @click="clearAll">Clear filters</button>
     </div>
-    <div :class="['overflow-auto', bordered ? 'border rounded-md bg-card' : '', boxClass]">
+    <div :class="['overflow-auto', bordered ? 'border rounded-xl bg-card' : '', boxClass]">
       <table :class="['w-full', textSize]">
         <thead class="text-left text-muted-foreground sticky top-0 bg-card shadow-[0_1px_0_hsl(var(--border))] z-[1]">
           <tr>

@@ -112,7 +112,7 @@ const attrCols = [
             <a :class="btn" :href="recordUrl(currentOrg()?.host, act.id)" target="_blank" rel="noopener">Open in Salesforce</a>
           </div>
         </div>
-        <dl class="border rounded-md bg-card p-3 grid grid-cols-[10rem_1fr] md:grid-cols-[10rem_1fr_10rem_1fr] gap-x-3 gap-y-1 text-sm">
+        <dl class="border rounded-xl bg-card p-3 grid grid-cols-[10rem_1fr] md:grid-cols-[10rem_1fr_10rem_1fr] gap-x-3 gap-y-1 text-sm">
           <dt class="text-muted-foreground">Segment</dt><dd><RouterLink v-if="segmentApi" :to="`/segments/${segmentApi}`" class="text-link hover:underline">{{ act.segment }}</RouterLink><template v-else>{{ act.segment }}</template></dd>
           <dt class="text-muted-foreground">Target</dt><dd><a v-if="act.targetId" :href="recordUrl(currentOrg()?.host, act.targetId)" target="_blank" rel="noopener" class="text-link hover:underline">{{ act.target }}</a><template v-else>{{ act.target }}</template></dd>
           <dt class="text-muted-foreground">Status</dt><dd>{{ act.status.toLowerCase() }}{{ act.enabled ? '' : ', disabled' }}</dd>
@@ -121,7 +121,7 @@ const attrCols = [
           <dt class="text-muted-foreground">Activates</dt><dd>{{ act.subjectLabel || act.subject }} <span class="font-mono text-xs text-muted-foreground">{{ act.subject }}</span></dd>
         </dl>
         <div class="grid xl:grid-cols-[3fr_2fr] gap-4 items-start">
-          <div class="border rounded-md bg-card">
+          <div class="border rounded-xl bg-card">
             <h3 class="p-3 border-b font-medium text-sm">Attributes sent ({{ act.attributes.length }})</h3>
             <DataTable :columns="attrCols" :rows="act.attributes" :row-key="(x) => x.entity + x.name" :bordered="false" text-size="text-xs" box-class="max-h-[60vh]">
               <template #cell-field="{ row: x }"><span class="font-mono whitespace-nowrap">{{ x.entity.replace(/^ssot__|__dlm$/g, '') }}.{{ x.name }}</span><div class="text-muted-foreground">{{ x.label }}</div></template>
@@ -129,12 +129,12 @@ const attrCols = [
             </DataTable>
           </div>
           <div class="space-y-4">
-            <div class="border rounded-md bg-card p-3 text-sm space-y-1">
+            <div class="border rounded-xl bg-card p-3 text-sm space-y-1">
               <div class="font-medium">Contact points</div>
               <p v-if="!act.contactPoints.length" class="text-muted-foreground">None.</p>
               <div v-for="c in act.contactPoints" :key="c.entity"><RouterLink :to="`/objects/${c.entity}`" class="font-mono text-xs text-link hover:underline">{{ c.entity }}</RouterLink><div v-if="c.path.length" class="text-xs text-muted-foreground">through {{ c.path.join(' → ') }}</div></div>
             </div>
-            <div class="border rounded-md bg-card p-3 text-sm space-y-2">
+            <div class="border rounded-xl bg-card p-3 text-sm space-y-2">
               <div class="font-medium">Filters</div>
               <p v-if="!act.filters.length" class="text-muted-foreground">None: every segment member is activated.</p>
               <div v-for="(f, i) in act.filters" :key="i" class="space-y-1 border-t pt-2 first-of-type:border-0">
@@ -147,7 +147,7 @@ const attrCols = [
                 </details>
               </div>
             </div>
-            <div class="border rounded-md bg-card p-3 text-sm space-y-1">
+            <div class="border rounded-xl bg-card p-3 text-sm space-y-1">
               <div class="font-medium">Audience</div>
               <div v-for="[label, t] in [['Latest', act.latestAudience], ['History', act.historyAudience]].filter(([, t]) => t)" :key="t" class="flex gap-2">
                 <span class="w-16 text-muted-foreground">{{ label }}</span>

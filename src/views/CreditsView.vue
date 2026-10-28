@@ -262,10 +262,10 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
       <p class="text-sm text-muted-foreground">How many Data Cloud credits this org used, by card or usage type, and where the recent daily use is heading. Read from the org's own consumption data with SQL.</p>
     </div>
 
-    <p v-if="sandbox" class="text-sm p-3 border rounded-md border-amber-400 bg-card">This is a sandbox. The consumption objects exist only in production, and production's copy includes this sandbox's usage (environment Sandbox, with this org's ID). Connect to the production org and split by environment there.</p>
+    <p v-if="sandbox" class="text-sm p-3 border rounded-xl border-amber-400 bg-card">This is a sandbox. The consumption objects exist only in production, and production's copy includes this sandbox's usage (environment Sandbox, with this org's ID). Connect to the production org and split by environment there.</p>
 
     <Loading v-if="(catalog.loading && !catalog.objects.length) || (probing && !sources.length)" text="Looking for consumption objects" />
-    <div v-else-if="!sources.length" class="text-sm p-3 border rounded-md bg-card space-y-2">
+    <div v-else-if="!sources.length" class="text-sm p-3 border rounded-xl bg-card space-y-2">
       <div class="flex flex-wrap items-center gap-2"><p class="font-medium">No consumption objects in this org and data space ({{ org.dataSpace || 'default' }}).</p>
         <button class="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border hover:bg-accent text-xs" :disabled="probing || catalog.loading" @click="checkAgain"><RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': probing || catalog.loading }" /> Check again</button></div>
       <p>Credit prediction reads Salesforce's consumption data (Digital Wallet) with SQL: data lake objects such as <span class="font-mono">TenantBillingUsageEvent__dll</span>. To turn them on:</p>
@@ -281,7 +281,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
     </div>
 
     <template v-else>
-      <div class="border rounded-md bg-card p-3 space-y-3 text-sm">
+      <div class="border rounded-xl bg-card p-3 space-y-3 text-sm">
         <details :open="setupOpen" class="space-y-3" @toggle="setupOpen = $event.target.open">
         <summary class="cursor-pointer select-none"><span class="font-medium">Setup</span> <span class="text-xs text-muted-foreground">{{ setupSummary }}</span></summary>
         <div class="space-y-3 mt-2">
@@ -343,13 +343,13 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
           <span class="ml-auto"><DownloadMenu :get-doc="doc" :get-sheets="sheets" :file-name="`data-cloud-credits-${orgName(org.orgId)}`" /></span>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div class="border rounded-md bg-card p-3"><div class="text-xs text-muted-foreground">Used, last 30 days</div><div class="text-xl font-semibold">{{ n0(fc.last30) }}</div><div class="text-xs text-muted-foreground">{{ n2(fc.avg30) }} a day; 7-day average {{ n2(fc.avg7) }}</div></div>
-          <div class="border rounded-md bg-card p-3"><div class="text-xs text-muted-foreground">Next 30 days (projected)</div><div class="text-xl font-semibold">{{ n0(fc.next30) }}</div><div class="text-xs text-muted-foreground">trend {{ fc.trend }}; next 90 days {{ n0(fc.next90) }}</div></div>
-          <div class="border rounded-md bg-card p-3"><div class="text-xs text-muted-foreground">To the end of the year (projected)</div><div class="text-xl font-semibold">{{ n0(fc.toYearEnd) }}</div><div class="text-xs text-muted-foreground">this month {{ n0(fc.toMonthEnd) }} more</div></div>
-          <div class="border rounded-md bg-card p-3"><div class="text-xs text-muted-foreground">Left (purchased minus used, all environments)</div><div class="text-xl font-semibold">{{ remainingTotal == null ? '—' : n0(remainingTotal) }}</div><div class="text-xs text-muted-foreground">{{ view !== 'all' && remainingTotal != null ? 'shared by every environment; run-out date under All environments' : remainingTotal == null ? (result.entError ? `could not read purchases: ${result.entError}` : 'no purchase data read') : fc.runOutDate ? `runs out around ${fc.runOutDate} (${fc.runOutDays} days)` : 'not used up at this rate' }}</div></div>
+          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">Used, last 30 days</div><div class="text-xl font-semibold">{{ n0(fc.last30) }}</div><div class="text-xs text-muted-foreground">{{ n2(fc.avg30) }} a day; 7-day average {{ n2(fc.avg7) }}</div></div>
+          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">Next 30 days (projected)</div><div class="text-xl font-semibold">{{ n0(fc.next30) }}</div><div class="text-xs text-muted-foreground">trend {{ fc.trend }}; next 90 days {{ n0(fc.next90) }}</div></div>
+          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">To the end of the year (projected)</div><div class="text-xl font-semibold">{{ n0(fc.toYearEnd) }}</div><div class="text-xs text-muted-foreground">this month {{ n0(fc.toMonthEnd) }} more</div></div>
+          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">Left (purchased minus used, all environments)</div><div class="text-xl font-semibold">{{ remainingTotal == null ? '—' : n0(remainingTotal) }}</div><div class="text-xs text-muted-foreground">{{ view !== 'all' && remainingTotal != null ? 'shared by every environment; run-out date under All environments' : remainingTotal == null ? (result.entError ? `could not read purchases: ${result.entError}` : 'no purchase data read') : fc.runOutDate ? `runs out around ${fc.runOutDate} (${fc.runOutDays} days)` : 'not used up at this rate' }}</div></div>
         </div>
 
-        <figure v-if="chart" class="border rounded-md bg-card p-3">
+        <figure v-if="chart" class="border rounded-xl bg-card p-3">
           <figcaption class="text-sm font-medium mb-2 flex flex-wrap items-center gap-3">
             <span>Credits per day{{ view === 'all' ? '' : `, ${view} only` }}: last 90 days, then 30 days projected</span>
             <span v-if="chart.stacked" class="flex items-center gap-3 text-xs font-normal text-muted-foreground"><span v-for="e in envList" :key="e" class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full" :class="envDot(e)"></span>{{ e }}</span></span>

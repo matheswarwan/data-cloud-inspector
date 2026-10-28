@@ -65,7 +65,7 @@ const selected = computed(() => (cell.value ? props.rows[cell.value.row]?.[cell.
       <span v-if="copied" class="text-muted-foreground">Copied {{ copied }}.</span>
     </div>
     <div class="flex gap-3 items-start">
-      <div class="flex-1 min-w-0 border rounded-md overflow-auto bg-card max-h-[60vh]">
+      <div class="flex-1 min-w-0 border rounded-xl overflow-auto bg-card max-h-[60vh]">
         <table class="text-xs font-mono border-collapse">
           <thead class="sticky top-0 bg-card shadow-[0_1px_0_hsl(var(--border))]">
             <tr>
@@ -99,7 +99,7 @@ const selected = computed(() => (cell.value ? props.rows[cell.value.row]?.[cell.
         <div v-if="filter.trim() && !order.length" class="p-2 text-xs text-muted-foreground">No loaded row matches.</div>
       </div>
 
-      <aside v-if="cell" class="w-80 shrink-0 border rounded-md bg-card text-xs max-h-[60vh] flex flex-col">
+      <aside v-if="cell" class="w-80 shrink-0 border rounded-xl bg-card text-xs max-h-[60vh] flex flex-col">
         <div class="p-2 border-b flex items-center gap-2">
           <span class="font-mono font-semibold truncate">{{ columns[cell.col]?.name }}</span>
           <span class="text-muted-foreground">{{ columns[cell.col]?.type }}</span>

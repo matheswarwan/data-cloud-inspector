@@ -33,7 +33,7 @@ function turnOff() { setTipsOn(false); dismissAll() }
 </script>
 
 <template>
-  <div v-if="tip" role="dialog" aria-live="polite" :aria-label="`Tip: ${tip.title}`" class="fixed z-40 right-4 bottom-4 w-80 border rounded-md bg-card text-foreground shadow-xl p-3 text-sm space-y-2">
+  <div v-if="tip" role="dialog" aria-live="polite" :aria-label="`Tip: ${tip.title}`" class="fixed z-40 right-4 bottom-4 w-80 border rounded-xl bg-card text-foreground shadow-xl p-3 text-sm space-y-2">
     <div class="flex items-start gap-2">
       <Lightbulb class="w-4 h-4 mt-0.5 text-amber-500 shrink-0" />
       <div class="font-medium flex-1">{{ tip.title }}</div>

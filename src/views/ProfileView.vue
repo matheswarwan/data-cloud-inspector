@@ -247,7 +247,7 @@ const btn = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border te
       </button>
       <RouterLink to="/bulk" class="text-sm text-link hover:underline">Bulk lookup</RouterLink>
     </form>
-    <div v-if="samples" class="border rounded-md bg-card p-3 text-sm space-y-2">
+    <div v-if="samples" class="border rounded-xl bg-card p-3 text-sm space-y-2">
       <p class="text-muted-foreground">{{ samples === 'loading' ? 'Picking 10 random people…' : samples.length ? 'Nothing to search for, so here are 10 random people to try:' : 'No people found to suggest.' }}</p>
       <div v-if="Array.isArray(samples)" class="flex flex-wrap gap-1.5">
         <button v-for="sm in samples" :key="sm.id + sm.value" class="px-2 py-1 rounded-md border hover:bg-accent text-left" :title="[sm.email, sm.phone, sm.id].filter(Boolean).join(' · ')" @click="trySample(sm)">
