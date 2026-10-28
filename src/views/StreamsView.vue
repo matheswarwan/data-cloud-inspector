@@ -1,4 +1,5 @@
 <script setup>
+import PageHeader from '../components/PageHeader.vue'
 import { selectFor } from '../lib/catalog.js'
 import { ref, computed, watch, onMounted, defineAsyncComponent } from 'vue'
 import Loading from '../components/Loading.vue'
@@ -122,6 +123,8 @@ const fieldCols = [
 </script>
 
 <template>
+  <div class="space-y-5">
+  <PageHeader path="/streams" topic="streams">Where data comes into Data Cloud: each stream, the data lake object it fills and the data model objects that are mapped from it.</PageHeader>
   <section class="flex gap-4 min-h-0">
     <ListPanel v-if="route.params.name" name="streams" label="data streams list">
       <div class="flex gap-2">
@@ -142,25 +145,22 @@ const fieldCols = [
     <div class="flex-1 min-w-0 space-y-4">
       <template v-if="!route.params.name">
         <div class="flex flex-wrap items-center gap-3">
-          <div>
-            <h2 class="text-lg font-semibold">Data streams <HelpTip topic="streams" /></h2>
-            <p class="text-sm text-muted-foreground">Where data comes into Data Cloud: each stream, the data lake object it fills and the data model objects that are mapped from it.</p>
-          </div>
           <div class="ml-auto flex items-center gap-2 text-sm">
-            <div class="inline-flex rounded-md border overflow-hidden" role="radiogroup" aria-label="Show as">
-              <button role="radio" :aria-checked="mode === 'table'" :class="['px-2.5 py-1.5', mode === 'table' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent']" @click="mode = 'table'">Table</button>
-              <button role="radio" :aria-checked="mode === 'diagram'" :class="['px-2.5 py-1.5 border-l', mode === 'diagram' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent']" @click="mode = 'diagram'">Diagram</button>
+            <div class="dci-seg" role="radiogroup" aria-label="Show as">
+              <button role="radio" :aria-checked="mode === 'table'" :class="['dci-seg-item', mode === 'table' ? 'is-on' : '']" @click="mode = 'table'">Table</button>
+              <button role="radio" :aria-checked="mode === 'diagram'" :class="['dci-seg-item', mode === 'diagram' ? 'is-on' : '']" @click="mode = 'diagram'">Diagram</button>
             </div>
-            <input v-model="filter" placeholder="Search streams or source objects" class="border rounded-md px-2 py-1.5 bg-background w-60" />
+            <label class="dci-search w-72"><Search class="w-4 h-4 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden="true" /><input v-model="filter" placeholder="Search streams or source objects" /></label>
             <button class="dci-btn-icon" title="Load the streams again" aria-label="Load the streams again" @click="catalog.streams = null; loadList()"><RefreshCw class="w-4 h-4" /></button>
             <DownloadMenu :get-doc="listDoc" :get-sheets="listSheets" file-name="data-streams" :disabled="!view.length" />
           </div>
         </div>
-        <p class="text-xs text-muted-foreground">{{ catalog.streams ? `${list.length} data streams` : 'Loading data streams…' }}</p>
+        <p class="text-sm text-muted-foreground"><template v-if="catalog.streams"><strong class="text-foreground">{{ list.length }}</strong> data streams</template><template v-else>Loading data streams…</template></p>
         <DataTable v-show="mode === 'table'" :columns="streamCols" :rows="list" row-key="name" box-class="max-h-[calc(100vh-13rem)]" :empty="catalog.streams ? 'No data streams in this data space.' : ''" @view="(v) => (view = v)">
           <template #cell-label="{ row: s }"><RouterLink :to="`/streams/${s.name}`" class="text-link hover:underline">{{ s.label }}</RouterLink><div class="font-mono text-xs text-muted-foreground">{{ s.name }}</div></template>
+          <template #cell-connector="{ row: s }"><span v-if="s.connector" :class="['dci-badge font-mono', /salesforce/i.test(s.connector) ? 'dci-badge-teal' : 'dci-badge-blue']">{{ s.connector }}</span><div v-if="s.sourceObject" class="text-xs mt-1">{{ s.sourceObject }}</div></template>
           <template #cell-dlo="{ value }"><RouterLink v-if="value" :to="`/objects/${value}`" class="font-mono text-xs text-link hover:underline">{{ value }}</RouterLink></template>
-          <template #cell-dmos="{ value }"><div class="text-xs"><RouterLink v-for="d in value" :key="d" :to="`/objects/${d}`" class="block font-mono text-link hover:underline">{{ d }}</RouterLink><span v-if="catalog.mappings && !value.length" class="text-muted-foreground">nothing mapped</span></div></template>
+          <template #cell-dmos="{ value }"><div class="text-xs"><RouterLink v-for="d in value" :key="d" :to="`/objects/${d}`" class="block font-mono text-link hover:underline"><span class="text-muted-foreground" aria-hidden="true">→ </span>{{ d }}</RouterLink><span v-if="catalog.mappings && !value.length" class="text-muted-foreground">nothing mapped</span></div></template>
           <template #cell-totalRecords="{ value }">{{ num(value) }}</template>
           <template #cell-health="{ row: s }"><span class="whitespace-nowrap" :title="s.health.reason"><span :class="['inline-block w-2 h-2 rounded-full mr-1.5', DOT[s.health.level]]" />{{ LEVEL_TEXT[s.health.level] }}</span></template>
         </DataTable>
@@ -222,4 +222,5 @@ const fieldCols = [
       </template>
     </div>
   </section>
+  </div>
 </template>

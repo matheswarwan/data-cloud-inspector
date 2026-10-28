@@ -192,6 +192,8 @@ const title = computed(() => {
   return p.unified ? displayName(p.unified) : p.sources[0] ? displayName(p.sources[0]) : ''
 })
 const filled = (row) => Object.entries(row || {}).filter(([, v]) => v != null && v !== '')
+// Up to two initials for the avatar.
+const initials = (name) => String(name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '?'
 const sourceName = (id) => displayName(profile.value?.sources.find((s) => s.ssot__Id__c === id) || {})
 const linkFor = (id) => profile.value?.links.find((l) => l.SourceRecordId__c === id)
 
@@ -229,23 +231,23 @@ function toSql(sql) {
 const profileMd = () => profileMarkdown({ ruleset: ruleset.value, profile: profile.value, related: [...related.value, ...unifiedRelated.value], explanation: explanation.value })
 
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : '')
-const card = 'border rounded-md bg-card'
+const card = 'dci-card'
 const btn = 'dci-btn'
 </script>
 
 <template>
   <section class="space-y-4 max-w-7xl mx-auto">
-    <form class="flex flex-wrap gap-2 items-center" @submit.prevent="text.trim() ? (samples = null, go('/profile', { q: text })) : showSamples()">
-      <input v-model="text" placeholder="Email, phone, name or ID (use * as a wildcard)" class="flex-1 min-w-72 border rounded-md px-3 py-1.5 bg-background text-sm" />
+    <form class="dci-card p-3 flex flex-wrap gap-2 items-center shadow-[0_14px_32px_-22px_rgba(13,148,136,0.45)]" @submit.prevent="text.trim() ? (samples = null, go('/profile', { q: text })) : showSamples()">
+      <label class="dci-search flex-1 min-w-72"><Search class="w-4 h-4 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden="true" /><input v-model="text" placeholder="Email, phone, name or ID (use * as a wildcard)" aria-label="Search people" /></label>
       <label class="text-sm text-muted-foreground" for="rs">Ruleset</label>
-      <select id="rs" v-model="rulesetId" class="border rounded-md px-2 py-1.5 bg-background text-sm" @change="switchRuleset">
+      <select id="rs" v-model="rulesetId" class="h-10 max-w-80 rounded-full border bg-card px-3 text-sm" @change="switchRuleset">
         <option v-if="!rulesets.length" value="">No identity resolution rulesets</option>
         <option v-for="r in rulesets" :key="r.id" :value="r.id">{{ r.label }} ({{ r.id }}), last run {{ r.lastJobStatus.toLowerCase() || 'unknown' }}</option>
       </select>
       <button class="dci-btn-primary" :disabled="searching || !org.version">
         {{ searching ? 'Searching…' : 'Search' }}
       </button>
-      <RouterLink to="/bulk" class="text-sm text-link hover:underline">Bulk lookup</RouterLink>
+      <RouterLink to="/bulk" class="px-1 text-sm font-medium text-link hover:underline">Bulk lookup</RouterLink>
     </form>
     <div v-if="samples" class="border rounded-xl bg-card p-3 text-sm space-y-2">
       <p class="text-muted-foreground">{{ samples === 'loading' ? 'Picking 10 random people…' : samples.length ? 'Nothing to search for, so here are 10 random people to try:' : 'No people found to suggest.' }}</p>
@@ -288,15 +290,16 @@ const btn = 'dci-btn'
     <!-- Profile -->
     <template v-if="profile">
       <div class="flex flex-wrap items-start gap-3">
-        <div>
-          <h2 class="text-xl font-semibold">{{ title }}</h2>
+        <span class="w-14 h-14 shrink-0 rounded-full bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300 flex items-center justify-center text-xl font-bold" aria-hidden="true">{{ initials(title) }}</span>
+        <div class="min-w-0">
+          <h2 class="text-[28px] leading-9 font-bold break-words">{{ title || '(no name)' }}</h2>
           <div class="text-sm text-muted-foreground">
             <template v-if="profile.unifiedId">Unified profile <span class="font-mono">{{ profile.unifiedId }}</span> from {{ profile.sources.length }} source record{{ profile.sources.length === 1 ? '' : 's' }} ({{ ruleset?.label }})</template>
             <template v-else>Source record <span class="font-mono">{{ profile.sources[0]?.ssot__Id__c }}</span>, <strong>not unified</strong> by {{ ruleset ? ruleset.label : 'any ruleset' }}<span v-if="ruleset"> (last run {{ ruleset.lastJobStatus.toLowerCase() }} {{ when(ruleset.lastJobCompleted) }})</span></template>
           </div>
         </div>
         <div class="ml-auto flex gap-2">
-          <a v-if="ruleset?.recordId" :class="btn" :href="recordUrl(currentOrg()?.host, ruleset.recordId)" target="_blank" rel="noopener">Open ruleset</a>
+          <a v-if="ruleset?.recordId" class="dci-btn" :href="recordUrl(currentOrg()?.host, ruleset.recordId)" target="_blank" rel="noopener">Open ruleset</a>
           <DownloadMenu :get-markdown="profileMd" :file-name="`profile-${title || 'person'}`" :disabled="!!loading" />
         </div>
       </div>
@@ -305,7 +308,7 @@ const btn = 'dci-btn'
       <div class="grid lg:grid-cols-2 gap-4">
         <!-- Unified record -->
         <div v-if="profile.unified" :class="card">
-          <h3 class="p-3 border-b font-medium">Unified record</h3>
+          <h3 class="px-5 py-3.5 border-b text-base font-semibold">Unified record</h3>
           <dl class="p-3 grid grid-cols-[minmax(10rem,auto)_1fr] gap-x-3 gap-y-1 text-sm">
             <template v-for="[k, v] in filled(profile.unified)" :key="k">
               <dt class="font-mono text-xs text-muted-foreground">{{ k }}</dt><dd class="break-all"><RecordLink :value="v" /></dd>
@@ -315,7 +318,7 @@ const btn = 'dci-btn'
 
         <!-- Source records -->
         <div :class="[card, profile.unified ? '' : 'lg:col-span-2']">
-          <h3 class="p-3 border-b font-medium">Source records ({{ profile.sources.length }})</h3>
+          <h3 class="px-5 py-3.5 border-b text-base font-semibold">Source records ({{ profile.sources.length }})</h3>
           <div v-for="s in profile.sources" :key="s.ssot__Id__c" class="border-b last:border-0">
             <button class="w-full text-left p-3 flex items-start gap-2 hover:bg-accent" @click="open[s.ssot__Id__c] = !open[s.ssot__Id__c]">
               <component :is="open[s.ssot__Id__c] ? ChevronDown : ChevronRight" class="w-4 h-4 mt-0.5 shrink-0" />
@@ -348,7 +351,7 @@ const btn = 'dci-btn'
 
       <!-- Why these records are together -->
       <div v-if="ruleset" :class="card">
-        <h3 class="p-3 border-b font-medium" data-help="profile-rules">Match rules of {{ ruleset.label }} <HelpTip topic="profile-rules" /></h3>
+        <h3 class="px-5 py-3.5 border-b text-base font-semibold" data-help="profile-rules">Match rules of {{ ruleset.label }} <HelpTip topic="profile-rules" /></h3>
         <div class="p-3 space-y-4 text-sm">
           <p v-if="profile.sources.length < 2" class="text-muted-foreground">
             One source record, so there is nothing to match. These are the values the rules compare; see Possible missed matches below for others that share an email.
@@ -389,7 +392,7 @@ const btn = 'dci-btn'
 
       <!-- Possible missed matches -->
       <div v-if="missed.length" :class="card">
-        <h3 class="p-3 border-b font-medium flex items-center gap-2" data-help="profile-missed">Possible missed matches ({{ missed.length }}) <HelpTip topic="profile-missed" /></h3>
+        <h3 class="px-5 py-3.5 border-b text-base font-semibold flex items-center gap-2" data-help="profile-missed">Possible missed matches ({{ missed.length }}) <HelpTip topic="profile-missed" /></h3>
         <p class="px-3 pt-3 text-xs text-muted-foreground">Other people with the same email who are not in this profile. That is expected when the other criteria differ (for example the names); check the match rules above.</p>
         <ul class="p-3 text-sm space-y-1">
           <li v-for="m in missed" :key="m.id">
@@ -401,7 +404,7 @@ const btn = 'dci-btn'
 
       <!-- Contact points -->
       <div v-if="contactPoints.length" :class="card">
-        <h3 class="p-3 border-b font-medium">Contact points</h3>
+        <h3 class="px-5 py-3.5 border-b text-base font-semibold">Contact points</h3>
         <div v-for="r in contactPoints" :key="r.object + r.otherField" class="border-b last:border-0 p-3 space-y-1">
           <div class="text-sm flex items-center gap-2">
             <RouterLink :to="`/objects/${r.object}`" class="font-mono text-link hover:underline">{{ r.object }}</RouterLink>
@@ -415,7 +418,7 @@ const btn = 'dci-btn'
 
       <!-- Consent (Marketing Cloud Next): through the contact points -->
       <div v-if="consent.length || consentLoading || crmConsent" :class="card">
-        <h3 class="p-3 border-b font-medium">Consent</h3>
+        <h3 class="px-5 py-3.5 border-b text-base font-semibold">Consent</h3>
         <div v-if="crmConsent" class="border-b p-3 space-y-1">
           <div class="text-sm">In Salesforce <span class="text-muted-foreground">for {{ [...crmConsent.addresses.emails, ...crmConsent.addresses.phones].join(', ') }}</span></div>
           <p v-for="(e, i) in crmConsent.errors" :key="i" class="text-xs text-destructive">{{ e }}</p>
@@ -449,7 +452,7 @@ const btn = 'dci-btn'
 
       <!-- Engagement -->
       <div :class="card">
-        <h3 class="p-3 border-b font-medium">{{ MCN ? 'Message history and engagement' : 'Engagement' }} ({{ events.length }})</h3>
+        <h3 class="px-5 py-3.5 border-b text-base font-semibold">{{ MCN ? 'Message history and engagement' : 'Engagement' }} ({{ events.length }})</h3>
         <div v-if="MCN && channels.length" class="px-3 pt-2 flex flex-wrap gap-1.5 text-xs" aria-label="Channels">
           <button :class="['px-2 py-0.5 rounded-full border', !channelPick ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="channelPick = ''">All {{ events.length }}</button>
           <button v-for="c in channels" :key="c.channel" :class="['px-2 py-0.5 rounded-full border', channelPick === c.channel ? 'bg-accent font-medium' : 'hover:bg-accent']" @click="channelPick = channelPick === c.channel ? '' : c.channel">{{ c.channel }} {{ c.count }}</button>
@@ -476,7 +479,7 @@ const btn = 'dci-btn'
       <!-- Segment membership and the rest -->
       <div v-for="group in [{ title: 'Segment membership', list: segments }, { title: 'Other related records', list: others }]" :key="group.title">
         <div v-if="group.list.length" :class="card">
-          <h3 class="p-3 border-b font-medium">{{ group.title }}</h3>
+          <h3 class="px-5 py-3.5 border-b text-base font-semibold">{{ group.title }}</h3>
           <div v-for="r in group.list" :key="r.object + r.otherField" class="border-b last:border-0 p-3 space-y-1">
             <div class="text-sm flex items-center gap-2">
               <RouterLink :to="`/objects/${r.object}`" class="text-link hover:underline">{{ byName.get(r.object)?.label || r.object }}</RouterLink>

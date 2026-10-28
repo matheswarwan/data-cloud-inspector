@@ -58,7 +58,7 @@ function clearAll() { for (const k of Object.keys(filters)) delete filters[k] }
       <table :class="['w-full', textSize]">
         <thead class="text-left text-muted-foreground sticky top-0 bg-card shadow-[0_1px_0_hsl(var(--border))] z-[1]">
           <tr>
-            <th v-for="c in columns" :key="c.key" :class="['p-2 font-normal align-bottom', c.headerClass, c.align === 'right' ? 'text-right' : '']">
+            <th v-for="c in columns" :key="c.key" :class="['px-3 py-2.5 text-[12.5px] font-medium align-bottom', c.headerClass, c.align === 'right' ? 'text-right' : '']">
               <div :class="['inline-flex items-center gap-0.5', c.align === 'right' ? 'flex-row-reverse' : '']">
                 <button v-if="sortable(c)" class="hover:text-foreground whitespace-nowrap" :title="`Sort by ${c.label}`" @click="clickSort(c)">{{ c.label }}</button>
                 <span v-else class="whitespace-nowrap">{{ c.label }}</span>

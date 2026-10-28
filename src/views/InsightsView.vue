@@ -1,4 +1,6 @@
 <script setup>
+import PageHeader from '../components/PageHeader.vue'
+import { badgeClass } from '../lib/badges.js'
 import DataTable from '../components/DataTable.vue'
 import Loading from '../components/Loading.vue'
 import HelpTip from '../components/HelpTip.vue'
@@ -8,7 +10,7 @@ import { docFrom, sheetsFrom } from '../lib/tableDoc.js'
 // Dimensions and Measures, SQL, Data (a preview) and Used by.
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { RefreshCw } from 'lucide-vue-next'
+import { Calculator, ChevronRight, Database, ExternalLink, RefreshCw, Search } from 'lucide-vue-next'
 import InsightDefinition from '../components/InsightDefinition.vue'
 import ResultTable from '../components/ResultTable.vue'
 import { useOrg, currentOrg, orgTitle } from '../app/useOrg.js'
@@ -149,65 +151,75 @@ const ciDoc = () => docFrom({ title: `Calculated insight: ${ci.value.label}`, in
 
 <template>
   <!-- List view -->
-  <section v-if="!route.params.name" class="max-w-7xl mx-auto space-y-3">
-    <div class="flex flex-wrap items-center gap-3">
-      <div>
-        <div class="text-xs text-muted-foreground">Calculated Insights</div>
-        <h2 class="text-lg font-semibold">All calculated insights <HelpTip topic="insights" /></h2>
-      </div>
-      <div class="ml-auto flex items-center gap-2 text-sm">
-        <input v-model="search" placeholder="Search this list" class="border rounded-md px-2 py-1 bg-background w-60" />
-        <select v-model="status" class="border rounded-md px-2 py-1 bg-background"><option value="">All statuses</option><option v-for="s in statuses" :key="s" :value="s">{{ words(s) }}</option></select>
-        <button class="dci-btn-icon" title="Refresh" @click="load({ refresh: true })"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
+  <section v-if="!route.params.name" class="max-w-7xl mx-auto space-y-5">
+    <PageHeader path="/insights" eyebrow="Calculated insights" title="All calculated insights" topic="insights">Every calculated insight in the data space, when it last ran and how it is scheduled.</PageHeader>
+    <div class="flex flex-wrap items-center gap-2">
+      <p class="text-sm text-muted-foreground"><strong class="text-foreground">{{ list.length }}</strong> {{ list.length === 1 ? 'item' : 'items' }}</p>
+      <div class="ml-auto flex flex-wrap items-center gap-2 text-sm">
+        <label class="dci-search w-72"><Search class="w-4 h-4 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden="true" /><input v-model="search" placeholder="Search this list" aria-label="Search this list" /></label>
+        <select v-model="status" class="h-9 rounded-full border bg-card px-3 text-sm" aria-label="Status"><option value="">All statuses</option><option v-for="s in statuses" :key="s" :value="s">{{ words(s) }}</option></select>
+        <button class="dci-btn-icon" title="Refresh" aria-label="Refresh" @click="load({ refresh: true })"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
         <DownloadMenu :get-doc="listDoc" :get-sheets="listSheets" file-name="calculated-insights" :disabled="!list.length" />
       </div>
     </div>
-    <p class="text-xs text-muted-foreground">{{ list.length }} {{ list.length === 1 ? 'item' : 'items' }}</p>
     <p v-if="error" class="text-sm text-destructive">{{ error }}</p>
-    <DataTable :columns="listCols" :rows="list" row-key="name" row-class="hover:bg-accent" box-class="max-h-[calc(100vh-12rem)]" :empty="loading ? 'Loading…' : `No calculated insights${search || status ? ' match' : ' in this data space'}.`">
+    <DataTable :columns="listCols" :rows="list" row-key="name" row-class="hover:bg-accent" box-class="max-h-[calc(100vh-14rem)]" :empty="loading ? 'Loading…' : `No calculated insights${search || status ? ' match' : ' in this data space'}.`">
       <template #cell-label="{ row: i }"><RouterLink :to="`/insights/${i.name}`" class="text-link hover:underline">{{ i.label }}</RouterLink><div class="font-mono text-xs text-muted-foreground">{{ i.name }}</div></template>
+      <template #cell-status="{ value }"><span :class="badgeClass(value)">{{ value }}</span></template>
+      <template #cell-schedule="{ value }"><span v-if="value && !/not sched|none/i.test(value)" :class="badgeClass(`every ${value}`)">{{ value }}</span><span v-else class="text-muted-foreground">{{ value || 'Not scheduled' }}</span></template>
       <template #cell-lastRun="{ value }"><span class="whitespace-nowrap">{{ value }}</span></template>
-      <template #cell-lastRunStatus="{ row: i, value }"><span :class="['inline-block w-2 h-2 rounded-full mr-1.5', DOT[i.health.level]]" />{{ value }}</template>
+      <template #cell-lastRunStatus="{ row: i, value }"><span class="inline-flex items-center gap-1.5 whitespace-nowrap"><span :class="['w-2 h-2 rounded-full', DOT[i.health.level]]" />{{ value }}</span></template>
     </DataTable>
   </section>
 
   <!-- Record page -->
-  <section v-else class="max-w-7xl mx-auto space-y-3">
-    <RouterLink to="/insights" class="text-xs text-link hover:underline">Calculated insights</RouterLink>
+  <section v-else class="max-w-7xl mx-auto space-y-5">
+    <nav aria-label="Breadcrumb" class="flex items-center gap-1.5 text-[13px]">
+      <RouterLink to="/insights" class="text-link font-medium hover:underline">Calculated insights</RouterLink>
+      <ChevronRight class="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
+      <span class="text-muted-foreground">{{ ci?.label || route.params.name }}</span>
+    </nav>
     <Loading v-if="!ci && loading" text="Loading" />
     <p v-else-if="!ci" class="text-sm text-muted-foreground">This calculated insight is not in the selected data space.</p>
     <template v-else>
-      <div class="border rounded-xl bg-card p-3 space-y-3">
-        <div class="flex flex-wrap items-start gap-3">
-          <div>
-            <div class="text-xs text-muted-foreground">Calculated Insight</div>
-            <h2 class="text-xl font-semibold">{{ ci.label }}</h2>
+      <section class="dci-card relative overflow-hidden p-5 space-y-4 shadow-[0_14px_32px_-22px_rgba(124,58,237,0.5)]">
+        <div aria-hidden="true" class="pointer-events-none absolute -top-12 left-16 w-[420px] h-[140px] rounded-[50%] bg-violet-600/10 blur-[44px]" />
+        <div class="relative flex flex-wrap items-start justify-between gap-4">
+          <div class="flex items-center gap-3.5 min-w-0">
+            <span class="w-12 h-12 shrink-0 rounded-xl bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300 flex items-center justify-center"><Calculator class="w-6 h-6" aria-hidden="true" /></span>
+            <div class="min-w-0">
+              <div class="text-xs font-semibold text-violet-700 dark:text-violet-300">Calculated insight</div>
+              <h1 class="text-2xl font-bold leading-[30px] break-words">{{ ci.label }}</h1>
+              <code class="font-mono text-[13px] text-muted-foreground break-all">{{ ci.name }}</code>
+            </div>
           </div>
-          <div class="ml-auto flex gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <button class="dci-btn-primary" @click="router.push({ path: '/sql', query: { sql: querySql } })"><Database class="w-4 h-4" /> Query in SQL</button>
             <DownloadMenu :get-doc="ciDoc" :get-sheets="() => sheetsFrom(ciSections())" :file-name="`insight-${ci.name}`" />
-            <button :class="btn" @click="router.push({ path: '/sql', query: { sql: querySql } })">Query in SQL</button>
-            <a v-if="sfId" :class="btn" :href="recordUrl(currentOrg()?.host, sfId)" target="_blank" rel="noopener">Open in Salesforce</a>
+            <a v-if="sfId" class="dci-btn-icon" :href="recordUrl(currentOrg()?.host, sfId)" target="_blank" rel="noopener" title="Open in Salesforce" aria-label="Open in Salesforce"><ExternalLink class="w-4 h-4" /></a>
           </div>
         </div>
-        <div class="flex flex-wrap gap-x-10 gap-y-2 text-sm">
-          <div><div class="text-xs text-muted-foreground">Data Space</div>{{ ci.dataSpace }}</div>
-          <div><div class="text-xs text-muted-foreground">Status</div>{{ cap(ci.status) }}</div>
-          <div><div class="text-xs text-muted-foreground">Last Run Time</div>{{ when(ci.lastRun) }}</div>
-          <div><div class="text-xs text-muted-foreground">Last Run Status</div><span :class="['inline-block w-2 h-2 rounded-full mr-1', DOT[ci.health.level]]" />{{ cap(ci.lastRunStatus) || 'Never' }}</div>
+        <div class="relative flex flex-wrap gap-x-8 gap-y-3 pt-4 border-t text-sm">
+          <div><div class="text-xs text-muted-foreground">Data space</div><div class="font-medium">{{ ci.dataSpace }}</div></div>
+          <div><div class="text-xs text-muted-foreground">Status</div><span :class="badgeClass(cap(ci.status))">{{ cap(ci.status) }}</span></div>
+          <div><div class="text-xs text-muted-foreground">Last run</div><div class="font-medium">{{ when(ci.lastRun) }}</div></div>
+          <div><div class="text-xs text-muted-foreground">Last run status</div><span class="inline-flex items-center gap-1.5 font-medium"><span :class="['w-2 h-2 rounded-full', DOT[ci.health.level]]" />{{ cap(ci.lastRunStatus) || 'Never' }}</span></div>
+          <div><div class="text-xs text-muted-foreground">Schedule</div><span :class="ci.schedule ? badgeClass(`every ${ci.schedule}`) : 'dci-badge'">{{ cap(ci.schedule) || 'Not scheduled' }}</span></div>
         </div>
-      </div>
+      </section>
 
-      <nav class="flex border-b">
+      <nav class="dci-tabs" aria-label="Insight sections">
         <button :class="tabBtn('details')" @click="tab = 'details'">Details</button>
         <button :class="tabBtn('sql')" @click="tab = 'sql'">Expression</button>
-        <button :class="tabBtn('fields')" @click="tab = 'fields'">Output ({{ ci.dimensions.length + ci.measures.length }})</button>
+        <button :class="tabBtn('fields')" @click="tab = 'fields'">Output <span class="dci-count">{{ ci.dimensions.length + ci.measures.length }}</span></button>
         <button :class="tabBtn('data')" @click="tab = 'data'">Data</button>
         <button :class="tabBtn('usedby')" @click="tab = 'usedby'">Used by</button>
       </nav>
 
-      <dl v-if="tab === 'details'" class="border rounded-xl bg-card p-4 grid md:grid-cols-2 gap-x-10 gap-y-3 text-sm">
-        <div v-for="[label, value] in detailPairs" :key="label" class="border-b pb-2">
-          <dt class="text-xs text-muted-foreground">{{ label }}</dt><dd :class="label === 'API Name' ? 'font-mono text-xs' : ''">{{ value || '—' }}</dd>
+      <dl v-if="tab === 'details'" class="dci-card dci-kv px-6 pt-2 pb-3.5">
+        <div v-for="[label, value] in detailPairs" :key="label">
+          <dt>{{ label }}</dt>
+          <dd><span v-if="!value" class="text-muted-foreground">—</span><code v-else-if="label === 'API Name' || label === 'Query Dialect'" class="font-mono text-[13px]">{{ value }}</code><span v-else-if="label === 'Definition Status'" :class="badgeClass(value)">{{ value }}</span><template v-else>{{ value }}</template></dd>
         </div>
       </dl>
       <InsightDefinition v-else-if="tab === 'sql' || tab === 'fields'" :ci="ci" :partition-by="meta?.partitionBy || ''" :show="tab" />
@@ -229,7 +241,7 @@ const ciDoc = () => docFrom({ title: `Calculated insight: ${ci.value.label}`, in
 
       <div v-else-if="tab === 'usedby'" class="grid lg:grid-cols-2 gap-4 text-sm">
         <div class="border rounded-xl bg-card">
-          <h3 class="p-3 border-b font-medium">Reads from</h3>
+          <h3 class="px-5 py-3.5 border-b text-base font-semibold">Reads from</h3>
           <div v-for="r in reads" :key="r.object" class="p-3 border-b last:border-0">
             <RouterLink :to="`/objects/${r.object}`" class="font-mono text-xs text-link hover:underline">{{ r.object }}</RouterLink>
             <div class="text-xs text-muted-foreground mt-0.5">{{ r.fields.length ? r.fields.join(', ') : 'the object' }}</div>
@@ -237,7 +249,7 @@ const ciDoc = () => docFrom({ title: `Calculated insight: ${ci.value.label}`, in
           <p v-if="!reads.length" class="p-3 text-muted-foreground">No objects found in its SQL.</p>
         </div>
         <div class="border rounded-xl bg-card">
-          <h3 class="p-3 border-b font-medium">Segments that use it</h3>
+          <h3 class="px-5 py-3.5 border-b text-base font-semibold">Segments that use it</h3>
           <Loading v-if="!catalog.usage" text="Reading segments…" />
           <p v-else-if="!used?.segments.length" class="p-3 text-muted-foreground">No segment uses this insight.</p>
           <div v-for="s in used?.segments || []" :key="s.name" class="p-3 border-b last:border-0">

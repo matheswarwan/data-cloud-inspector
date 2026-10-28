@@ -64,7 +64,7 @@ const ITEMS = [
 
 <template>
   <div class="relative inline-block">
-    <button :class="['inline-flex items-center gap-1.5 rounded-md border hover:bg-accent disabled:opacity-50', small ? 'px-1.5 py-0.5 text-xs' : 'px-2.5 py-1.5 text-sm']" :disabled="disabled || busy" :aria-expanded="open" :title="label ? undefined : 'Download'" :aria-label="label ? undefined : 'Download'" @click="open = !open">
+    <button :class="small ? (label ? 'dci-btn dci-btn-sm' : 'dci-btn-icon dci-btn-sm') : 'dci-btn'" :disabled="disabled || busy" :aria-expanded="open" :title="label ? undefined : 'Download'" :aria-label="label ? undefined : 'Download'" @click="open = !open">
       <Download :class="small ? 'w-3.5 h-3.5' : 'w-4 h-4'" />{{ busy ? 'Preparing…' : note || label }}<ChevronDown class="w-3.5 h-3.5 text-muted-foreground" />
     </button>
     <template v-if="open">

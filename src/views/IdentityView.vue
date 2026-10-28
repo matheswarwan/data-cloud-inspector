@@ -1,4 +1,5 @@
 <script setup>
+import PageHeader from '../components/PageHeader.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import Loading from '../components/Loading.vue'
 import HelpTip from '../components/HelpTip.vue'
@@ -89,7 +90,7 @@ const maxSize = computed(() => Math.max(1, ...(detail.value?.sizes || []).map((s
 const num = (n) => (n == null ? '—' : Number(n).toLocaleString())
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : 'never')
 const name = (p) => [p?.ssot__FirstName__c, p?.ssot__LastName__c].filter(Boolean).join(' ') || p?.ssot__PersonName__c || p?.ssot__Id__c
-const card = 'border rounded-md bg-card'
+const card = 'dci-card'
 const btn = 'dci-btn'
 const sourceCols = [
   { key: 'source', label: 'Data source' },
@@ -122,10 +123,11 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
 </script>
 
 <template>
+  <div class="space-y-5">
+  <PageHeader path="/identity" topic="identity">Identity resolution rulesets: their match and reconciliation rules and how many profiles they unify.</PageHeader>
   <section class="flex gap-4 min-h-0">
     <ListPanel name="identity" label="rulesets list" :width="288">
       <div class="flex items-center gap-2">
-        <h2 class="font-semibold">Identity resolution <HelpTip topic="identity" /></h2>
         <span class="ml-auto"><DownloadMenu small label="" :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="identity-rulesets" :disabled="!rulesets.length" /></span>
         <button class="dci-btn-icon" title="Load the rulesets again" @click="load({ refresh: true })"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
       </div>
@@ -173,7 +175,7 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
         <!-- Rules -->
         <div class="grid lg:grid-cols-2 gap-4">
           <div :class="card">
-            <h3 class="p-3 border-b font-medium">Match rules ({{ ruleset.rules.length }})</h3>
+            <h3 class="px-5 py-3.5 border-b text-base font-semibold">Match rules ({{ ruleset.rules.length }})</h3>
             <p class="px-3 pt-2 text-xs text-muted-foreground">Two records join when every criterion of any one rule holds.</p>
             <div v-for="(r, i) in ruleset.rules" :key="i" class="p-3 text-sm border-b last:border-0">
               <div class="font-medium">{{ r.label || `Rule ${i + 1}` }}</div>
@@ -181,7 +183,7 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
             </div>
           </div>
           <div :class="card">
-            <h3 class="p-3 border-b font-medium">Reconciliation rules</h3>
+            <h3 class="px-5 py-3.5 border-b text-base font-semibold">Reconciliation rules</h3>
             <p class="px-3 pt-2 text-xs text-muted-foreground">Which value the unified profile keeps when the source records differ.</p>
             <div v-for="rec in ruleset.reconciliation" :key="rec.entity" class="p-3 text-sm border-b last:border-0">
               <div v-for="(l, i) in describeReconciliation(rec)" :key="i" :class="i ? 'text-xs text-muted-foreground pl-3' : ''">{{ l }}</div>
@@ -192,7 +194,7 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
         <!-- Profile sizes and largest -->
         <div class="grid lg:grid-cols-2 gap-4">
           <div :class="card">
-            <h3 class="p-3 border-b font-medium">Source records per unified profile</h3>
+            <h3 class="px-5 py-3.5 border-b text-base font-semibold">Source records per unified profile</h3>
             <Loading v-if="detailLoading" text="Counting…" />
             <p v-else-if="detail?.errors.sizes" class="p-3 text-sm text-destructive">{{ detail.errors.sizes }}</p>
             <p v-else-if="!detail?.sizes.length" class="p-3 text-sm text-muted-foreground">No unified profiles yet.</p>
@@ -208,7 +210,7 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
             <p v-if="detail?.sizes.length" class="px-3 pb-3 text-xs text-muted-foreground"><button class="text-link hover:underline" @click="router.push({ path: '/sql', query: { sql: IDENTITY_SQL.sizes(ruleset.link) } })">Open in SQL</button></p>
           </div>
           <div :class="card">
-            <h3 class="p-3 border-b font-medium">Largest unified profiles</h3>
+            <h3 class="px-5 py-3.5 border-b text-base font-semibold">Largest unified profiles</h3>
             <p class="px-3 pt-2 text-xs text-muted-foreground">Unusually large profiles are where wrong merges usually hide (a shared email or phone, test data).</p>
             <p v-if="detail && !detail.largest.length" class="p-3 text-sm text-muted-foreground">No profile has more than one source record.</p>
             <ul v-else class="p-3 text-sm space-y-0.5">
@@ -221,7 +223,7 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
         </div>
 
         <div :class="card">
-          <h3 class="p-3 border-b font-medium">Where the source records come from</h3>
+          <h3 class="px-5 py-3.5 border-b text-base font-semibold">Where the source records come from</h3>
           <DataTable :columns="sourceCols" :rows="detail?.sources || []" :row-key="(s) => s.source + s.object" :bordered="false" :empty="detailLoading ? 'Counting…' : 'None.'">
             <template #cell-n="{ value }">{{ num(value) }}</template>
           </DataTable>
@@ -229,7 +231,7 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
 
         <!-- Compare people -->
         <div :class="card">
-          <h3 class="p-3 border-b font-medium" data-help="identity-compare">Compare people <HelpTip topic="identity-compare" /></h3>
+          <h3 class="px-5 py-3.5 border-b text-base font-semibold" data-help="identity-compare">Compare people <HelpTip topic="identity-compare" /></h3>
           <div class="p-3 space-y-3">
             <p class="text-sm text-muted-foreground">Pick two or more source records (up to {{ MAX_COMPARE }}) to see, criterion by criterion, which of them this ruleset would join, and how that compares with the unified profiles they are in now.</p>
             <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -281,4 +283,5 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
       </template>
     </div>
   </section>
+  </div>
 </template>

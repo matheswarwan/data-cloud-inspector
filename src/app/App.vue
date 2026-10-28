@@ -60,7 +60,7 @@ watchEffect(() => { document.title = org.orgId ? `${orgName(org.orgId)} · Data 
       Could not reach the org: {{ org.error }}
     </div>
 
-    <main :class="['flex-1 p-4 min-w-0', apiConsoleOn ? 'pb-12' : '']">
+    <main :class="['flex-1 p-4 lg:px-8 lg:py-7 min-w-0', apiConsoleOn ? 'pb-12' : '']">
       <RouterView />
     </main>
     </div>

@@ -1,4 +1,6 @@
 <script setup>
+import { badgeClass } from '../lib/badges.js'
+import PageHeader from '../components/PageHeader.vue'
 import SqlBlock from '../components/SqlBlock.vue'
 import Loading from '../components/Loading.vue'
 import JsonViewer from '../components/JsonViewer.vue'
@@ -9,7 +11,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
 import { useRoute, useRouter } from 'vue-router'
-import { RefreshCw, Search } from 'lucide-vue-next'
+import { ExternalLink, RefreshCw, Search } from 'lucide-vue-next'
 import { useOrg, currentOrg, orgTitle } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
@@ -136,7 +138,7 @@ async function copy(text, what) { await navigator.clipboard.writeText(text); not
 
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : '')
 const num = (n) => (typeof n === 'number' ? n.toLocaleString() : '')
-const card = 'border rounded-md bg-card'
+const card = 'dci-card'
 const btn = 'dci-btn'
 const versionCols = [
   { key: 'at', label: 'Published', kind: 'date', value: (v) => when(v.at), sortValue: (v) => v.at, filter: false },
@@ -171,6 +173,8 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
 </script>
 
 <template>
+  <div class="space-y-5">
+  <PageHeader path="/segments" topic="segments">Every segment with its criteria in plain words and as SQL, counts at the last publish and membership.</PageHeader>
   <section class="flex gap-4 min-h-0">
     <ListPanel name="segments" label="segments list">
       <div class="flex gap-2">
@@ -182,56 +186,61 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
       <div class="flex items-center gap-2 text-xs">
         <span class="text-muted-foreground">{{ list.length.toLocaleString() }} of {{ segments.length.toLocaleString() }} segments<template v-if="loading">, {{ store.storedAt ? `saved ${new Date(store.storedAt).toLocaleString()}, updating` : 'loading' }} {{ store.total ? `${store.loaded.toLocaleString()} of ${store.total.toLocaleString()}` : `more (${store.loaded.toLocaleString()} so far)` }}…</template></span>
         <label class="ml-auto text-muted-foreground" for="seg-sort">Sort</label>
-        <select id="seg-sort" v-model="sortBy" class="border rounded px-1 py-0.5 bg-background"><option v-for="o in SEGMENT_SORTS" :key="o.id" :value="o.id">{{ o.label }}</option></select>
+        <select id="seg-sort" v-model="sortBy" class="h-7 rounded-full border bg-card px-2.5 text-xs"><option v-for="o in SEGMENT_SORTS" :key="o.id" :value="o.id">{{ o.label }}</option></select>
         <DownloadMenu small :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="segments" :disabled="!list.length" />
       </div>
       <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
       <ul class="max-h-[75vh] overflow-auto text-sm">
         <li
           v-for="s in list" :key="s.apiName"
-          :class="['px-2 py-1.5 rounded-md cursor-pointer hover:bg-accent', { 'bg-accent': s.apiName === seg?.apiName }]"
+          :class="['px-2.5 py-1.5 rounded-lg cursor-pointer border', s.apiName === seg?.apiName ? 'bg-teal-50 border-teal-200 dark:bg-teal-500/10 dark:border-teal-500/30' : 'border-transparent hover:bg-accent']"
           @click="router.push(`/segments/${s.apiName}`)"
         >
           <div class="flex gap-2"><span class="truncate">{{ s.label }}</span><span v-if="sortDate(s)" class="ml-auto shrink-0 text-xs text-muted-foreground">{{ sortDate(s) }}</span></div>
-          <div class="text-xs text-muted-foreground truncate">{{ num(s.lastCount) }} members · {{ s.publishStatus.toLowerCase() || 'not published' }} · {{ s.on.replace(/^ssot__|__dlm$/g, '') }}</div>
+          <div class="text-xs text-muted-foreground truncate">{{ num(s.lastCount) }} members · <span :class="/success/i.test(s.publishStatus) ? 'font-semibold text-green-700 dark:text-green-400' : ''">{{ s.publishStatus.toLowerCase() || 'not published' }}</span> · {{ s.on.replace(/^ssot__|__dlm$/g, '') }}</div>
         </li>
       </ul>
     </ListPanel>
 
     <div class="flex-1 min-w-0 space-y-4">
-      <p v-if="!seg" class="text-sm text-muted-foreground p-4">
+      <p v-if="!seg" class="dci-card text-sm text-muted-foreground p-8 text-center">
         {{ loading && !segments.length ? 'Loading segments…' : loading && route.params.name ? `Loading segments: ${store.loaded.toLocaleString()} so far, ${route.params.name} not among them yet…` : segments.length ? 'Pick a segment to see its criteria, counts, publish history, and check whether someone is in it.' : 'No segments in this org.' }}
       </p>
 
       <template v-else>
         <div class="flex flex-wrap items-start gap-3">
-          <div class="min-w-0">
-            <h2 class="text-lg font-semibold">{{ seg.label }}</h2>
-            <div class="font-mono text-sm text-muted-foreground">{{ seg.apiName }}</div>
+          <div class="min-w-0 space-y-1">
+            <h2 class="text-2xl font-bold leading-[30px] break-words">{{ seg.label }}</h2>
+            <div class="font-mono text-[13px] text-muted-foreground break-all">{{ seg.apiName }}</div>
+            <div class="flex flex-wrap gap-1.5">
+              <span :class="badgeClass(seg.status)">{{ seg.status.toLowerCase() }}</span>
+              <span :class="badgeClass(seg.publishStatus || 'not published')">{{ seg.publishStatus.toLowerCase() || 'not published' }}</span>
+              <span class="dci-badge">{{ seg.on.replace(/^ssot__|__dlm$/g, '') }}</span>
+            </div>
           </div>
-          <div class="ml-auto flex gap-2">
+          <div class="ml-auto flex items-center gap-2">
             <DownloadMenu :get-doc="segDoc" :get-sheets="() => sheetsFrom(segSections())" :file-name="`segment-${seg.apiName}`" />
-            <a v-if="seg.id" :class="btn" :href="recordUrl(currentOrg()?.host, seg.id)" target="_blank" rel="noopener">Open in Salesforce</a>
+            <a v-if="seg.id" class="dci-btn-icon" :href="recordUrl(currentOrg()?.host, seg.id)" target="_blank" rel="noopener" title="Open in Salesforce" aria-label="Open in Salesforce"><ExternalLink class="w-4 h-4" /></a>
           </div>
         </div>
         <p v-if="notice" class="text-sm text-muted-foreground">{{ notice }}</p>
 
-        <dl :class="[card, 'p-3 grid grid-cols-[10rem_1fr] md:grid-cols-[10rem_1fr_10rem_1fr] gap-x-3 gap-y-1 text-sm']">
-          <dt class="text-muted-foreground">Segment on</dt><dd><RouterLink :to="`/objects/${seg.on}`" class="text-link hover:underline font-mono text-xs">{{ seg.on }}</RouterLink></dd>
-          <dt class="text-muted-foreground">Status</dt><dd>{{ seg.status.toLowerCase() }}</dd>
-          <dt class="text-muted-foreground">Last published</dt><dd>{{ when(seg.lastPublished) || 'never' }} ({{ seg.publishStatus.toLowerCase() }})</dd>
-          <dt class="text-muted-foreground">Schedule</dt><dd>{{ seg.publishInterval.replace(/_/g, ' ').toLowerCase() }}</dd>
-          <dt class="text-muted-foreground">Members at publish</dt><dd>{{ num(seg.lastCount) }}</dd>
-          <dt class="text-muted-foreground">Type</dt><dd>{{ seg.type }}{{ seg.lookback ? `, lookback ${seg.lookback}` : '' }}</dd>
-          <dt class="text-muted-foreground">Created</dt><dd>{{ when(seg.created) }}</dd>
-          <dt class="text-muted-foreground">Modified</dt><dd>{{ when(seg.modified) }}</dd>
+        <dl class="dci-card dci-kv px-5 pt-1 pb-2">
+          <div><dt>Segment on</dt><dd><RouterLink :to="`/objects/${seg.on}`" class="text-link hover:underline font-mono text-[13px]">{{ seg.on }}</RouterLink></dd></div>
+          <div><dt>Status</dt><dd class="inline-flex items-center gap-1.5"><span :class="['w-2 h-2 rounded-full', /active/i.test(seg.status) ? 'bg-green-600' : 'bg-gray-400']" />{{ seg.status.toLowerCase() }}</dd></div>
+          <div><dt>Last published</dt><dd>{{ when(seg.lastPublished) || 'never' }} ({{ seg.publishStatus.toLowerCase() || 'not published' }})</dd></div>
+          <div><dt>Schedule</dt><dd>{{ seg.publishInterval.replace(/_/g, ' ').toLowerCase() }}</dd></div>
+          <div><dt>Members at publish</dt><dd class="font-semibold">{{ num(seg.lastCount) }}</dd></div>
+          <div><dt>Type</dt><dd>{{ seg.type }}{{ seg.lookback ? `, lookback ${seg.lookback}` : '' }}</dd></div>
+          <div><dt>Created</dt><dd>{{ when(seg.created) }}</dd></div>
+          <div><dt>Modified</dt><dd>{{ when(seg.modified) }}</dd></div>
         </dl>
 
         <div :class="card">
-          <h3 class="p-3 border-b font-medium flex items-center">Criteria
-            <button class="ml-auto text-xs text-link hover:underline font-normal" @click="showRaw = !showRaw">{{ showRaw ? 'Hide' : 'Show' }} raw JSON</button>
+          <h3 class="px-5 py-3.5 border-b text-base font-semibold flex items-center">Criteria
+            <button class="ml-auto text-xs text-link hover:underline font-semibold" @click="showRaw = !showRaw">{{ showRaw ? 'Hide' : 'Show' }} raw JSON</button>
           </h3>
-          <div class="p-3 space-y-1 text-sm">
+          <div class="p-5 space-y-1 text-sm">
             <div v-for="(l, i) in lines" :key="i" :style="{ paddingLeft: `${l.depth * 1.25}rem` }">
               <span class="font-mono text-xs">{{ l.text }}</span>
               <pre v-if="l.raw" class="text-xs text-muted-foreground whitespace-pre-wrap">{{ l.raw }}</pre>
@@ -241,17 +250,13 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
         </div>
 
         <div :class="card">
-          <h3 class="p-3 border-b font-medium" data-help="segment-counts">Counts <HelpTip topic="segment-counts" /></h3>
-          <div class="p-3 space-y-3 text-sm">
-            <table class="text-sm">
-              <tr><td class="pr-6 py-0.5 text-muted-foreground">At the last publish</td><td class="text-right">{{ num(seg.lastCount) }}</td></tr>
-              <tr><td class="pr-6 py-0.5 text-muted-foreground">In the membership table now</td><td class="text-right">{{ detail?.loading ? '…' : detail?.latest ? num(detail.latestCount) : 'no table found' }}</td></tr>
-              <tr>
-                <td class="pr-6 py-0.5 text-muted-foreground">Matching the criteria now</td>
-                <td class="text-right">{{ detail?.countNow === 'counting' ? '…' : num(detail?.countNow) }}</td>
-                <td class="pl-4"><button v-if="sql && !sql.error" :class="btn" :disabled="detail?.countNow === 'counting'" @click="countNow">Count now</button></td>
-              </tr>
-            </table>
+          <h3 class="px-5 py-3.5 border-b text-base font-semibold" data-help="segment-counts">Counts <HelpTip topic="segment-counts" /></h3>
+          <div class="p-5 space-y-3 text-sm">
+            <div class="grid sm:grid-cols-3 gap-3">
+              <div class="rounded-xl border p-3.5"><div class="text-xs text-muted-foreground">At the last publish</div><div class="text-2xl font-bold mt-1">{{ num(seg.lastCount) }}</div></div>
+              <div class="rounded-xl border p-3.5"><div class="text-xs text-muted-foreground">In the membership table now</div><div class="text-2xl font-bold mt-1">{{ detail?.loading ? '…' : detail?.latest ? num(detail.latestCount) : '—' }}</div><div v-if="!detail?.loading && !detail?.latest" class="text-xs text-muted-foreground">no table found</div></div>
+              <div class="rounded-xl border p-3.5"><div class="text-xs text-muted-foreground">Matching the criteria now</div><div class="text-2xl font-bold mt-1">{{ detail?.countNow === 'counting' ? '…' : num(detail?.countNow) }}</div><button v-if="sql && !sql.error" class="dci-btn dci-btn-sm mt-2" :disabled="detail?.countNow === 'counting'" @click="countNow">Count now</button></div>
+            </div>
             <p v-if="detail?.countError" class="text-xs text-destructive">{{ detail.countError }}</p>
             <p v-if="typeof detail?.countNow === 'number' && seg.lastCount != null && detail.countNow !== seg.lastCount" class="text-xs">
               The criteria match {{ num(Math.abs(detail.countNow - seg.lastCount)) }} {{ detail.countNow > seg.lastCount ? 'more' : 'fewer' }} records now than at the last publish: data changed since, or the SQL below differs from how Data Cloud reads a rule.
@@ -272,7 +277,7 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
         </div>
 
         <div :class="card">
-          <h3 class="p-3 border-b font-medium" data-help="segment-check">Is this person in the segment? <HelpTip topic="segment-check" /></h3>
+          <h3 class="px-5 py-3.5 border-b text-base font-semibold" data-help="segment-check">Is this person in the segment? <HelpTip topic="segment-check" /></h3>
           <form class="p-3 flex gap-2" @submit.prevent="check">
             <input v-model="who" placeholder="Email, phone, name or ID" class="flex-1 border rounded-md px-2 py-1 bg-background text-sm" />
             <button class="dci-btn-primary" :disabled="checking || !who.trim()">{{ checking ? 'Checking…' : 'Check' }}</button>
@@ -294,7 +299,7 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
         </div>
 
         <div :class="card">
-          <h3 class="p-3 border-b font-medium">Publish history</h3>
+          <h3 class="px-5 py-3.5 border-b text-base font-semibold">Publish history</h3>
           <Loading v-if="detail?.loading" text="Loading…" />
           <p v-else-if="!detail?.history" class="p-3 text-sm text-muted-foreground">No history table found for {{ seg.on }}.</p>
           <p v-else-if="!detail.versions?.length" class="p-3 text-sm text-muted-foreground">No publishes recorded in {{ detail.history }}.</p>
@@ -320,4 +325,5 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
       </template>
     </div>
   </section>
+  </div>
 </template>

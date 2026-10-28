@@ -36,7 +36,7 @@ function key(e) {
     <button class="dci-btn-icon" :title="`Show the ${label}`" :aria-label="`Show the ${label}`" @click="state.hidden = false"><PanelLeftOpen class="w-4 h-4" /></button>
   </div>
   <template v-else>
-    <aside class="shrink-0 min-w-0 space-y-2" :style="{ width: `${state.width}px` }" :aria-label="label">
+    <aside class="shrink-0 min-w-0 self-start dci-card p-3 space-y-2.5 shadow-[0_14px_32px_-24px_rgba(13,148,136,0.35)]" :style="{ width: `${state.width}px` }" :aria-label="label">
       <slot />
     </aside>
     <div class="shrink-0 -mx-2 w-4 flex flex-col items-center self-stretch">

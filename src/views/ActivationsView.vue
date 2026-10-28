@@ -1,4 +1,6 @@
 <script setup>
+import { badgeClass } from '../lib/badges.js'
+import PageHeader from '../components/PageHeader.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import Loading from '../components/Loading.vue'
 import HelpTip from '../components/HelpTip.vue'
@@ -8,7 +10,7 @@ import DataTable from '../components/DataTable.vue'
 import DownloadMenu from '../components/DownloadMenu.vue'
 import JsonViewer from '../components/JsonViewer.vue'
 import { useRoute } from 'vue-router'
-import { RefreshCw } from 'lucide-vue-next'
+import { ArrowRight, ExternalLink, RefreshCw, Send, Users } from 'lucide-vue-next'
 import { useOrg, currentOrg, orgName, orgTitle } from '../app/useOrg.js'
 import { orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
@@ -81,18 +83,20 @@ const attrCols = [
 </script>
 
 <template>
+  <div class="space-y-5">
+  <PageHeader path="/activations" topic="activations">Each activation, the segment it sends, where it goes and which attributes go with it.</PageHeader>
   <section class="flex gap-4 min-h-0">
     <ListPanel name="activations" label="activations list">
       <div class="flex items-center gap-2">
-        <h2 class="font-semibold">Activations <HelpTip topic="activations" /></h2>
-        <span class="ml-auto"><DownloadMenu small label="" :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="activations" :disabled="!list.length" /></span>
+        <span class="text-xs text-muted-foreground"><strong class="text-foreground">{{ list.length }}</strong> activations</span>
+        <span class="ml-auto"><DownloadMenu small label="Download" :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="activations" :disabled="!list.length" /></span>
         <button class="dci-btn-icon" title="Load again" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
       </div>
       <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
       <p v-else-if="!loading && !list.length" class="text-sm text-muted-foreground">No activations in this data space.</p>
       <ul class="text-sm">
         <li v-for="a in list" :key="a.id">
-          <RouterLink :to="`/activations/${a.id}`" :class="['block px-2 py-1.5 rounded-md hover:bg-accent', { 'bg-accent': a.id === route.params.id }]">
+          <RouterLink :to="`/activations/${a.id}`" :class="['block px-2.5 py-1.5 rounded-lg border', a.id === route.params.id ? 'bg-teal-50 border-teal-200 dark:bg-teal-500/10 dark:border-teal-500/30' : 'border-transparent hover:bg-accent']">
             <div class="flex items-center gap-2"><span :class="['w-2 h-2 rounded-full shrink-0', DOT[activationHealth(a).level]]" /><span class="truncate">{{ a.name }}</span></div>
             <div class="text-xs text-muted-foreground truncate pl-4">{{ a.segment }} to {{ a.target }}</div>
           </RouterLink>
@@ -102,40 +106,58 @@ const attrCols = [
 
     <div class="flex-1 min-w-0 space-y-4">
       <Loading v-if="!route.params.id && loading" text="Loading activations" class="p-4" />
-      <p v-else-if="!route.params.id" class="text-sm text-muted-foreground p-4">Pick an activation to see what it sends, where, and when it last published.</p>
+      <p v-else-if="!route.params.id" class="dci-card text-sm text-muted-foreground p-8 text-center">Pick an activation to see what it sends, where, and when it last published.</p>
       <p v-if="actError" class="text-sm text-destructive">{{ actError }}</p>
       <template v-if="act">
         <div class="flex flex-wrap items-start gap-3">
-          <div><h2 class="text-lg font-semibold">{{ act.name }}</h2><div class="font-mono text-sm text-muted-foreground">{{ act.developerName }}</div></div>
-          <div class="ml-auto flex gap-2">
+          <div class="min-w-0 space-y-1">
+            <h2 class="text-2xl font-bold leading-[30px] break-words">{{ act.name }}</h2>
+            <div class="font-mono text-[13px] text-muted-foreground break-all">{{ act.developerName }}</div>
+            <div class="flex flex-wrap gap-1.5">
+              <span :class="badgeClass(act.enabled ? act.status : 'disabled')">{{ act.status.toLowerCase() }}{{ act.enabled ? '' : ', disabled' }}</span>
+              <span class="dci-badge">{{ [act.refreshType, act.processing].filter(Boolean).join(', ').toLowerCase() }}{{ act.excludeDeletes ? ', deletes not sent' : '' }}{{ act.excludeUpdates ? ', updates not sent' : '' }}</span>
+            </div>
+          </div>
+          <div class="ml-auto flex items-center gap-2">
             <DownloadMenu :get-markdown="() => activationMarkdown(act, { counts, host: orgTitle(org.orgId) })" :get-sheets="() => [{ name: 'Attributes', columns: ['Object', 'Field', 'Label', 'Sent as', 'Type'], rows: act.attributes.map((x) => [x.entity, x.name, x.label, x.output, x.type]) }]" :file-name="`activation-${act.developerName}`" />
-            <a :class="btn" :href="recordUrl(currentOrg()?.host, act.id)" target="_blank" rel="noopener">Open in Salesforce</a>
+            <a class="dci-btn-icon" :href="recordUrl(currentOrg()?.host, act.id)" target="_blank" rel="noopener" title="Open in Salesforce" aria-label="Open in Salesforce"><ExternalLink class="w-4 h-4" /></a>
           </div>
         </div>
-        <dl class="border rounded-xl bg-card p-3 grid grid-cols-[10rem_1fr] md:grid-cols-[10rem_1fr_10rem_1fr] gap-x-3 gap-y-1 text-sm">
-          <dt class="text-muted-foreground">Segment</dt><dd><RouterLink v-if="segmentApi" :to="`/segments/${segmentApi}`" class="text-link hover:underline">{{ act.segment }}</RouterLink><template v-else>{{ act.segment }}</template></dd>
-          <dt class="text-muted-foreground">Target</dt><dd><a v-if="act.targetId" :href="recordUrl(currentOrg()?.host, act.targetId)" target="_blank" rel="noopener" class="text-link hover:underline">{{ act.target }}</a><template v-else>{{ act.target }}</template></dd>
-          <dt class="text-muted-foreground">Status</dt><dd>{{ act.status.toLowerCase() }}{{ act.enabled ? '' : ', disabled' }}</dd>
-          <dt class="text-muted-foreground">Last publish</dt><dd :class="/fail|error/i.test(act.lastPublishStatus) ? 'text-destructive' : ''">{{ act.lastPublishStatus.toLowerCase() || 'never' }}, {{ when(act.lastPublish) }}</dd>
-          <dt class="text-muted-foreground">Refresh</dt><dd>{{ [act.refreshType, act.processing].filter(Boolean).join(', ').toLowerCase() }}{{ act.excludeDeletes ? ', deletes not sent' : '' }}{{ act.excludeUpdates ? ', updates not sent' : '' }}</dd>
-          <dt class="text-muted-foreground">Activates</dt><dd>{{ act.subjectLabel || act.subject }} <span class="font-mono text-xs text-muted-foreground">{{ act.subject }}</span></dd>
-        </dl>
+        <div class="dci-card p-4 flex flex-wrap items-center gap-x-5 gap-y-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="w-10 h-10 shrink-0 rounded-xl bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300 flex items-center justify-center"><Users class="w-5 h-5" aria-hidden="true" /></span>
+            <div class="min-w-0">
+              <div class="text-xs text-muted-foreground">Segment · activates {{ act.subjectLabel || act.subject }}</div>
+              <RouterLink v-if="segmentApi" :to="`/segments/${segmentApi}`" class="font-semibold text-link hover:underline break-all">{{ act.segment }}</RouterLink><span v-else class="font-semibold break-all">{{ act.segment }}</span>
+              <div class="font-mono text-xs text-muted-foreground">{{ act.subject }}</div>
+            </div>
+          </div>
+          <ArrowRight class="w-5 h-5 text-muted-foreground shrink-0" aria-hidden="true" />
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="w-10 h-10 shrink-0 rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300 flex items-center justify-center"><Send class="w-5 h-5" aria-hidden="true" /></span>
+            <div class="min-w-0">
+              <div class="text-xs text-muted-foreground">Target</div>
+              <a v-if="act.targetId" :href="recordUrl(currentOrg()?.host, act.targetId)" target="_blank" rel="noopener" class="font-semibold text-link hover:underline break-all">{{ act.target }}</a><span v-else class="font-semibold break-all">{{ act.target }}</span>
+              <div class="text-xs" :class="/fail|error/i.test(act.lastPublishStatus) ? 'text-destructive' : 'text-muted-foreground'">Last publish <span class="inline-flex items-center gap-1"><span :class="['w-2 h-2 rounded-full', /fail|error/i.test(act.lastPublishStatus) ? 'bg-red-500' : act.lastPublishStatus ? 'bg-green-600' : 'bg-gray-400']" />{{ act.lastPublishStatus.toLowerCase() || 'never' }}</span>, {{ when(act.lastPublish) }}</div>
+            </div>
+          </div>
+        </div>
         <div class="grid xl:grid-cols-[3fr_2fr] gap-4 items-start">
-          <div class="border rounded-xl bg-card">
-            <h3 class="p-3 border-b font-medium text-sm">Attributes sent ({{ act.attributes.length }})</h3>
+          <div class="dci-card">
+            <h3 class="px-5 py-3.5 border-b text-base font-semibold flex items-center gap-2">Attributes sent <span class="dci-count">{{ act.attributes.length }}</span></h3>
             <DataTable :columns="attrCols" :rows="act.attributes" :row-key="(x) => x.entity + x.name" :bordered="false" text-size="text-xs" box-class="max-h-[60vh]">
               <template #cell-field="{ row: x }"><span class="font-mono whitespace-nowrap">{{ x.entity.replace(/^ssot__|__dlm$/g, '') }}.{{ x.name }}</span><div class="text-muted-foreground">{{ x.label }}</div></template>
               <template #cell-output="{ value }"><span class="font-mono whitespace-nowrap">{{ value }}</span></template>
             </DataTable>
           </div>
           <div class="space-y-4">
-            <div class="border rounded-xl bg-card p-3 text-sm space-y-1">
-              <div class="font-medium">Contact points</div>
+            <div class="dci-card p-5 text-sm space-y-1.5">
+              <div class="text-base font-semibold">Contact points</div>
               <p v-if="!act.contactPoints.length" class="text-muted-foreground">None.</p>
               <div v-for="c in act.contactPoints" :key="c.entity"><RouterLink :to="`/objects/${c.entity}`" class="font-mono text-xs text-link hover:underline">{{ c.entity }}</RouterLink><div v-if="c.path.length" class="text-xs text-muted-foreground">through {{ c.path.join(' → ') }}</div></div>
             </div>
-            <div class="border rounded-xl bg-card p-3 text-sm space-y-2">
-              <div class="font-medium">Filters</div>
+            <div class="dci-card p-5 text-sm space-y-2">
+              <div class="text-base font-semibold flex items-center gap-2">Filters <span v-if="act.filters.length" class="dci-count">{{ act.filters.length }}</span></div>
               <p v-if="!act.filters.length" class="text-muted-foreground">None: every segment member is activated.</p>
               <div v-for="(f, i) in act.filters" :key="i" class="space-y-1 border-t pt-2 first-of-type:border-0">
                 <ul v-if="describeActivationFilter(f)" class="text-xs space-y-0.5">
@@ -147,8 +169,8 @@ const attrCols = [
                 </details>
               </div>
             </div>
-            <div class="border rounded-xl bg-card p-3 text-sm space-y-1">
-              <div class="font-medium">Audience</div>
+            <div class="dci-card p-5 text-sm space-y-2">
+              <div class="text-base font-semibold">Audience</div>
               <div v-for="[label, t] in [['Latest', act.latestAudience], ['History', act.historyAudience]].filter(([, t]) => t)" :key="t" class="flex gap-2">
                 <span class="w-16 text-muted-foreground">{{ label }}</span>
                 <RouterLink :to="`/objects/${t}`" class="font-mono text-xs text-link hover:underline truncate">{{ t }}</RouterLink>
@@ -161,4 +183,5 @@ const attrCols = [
       </template>
     </div>
   </section>
+  </div>
 </template>

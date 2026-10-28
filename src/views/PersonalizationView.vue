@@ -1,4 +1,5 @@
 <script setup>
+import PageHeader from '../components/PageHeader.vue'
 import DataTable from '../components/DataTable.vue'
 import Loading from '../components/Loading.vue'
 import JsonViewer from '../components/JsonViewer.vue'
@@ -73,7 +74,7 @@ async function openRecord(type, r) {
 }
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : '')
 const num = (n) => (n == null || n === '' ? '' : Number(n).toLocaleString())
-const card = 'border rounded-md bg-card'
+const card = 'dci-card'
 const tabBtn = (t) => ['dci-tab', tab.value === t ? 'is-on' : '']
 const btn = 'dci-btn'
 const decisionCols = [
@@ -139,8 +140,7 @@ const doc = () => docFrom({ title: 'Personalization', intro: `${orgTitle(org.org
   <section class="max-w-6xl mx-auto space-y-4">
     <div class="flex flex-wrap items-center gap-3">
       <div>
-        <h2 class="text-lg font-semibold">Personalization <HelpTip topic="personalization" /></h2>
-        <p class="text-sm text-muted-foreground">Salesforce Personalization setup (points, decisions, recommenders, experiments) and what the personalization log recorded.</p>
+        <PageHeader path="/personalization" title="Personalization" topic="personalization">Salesforce Personalization setup (points, decisions, recommenders, experiments) and what the personalization log recorded.</PageHeader>
       </div>
       <span class="ml-auto"><DownloadMenu :get-doc="doc" :get-sheets="() => sheetsFrom(sections())" file-name="personalization" :disabled="!setup" /></span>
       <button :class="btn" :disabled="loading" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /> Load again</button>
@@ -279,7 +279,7 @@ const doc = () => docFrom({ title: 'Personalization', intro: `${orgTitle(org.org
             <DataTable :columns="statusCols" :rows="activity.byStatus" row-key="status" />
           </div>
           <div :class="card">
-            <h3 class="p-3 border-b font-medium">Latest requests</h3>
+            <h3 class="px-5 py-3.5 border-b text-base font-semibold">Latest requests</h3>
             <DataTable :columns="recentCols" :rows="activity.recent" :bordered="false" box-class="max-h-[60vh]">
               <template #cell-at="{ value }"><span class="whitespace-nowrap">{{ value }}</span></template>
               <template #cell-point="{ row: r }">{{ nameOf(setup, r.point) }}<div class="text-xs text-muted-foreground">{{ nameOf(setup, r.decision) }}</div></template>

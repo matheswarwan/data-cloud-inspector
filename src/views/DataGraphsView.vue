@@ -1,4 +1,5 @@
 <script setup>
+import PageHeader from '../components/PageHeader.vue'
 // Data graphs (feedback #99, #101): each graph with its objects, fields and joins, a diagram,
 // its objects joined as SQL, the built graph as SQL, and one record's graph fetched by ID
 // (GET, read only) the way Personalization and Agentforce get it.
@@ -114,11 +115,11 @@ const graphDoc = () => docFrom({ title: `Data graph: ${labelOf(graph.value)}`, i
 </script>
 
 <template>
+  <div class="space-y-5">
+  <PageHeader path="/graphs" topic="graphs">Each data graph with its objects and fields, its status and record count, as SQL or one record.</PageHeader>
   <section class="flex gap-4 min-h-0">
     <ListPanel name="graphs" label="data graphs list">
       <div class="flex items-center gap-2">
-        <h2 class="font-semibold">Data graphs</h2>
-        <HelpTip topic="graphs" />
         <span class="ml-auto"><DownloadMenu small label="" :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="data-graphs" :disabled="!list.length" /></span>
         <button class="dci-btn-icon" title="Load again" aria-label="Load the data graphs again" @click="load(true)"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
       </div>
@@ -231,4 +232,5 @@ const graphDoc = () => docFrom({ title: `Data graph: ${labelOf(graph.value)}`, i
       </template>
     </div>
   </section>
+  </div>
 </template>

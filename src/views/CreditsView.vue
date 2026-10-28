@@ -1,4 +1,5 @@
 <script setup>
+import PageHeader from '../components/PageHeader.vue'
 // Credit prediction (feedback #145): how many Data Cloud credits the org used, per card or
 // usage type, and a forecast from the recent daily burn. Reads the org's own consumption
 // objects (Tenant...) with SQL, only when asked: each read is a query, which itself uses a
@@ -258,8 +259,7 @@ const btn = 'dci-btn'
 <template>
   <section class="max-w-6xl mx-auto space-y-4">
     <div>
-      <h2 class="text-lg font-semibold">Credit prediction <HelpTip topic="credits" /></h2>
-      <p class="text-sm text-muted-foreground">How many Data Cloud credits this org used, by card or usage type, and where the recent daily use is heading. Read from the org's own consumption data with SQL.</p>
+      <PageHeader path="/credits" title="Credit prediction" topic="credits">How many Data Cloud credits this org used, by card or usage type, and where the recent daily use is heading. Read from the org's own consumption data with SQL.</PageHeader>
     </div>
 
     <p v-if="sandbox" class="text-sm p-3 border rounded-xl border-amber-400 bg-card">This is a sandbox. The consumption objects exist only in production, and production's copy includes this sandbox's usage (environment Sandbox, with this org's ID). Connect to the production org and split by environment there.</p>

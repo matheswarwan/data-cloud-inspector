@@ -1,4 +1,5 @@
 <script setup>
+import PageHeader from '../components/PageHeader.vue'
 import { ref, computed, watch } from 'vue'
 import JsonViewer from '../components/JsonViewer.vue'
 import HelpTip from '../components/HelpTip.vue'
@@ -68,11 +69,8 @@ const text = computed(() => {
 <template>
   <section class="max-w-6xl mx-auto space-y-3">
     <div class="space-y-1">
-      <h2 class="text-lg font-semibold">REST explorer <HelpTip topic="explore" /></h2>
-      <p class="text-sm text-muted-foreground">
-        GET any Salesforce API path. POST is limited to the Data Cloud query endpoints
-        (<code>ssot/query-sql</code>, <code>ssot/queryv2</code>); nothing that writes is allowed.
-      </p>
+      <PageHeader path="/explore" title="REST explorer" topic="explore">GET any Salesforce API path. POST is limited to the Data Cloud query endpoints
+        (<code>ssot/query-sql</code>, <code>ssot/queryv2</code>); nothing that writes is allowed.</PageHeader>
     </div>
     <form class="flex gap-2" @submit.prevent="sendRequest">
       <select v-model="method" class="border rounded-md px-2 py-1 bg-background text-sm">

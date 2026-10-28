@@ -1,4 +1,5 @@
 <script setup>
+import PageHeader from '../components/PageHeader.vue'
 // Marketing flows (Marketing Cloud Next, analysis doc 2026-10-27): every Flow Builder flow
 // with its type, trigger and status, filtered to the marketing ones by a loose guess;
 // open one for its start (segment, event, record, schedule) and steps in run order, read
@@ -69,8 +70,7 @@ const chip = (on) => ['px-2 py-0.5 rounded-full border text-xs', on ? 'bg-accent
   <section class="max-w-6xl mx-auto space-y-4">
     <div class="flex items-start gap-3">
       <div>
-        <h2 class="text-lg font-semibold">Marketing flows <HelpTip topic="flows" /></h2>
-        <p class="text-sm text-muted-foreground">Flows with their type, trigger and status. Open one for what starts it and its steps in order. Marketing Cloud Next sends email, SMS and WhatsApp from these flows.</p>
+        <PageHeader path="/flows" title="Marketing flows" topic="flows">Flows with their type, trigger and status. Open one for what starts it and its steps in order. Marketing Cloud Next sends email, SMS and WhatsApp from these flows.</PageHeader>
       </div>
       <button class="ml-auto shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50" :disabled="loading" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /> Load again</button>
     </div>

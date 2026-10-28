@@ -1,4 +1,5 @@
 <script setup>
+import PageHeader from '../components/PageHeader.vue'
 import DownloadMenu from '../components/DownloadMenu.vue'
 import Loading from '../components/Loading.vue'
 import HelpTip from '../components/HelpTip.vue'
@@ -116,7 +117,7 @@ function ago(iso) {
 }
 
 const DOT = { fail: 'bg-red-500', warn: 'bg-amber-400', running: 'bg-sky-500', idle: 'bg-gray-400', ok: 'bg-green-500' }
-const card = 'border rounded-md bg-card'
+const card = 'dci-card'
 const btn = 'dci-btn'
 </script>
 
@@ -124,13 +125,10 @@ const btn = 'dci-btn'
   <section class="max-w-6xl mx-auto space-y-4">
     <div class="flex flex-wrap items-center gap-3">
       <div>
-        <h2 class="text-lg font-semibold">Health <HelpTip topic="health" /></h2>
-        <p class="text-sm text-muted-foreground">
-          Data streams, identity resolution, calculated insights, segments and activations, problems first.
+        <PageHeader path="/health" title="Health" topic="health">Data streams, identity resolution, calculated insights, segments and activations, problems first.
           <span v-if="loading"> Checking: {{ job?.progress || 'starting' }}. You can use other pages meanwhile.</span>
           <span v-else-if="checkedAt"> Checked {{ checkedAt.toLocaleString() }}.</span>
-          <span v-if="job?.status === 'failed'" class="text-destructive"> The check failed: {{ job.error }}</span>
-        </p>
+          <span v-if="job?.status === 'failed'" class="text-destructive"> The check failed: {{ job.error }}</span></PageHeader>
       </div>
       <div class="ml-auto flex items-center gap-2">
         <label class="text-sm flex items-center gap-1.5"><input v-model="problemsOnly" type="checkbox" /> Problems only</label>
@@ -163,7 +161,7 @@ const btn = 'dci-btn'
     </table>
 
     <div v-if="attention.length" :class="card">
-      <h3 class="p-3 border-b font-medium">Failed or needs a look <span class="text-muted-foreground font-normal text-sm">({{ attention.length }})</span></h3>
+      <h3 class="px-5 py-3.5 border-b text-base font-semibold">Failed or needs a look <span class="text-muted-foreground font-normal text-sm">({{ attention.length }})</span></h3>
       <ul class="divide-y text-sm">
         <li v-for="i in attention" :key="`${i.area}:${i.name}`" class="p-2 px-3 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
           <span class="whitespace-nowrap w-28 shrink-0"><span :class="['inline-block w-2 h-2 rounded-full mr-2', DOT[i.level]]" />{{ LEVEL_TEXT[i.level] }}</span>
@@ -176,7 +174,7 @@ const btn = 'dci-btn'
     </div>
 
     <div v-for="s in sections" :id="sectionId(s.title)" :key="s.title" :class="[card, 'scroll-mt-4']">
-      <h3 class="p-3 border-b font-medium">{{ s.title }} <span class="text-muted-foreground font-normal text-sm">({{ s.items.length }})</span>
+      <h3 class="px-5 py-3.5 border-b text-base font-semibold">{{ s.title }} <span class="text-muted-foreground font-normal text-sm">({{ s.items.length }})</span>
         <span v-if="levelFilter?.title === s.title" class="ml-2 text-xs font-normal text-muted-foreground">Showing {{ LEVEL_TEXT[levelFilter.level].toLowerCase() }} only. <button class="text-link hover:underline" @click="levelFilter = null">Show all</button></span>
       </h3>
       <p v-if="s.error" class="p-3 text-sm text-destructive">Could not load: {{ s.error }}</p>

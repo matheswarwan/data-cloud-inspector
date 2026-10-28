@@ -1,4 +1,5 @@
 <script setup>
+import PageHeader from '../components/PageHeader.vue'
 import DownloadMenu from '../components/DownloadMenu.vue'
 import HelpTip from '../components/HelpTip.vue'
 import { ref, computed, watch } from 'vue'
@@ -58,7 +59,7 @@ function compare() {
 
 const md = computed(() => (diff.value ? compareMarkdown(diff.value, { a: labelA.value, b: labelB.value, hosts: { a: ran.value.hostA, b: ran.value.hostB } }) : ''))
 
-const card = 'border rounded-md bg-card'
+const card = 'dci-card'
 const btn = 'dci-btn'
 const pairs = [
   ['Segments', 'segmentsOnlyA', 'segmentsOnlyB'],
@@ -70,8 +71,7 @@ const pairs = [
 <template>
   <section class="max-w-6xl mx-auto space-y-4">
     <div>
-      <h2 class="text-lg font-semibold">Compare two orgs <HelpTip topic="compare" /></h2>
-      <p class="text-sm text-muted-foreground">For example a sandbox and production: objects, fields, segments, calculated insights and data streams that exist in only one, and field type changes. Default data space in each org.</p>
+      <PageHeader path="/compare" title="Compare two orgs" topic="compare">For example a sandbox and production: objects, fields, segments, calculated insights and data streams that exist in only one, and field type changes. Default data space in each org.</PageHeader>
     </div>
     <p v-if="org.orgs.length < 2" class="text-sm p-3 border rounded-xl bg-card">Only one org is logged in in this browser. Log in to the second org in another tab, then choose Find orgs again in the connection menu.</p>
     <form class="flex flex-wrap items-center gap-2 text-sm" @submit.prevent="compare">
@@ -96,7 +96,7 @@ const pairs = [
       <template v-else>
         <div class="grid md:grid-cols-2 gap-4">
           <div v-for="[side, key] in [['A', 'objectsOnlyA'], ['B', 'objectsOnlyB']]" :key="key" :class="card">
-            <h3 class="p-3 border-b font-medium">Objects only in {{ side === 'A' ? labelA : labelB }} ({{ diff[key].length }})</h3>
+            <h3 class="px-5 py-3.5 border-b text-base font-semibold">Objects only in {{ side === 'A' ? labelA : labelB }} ({{ diff[key].length }})</h3>
             <ul class="p-3 text-sm space-y-0.5">
               <li v-for="o in diff[key]" :key="o.name"><span class="text-[10px] border rounded px-1 text-muted-foreground mr-1">{{ o.kind }}</span>{{ o.label }} <span class="font-mono text-xs text-muted-foreground">{{ o.name }}</span></li>
               <li v-if="!diff[key].length" class="text-muted-foreground">None.</li>
@@ -104,7 +104,7 @@ const pairs = [
           </div>
         </div>
         <div :class="card">
-          <h3 class="p-3 border-b font-medium">Objects in both with field differences ({{ diff.changed.length }})</h3>
+          <h3 class="px-5 py-3.5 border-b text-base font-semibold">Objects in both with field differences ({{ diff.changed.length }})</h3>
           <p v-if="!diff.changed.length" class="p-3 text-sm text-muted-foreground">None.</p>
           <div v-for="c in diff.changed" :key="c.name" class="p-3 border-b last:border-0 text-sm space-y-0.5">
             <div class="font-medium">{{ c.label }} <span class="font-mono text-xs text-muted-foreground">{{ c.name }}</span></div>

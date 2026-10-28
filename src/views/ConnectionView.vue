@@ -1,4 +1,5 @@
 <script setup>
+import PageHeader from '../components/PageHeader.vue'
 import DataTable from '../components/DataTable.vue'
 import JsonViewer from '../components/JsonViewer.vue'
 import HelpTip from '../components/HelpTip.vue'
@@ -61,15 +62,12 @@ const checkCols = [
 <template>
   <section class="max-w-6xl mx-auto space-y-4">
     <div class="space-y-1">
-      <h2 class="text-lg font-semibold">Connection check <HelpTip topic="connection" /></h2>
-      <p class="text-sm text-muted-foreground">
-        Checks that your browser session reaches the core API and the Data Cloud endpoints of
-        <strong :title="currentOrg()?.host">{{ currentOrg() ? orgName(org.orgId) : 'the selected org' }}</strong>. Every request is a read.
-      </p>
+      <PageHeader path="/connection" title="Connection check" topic="connection">Checks that your browser session reaches the core API and the Data Cloud endpoints of
+        <strong :title="currentOrg()?.host">{{ currentOrg() ? orgName(org.orgId) : 'the selected org' }}</strong>. Every request is a read.</PageHeader>
     </div>
 
     <div class="border rounded-xl bg-card">
-      <h3 class="p-3 border-b font-medium flex items-center gap-2">How this tool connects</h3>
+      <h3 class="px-5 py-3.5 border-b text-base font-semibold flex items-center gap-2">How this tool connects</h3>
       <p v-if="user.error" class="p-3 text-sm text-destructive">{{ user.error }}</p>
       <div v-else class="p-3 grid md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
         <UserContext />

@@ -1,4 +1,5 @@
 <script setup>
+import PageHeader from '../components/PageHeader.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import HelpTip from '../components/HelpTip.vue'
 import DownloadMenu from '../components/DownloadMenu.vue'
@@ -56,17 +57,16 @@ const getSheets = () => dataModelSheets(view.value, catalog.usage)
   <section :class="[mode === 'diagram' ? '' : 'max-w-7xl', 'mx-auto space-y-3']">
     <div class="flex flex-wrap items-center gap-3">
       <div>
-        <h2 class="text-lg font-semibold">Data models <HelpTip topic="models" /></h2>
-        <p class="text-sm text-muted-foreground">The data model objects, where their data comes from and what uses them.</p>
+        <PageHeader path="/models" title="Data models" topic="models">The data model objects, where their data comes from and what uses them.</PageHeader>
       </div>
       <div class="ml-auto flex flex-wrap items-center gap-2 text-sm">
-        <div class="inline-flex rounded-md border overflow-hidden" role="radiogroup" aria-label="Show as" data-help="models-diagram">
-          <button role="radio" :aria-checked="mode === 'table'" :class="['px-2.5 py-1.5', mode === 'table' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent']" @click="mode = 'table'">Table</button>
-          <button role="radio" :aria-checked="mode === 'diagram'" :class="['px-2.5 py-1.5 border-l', mode === 'diagram' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent']" @click="mode = 'diagram'">Diagram</button>
+        <div class="dci-seg" role="radiogroup" aria-label="Show as" data-help="models-diagram">
+          <button role="radio" :aria-checked="mode === 'table'" :class="['dci-seg-item', mode === 'table' ? 'is-on' : '']" @click="mode = 'table'">Table</button>
+          <button role="radio" :aria-checked="mode === 'diagram'" :class="['dci-seg-item', mode === 'diagram' ? 'is-on' : '']" @click="mode = 'diagram'">Diagram</button>
         </div>
-        <div class="inline-flex rounded-md border overflow-hidden" role="radiogroup" aria-label="Which DMOs">
-          <button role="radio" :aria-checked="!all" :class="['px-2.5 py-1.5', !all ? 'bg-primary text-primary-foreground' : 'hover:bg-accent']" @click="all = false">Mapped DMOs</button>
-          <button role="radio" :aria-checked="all" :class="['px-2.5 py-1.5 border-l', all ? 'bg-primary text-primary-foreground' : 'hover:bg-accent']" @click="all = true">All DMOs</button>
+        <div class="dci-seg" role="radiogroup" aria-label="Which DMOs">
+          <button role="radio" :aria-checked="!all" :class="['dci-seg-item', !all ? 'is-on' : '']" @click="all = false">Mapped DMOs</button>
+          <button role="radio" :aria-checked="all" :class="['dci-seg-item', all ? 'is-on' : '']" @click="all = true">All DMOs</button>
         </div>
         <input v-model="search" placeholder="Search" class="border rounded-md px-2 py-1.5 bg-background w-48" />
         <DownloadMenu v-show="mode === 'table'" :get-markdown="getMarkdown" :get-sheets="getSheets" :file-name="`data-models-${all ? 'all' : 'mapped'}`" :disabled="!view.length" />

@@ -1,4 +1,5 @@
 <script setup>
+import PageHeader from '../components/PageHeader.vue'
 // Campaigns (Marketing Cloud Next, analysis doc 2026-10-27): Campaign records, and for one
 // campaign its members by status and engagement counts per action from any engagement DMO
 // with a campaign field. Read only.
@@ -66,8 +67,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
   <section class="max-w-6xl mx-auto space-y-4">
     <div class="flex items-start gap-3">
       <div>
-        <h2 class="text-lg font-semibold">Campaigns <HelpTip topic="campaigns" /></h2>
-        <p class="text-sm text-muted-foreground">Campaign records, their members by status and, where an engagement object records the campaign, what happened per action.</p>
+        <PageHeader path="/campaigns" title="Campaigns" topic="campaigns">Campaign records, their members by status and, where an engagement object records the campaign, what happened per action.</PageHeader>
       </div>
       <button class="ml-auto shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50" :disabled="loading" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /> Load again</button>
     </div>

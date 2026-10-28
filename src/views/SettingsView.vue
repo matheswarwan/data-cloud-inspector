@@ -1,4 +1,5 @@
 <script setup>
+import PageHeader from '../components/PageHeader.vue'
 import OAuthLogin from '../components/OAuthLogin.vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useApiConsole, setApiConsole } from '../app/useApiConsole.js'
@@ -136,7 +137,7 @@ const THEMES = [
   { id: 'dark', label: 'Dark', icon: Moon },
 ]
 const when = (iso) => (iso ? new Date(iso).toLocaleString() : '')
-const card = 'border rounded-md bg-card p-4 space-y-3'
+const card = 'dci-card p-5 space-y-3'
 const btn = 'dci-btn'
 const savedCount = computed(() => queries.saved.length)
 const apiConsole = useApiConsole()
@@ -149,7 +150,7 @@ function showTipsAgain() { setTipsOn(true); resetTips(); tips.value = true }
 
 <template>
   <section class="max-w-3xl mx-auto space-y-4">
-    <h2 class="text-lg font-semibold">Settings</h2>
+    <PageHeader path="/settings">Appearance, tools, what is kept in this browser, and logins.</PageHeader>
     <p v-if="notice" class="text-sm text-muted-foreground">{{ notice }}</p>
 
     <div v-if="managedLines.length" :class="card">

@@ -1,4 +1,5 @@
 <script setup>
+import PageHeader from '../components/PageHeader.vue'
 import DownloadMenu from '../components/DownloadMenu.vue'
 import HelpTip from '../components/HelpTip.vue'
 import DataTable from '../components/DataTable.vue'
@@ -133,15 +134,14 @@ function bulkSheets() {
 }
 
 const yn = (v) => (v == null ? '' : v ? 'yes' : 'no')
-const card = 'border rounded-md bg-card'
+const card = 'dci-card'
 const btn = 'dci-btn'
 </script>
 
 <template>
   <section class="max-w-6xl mx-auto space-y-4">
     <div>
-      <h2 class="text-lg font-semibold" data-help="bulk">Bulk lookup <HelpTip topic="bulk" /></h2>
-      <p class="text-sm text-muted-foreground">Paste emails, phones or IDs (one per line, or separated by commas), up to {{ MAX_INPUTS.toLocaleString() }}. Each is checked in Data Cloud, with its unified profile and, if you pick one, segment membership.</p>
+      <PageHeader path="/bulk" title="Bulk lookup" topic="bulk" data-help="bulk">Paste emails, phones or IDs (one per line, or separated by commas), up to {{ MAX_INPUTS.toLocaleString() }}. Each is checked in Data Cloud, with its unified profile and, if you pick one, segment membership.</PageHeader>
     </div>
 
     <div :class="[card, 'p-3 space-y-2']">

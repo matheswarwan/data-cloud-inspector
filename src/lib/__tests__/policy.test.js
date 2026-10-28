@@ -42,3 +42,14 @@ describe('feedback by email', () => {
     expect(decodeURIComponent(link.split('body=')[1])).toContain('[Shortened')
   })
 })
+
+describe('status badges', () => {
+  it('colours status words', async () => {
+    const { badgeClass } = await import('../badges.js')
+    expect(badgeClass('Active')).toContain('green')
+    expect(badgeClass('Failed')).toContain('red')
+    expect(badgeClass('Every 24 hours')).toContain('blue')
+    expect(badgeClass('Not published')).toContain('amber')
+    expect(badgeClass('Calculated')).toBe('dci-badge')
+  })
+})
