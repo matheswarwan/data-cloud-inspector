@@ -137,7 +137,7 @@
   .dci-card-head { @apply flex items-center gap-2 px-5 py-4 border-b; }
   .dci-card-title { @apply text-base font-semibold; }
   /* Search field: a pill with the teal ring of Home's search. */
-  .dci-search { @apply flex items-center gap-2 h-10 pl-3.5 pr-3 rounded-full border border-teal-200 bg-card shadow-[0_0_0_4px_rgba(13,148,136,0.06)] dark:border-teal-500/30 focus-within:border-primary; }
+  .dci-search { @apply min-w-0 flex items-center gap-2 h-10 pl-3.5 pr-3 rounded-full border border-teal-200 bg-card shadow-[0_0_0_4px_rgba(13,148,136,0.06)] dark:border-teal-500/30 focus-within:border-primary; }
   .dci-search > input, .dci-search > .dci-search-input { @apply flex-1 min-w-0 bg-transparent outline-none text-sm border-0 p-0; }
   /* Key and value in a two-column grid with row dividers. */
   .dci-kv { @apply grid sm:grid-cols-2 gap-x-8; }

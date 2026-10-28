@@ -128,6 +128,7 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
   <section class="flex gap-4 min-h-0">
     <ListPanel name="identity" label="rulesets list" :width="288">
       <div class="flex items-center gap-2">
+        <span class="text-xs text-muted-foreground"><strong class="text-foreground">{{ rulesets.length }}</strong> {{ rulesets.length === 1 ? 'ruleset' : 'rulesets' }}</span>
         <span class="ml-auto"><DownloadMenu small label="" :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="identity-rulesets" :disabled="!rulesets.length" /></span>
         <button class="dci-btn-icon" title="Load the rulesets again" @click="load({ refresh: true })"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
       </div>
@@ -135,7 +136,7 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
       <p v-else-if="!loading && !rulesets.length" class="text-sm text-muted-foreground">No identity resolution rulesets in this data space.</p>
       <ul class="text-sm">
         <li v-for="r in rulesets" :key="r.id">
-          <RouterLink :to="`/identity/${r.id}`" :class="['block px-2 py-1.5 rounded-md hover:bg-accent', { 'bg-accent': r.id === ruleset?.id }]">
+          <RouterLink :to="`/identity/${r.id}`" :class="['block px-2.5 py-1.5 rounded-lg border', r.id === ruleset?.id ? 'bg-teal-50 border-teal-200 dark:bg-teal-500/10 dark:border-teal-500/30' : 'border-transparent hover:bg-accent']">
             <div class="truncate">{{ r.label }}</div>
             <div class="text-xs text-muted-foreground">{{ r.id }} · {{ r.status.toLowerCase() }} · last run {{ r.lastJobStatus.toLowerCase() || 'never' }}</div>
           </RouterLink>
@@ -145,7 +146,7 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
 
     <div class="flex-1 min-w-0 space-y-4">
       <Loading v-if="!ruleset && loading" text="Loading rulesets" class="p-4" />
-      <p v-else-if="!ruleset" class="text-sm text-muted-foreground p-4">Pick a ruleset.</p>
+      <p v-else-if="!ruleset" class="dci-card text-sm text-muted-foreground p-8 text-center min-h-[40vh] flex items-center justify-center">Pick a ruleset to see its match and reconciliation rules.</p>
       <template v-else>
         <div class="flex flex-wrap items-start gap-3">
           <div>

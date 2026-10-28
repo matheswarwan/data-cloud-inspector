@@ -178,16 +178,16 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
   <section class="flex gap-4 min-h-0">
     <ListPanel name="segments" label="segments list">
       <div class="flex gap-2">
-        <label class="dci-search flex-1"><Search class="w-4 h-4 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden="true" /><input v-model="filter" placeholder="Search segments" /></label>
+        <label class="dci-search flex-1 min-w-0"><Search class="w-4 h-4 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden="true" /><input v-model="filter" placeholder="Search segments" /></label>
         <button class="dci-btn-icon" title="Load the segments again" @click="load(true)">
           <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" />
         </button>
       </div>
-      <div class="flex items-center gap-2 text-xs">
-        <span class="text-muted-foreground">{{ list.length.toLocaleString() }} of {{ segments.length.toLocaleString() }} segments<template v-if="loading">, {{ store.storedAt ? `saved ${new Date(store.storedAt).toLocaleString()}, updating` : 'loading' }} {{ store.total ? `${store.loaded.toLocaleString()} of ${store.total.toLocaleString()}` : `more (${store.loaded.toLocaleString()} so far)` }}…</template></span>
-        <label class="ml-auto text-muted-foreground" for="seg-sort">Sort</label>
-        <select id="seg-sort" v-model="sortBy" class="h-7 rounded-full border bg-card px-2.5 text-xs"><option v-for="o in SEGMENT_SORTS" :key="o.id" :value="o.id">{{ o.label }}</option></select>
-        <DownloadMenu small :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="segments" :disabled="!list.length" />
+      <p class="text-xs text-muted-foreground"><strong class="text-foreground">{{ list.length.toLocaleString() }} of {{ segments.length.toLocaleString() }}</strong> segments<template v-if="loading">, {{ store.storedAt ? `saved ${new Date(store.storedAt).toLocaleString()}, updating` : 'loading' }} {{ store.total ? `${store.loaded.toLocaleString()} of ${store.total.toLocaleString()}` : `more (${store.loaded.toLocaleString()} so far)` }}…</template></p>
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <label class="text-muted-foreground" for="seg-sort">Sort</label>
+        <select id="seg-sort" v-model="sortBy" class="h-8 min-w-0 flex-1 rounded-full border bg-card px-2.5 text-xs"><option v-for="o in SEGMENT_SORTS" :key="o.id" :value="o.id">{{ o.label }}</option></select>
+        <DownloadMenu small label="Download" :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="segments" :disabled="!list.length" />
       </div>
       <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
       <ul class="max-h-[75vh] overflow-auto text-sm">
@@ -203,7 +203,7 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
     </ListPanel>
 
     <div class="flex-1 min-w-0 space-y-4">
-      <p v-if="!seg" class="dci-card text-sm text-muted-foreground p-8 text-center">
+      <p v-if="!seg" class="dci-card text-sm text-muted-foreground p-8 text-center min-h-[40vh] flex items-center justify-center">
         {{ loading && !segments.length ? 'Loading segments…' : loading && route.params.name ? `Loading segments: ${store.loaded.toLocaleString()} so far, ${route.params.name} not among them yet…` : segments.length ? 'Pick a segment to see its criteria, counts, publish history, and check whether someone is in it.' : 'No segments in this org.' }}
       </p>
 

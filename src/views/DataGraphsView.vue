@@ -7,7 +7,7 @@ import { ref, computed, watch, onMounted, defineAsyncComponent } from 'vue'
 import Loading from '../components/Loading.vue'
 import JsonViewer from '../components/JsonViewer.vue'
 import { useRoute, useRouter } from 'vue-router'
-import { RefreshCw } from 'lucide-vue-next'
+import { RefreshCw, Search } from 'lucide-vue-next'
 import ListPanel from '../components/ListPanel.vue'
 import SqlBlock from '../components/SqlBlock.vue'
 import HelpTip from '../components/HelpTip.vue'
@@ -120,15 +120,15 @@ const graphDoc = () => docFrom({ title: `Data graph: ${labelOf(graph.value)}`, i
   <section class="flex gap-4 min-h-0">
     <ListPanel name="graphs" label="data graphs list">
       <div class="flex items-center gap-2">
-        <span class="ml-auto"><DownloadMenu small label="" :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="data-graphs" :disabled="!list.length" /></span>
+        <label class="dci-search flex-1 min-w-0"><Search class="w-4 h-4 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden="true" /><input v-model="filter" placeholder="Search data graphs" aria-label="Search data graphs" /></label>
+        <DownloadMenu small label="" :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="data-graphs" :disabled="!list.length" />
         <button class="dci-btn-icon" title="Load again" aria-label="Load the data graphs again" @click="load(true)"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
       </div>
-      <input v-model="filter" placeholder="Search data graphs" class="w-full border rounded-md px-2 py-1 bg-background text-sm" />
       <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
       <p v-else class="text-xs text-muted-foreground">{{ graphs ? `${list.length} data ${list.length === 1 ? 'graph' : 'graphs'}` : 'Loading data graphs…' }}</p>
       <ul class="text-sm max-h-[75vh] overflow-auto">
         <li v-for="g in list" :key="nameOf(g)">
-          <RouterLink :to="`/graphs/${nameOf(g)}`" :class="['block px-2 py-1.5 rounded-md hover:bg-accent', { 'bg-accent': nameOf(g) === route.params.name }]">
+          <RouterLink :to="`/graphs/${nameOf(g)}`" :class="['block px-2.5 py-1.5 rounded-lg border', nameOf(g) === route.params.name ? 'bg-teal-50 border-teal-200 dark:bg-teal-500/10 dark:border-teal-500/30' : 'border-transparent hover:bg-accent']">
             <div class="truncate">{{ labelOf(g) }}</div>
             <div class="text-xs text-muted-foreground truncate">{{ g.primaryObjectLabel || g.primaryObjectName }}{{ status(g) ? ` · ${status(g)}` : '' }}</div>
           </RouterLink>
@@ -137,7 +137,7 @@ const graphDoc = () => docFrom({ title: `Data graph: ${labelOf(graph.value)}`, i
     </ListPanel>
 
     <div class="flex-1 min-w-0 space-y-4">
-      <div v-if="!route.params.name" class="text-sm text-muted-foreground p-4 space-y-2">
+      <div v-if="!route.params.name" class="dci-card text-sm text-muted-foreground p-8 space-y-2 text-center min-h-[40vh] flex flex-col items-center justify-center">
         <p v-if="graphs && !graphs.length">No data graphs in this data space. A data graph puts a person's data from several objects into one JSON document, which Personalization and Agentforce read in one call.</p>
         <p v-else-if="graphs">Pick a data graph to see its objects, query it in SQL or fetch one record.</p>
         <Loading v-else text="Loading data graphs" />

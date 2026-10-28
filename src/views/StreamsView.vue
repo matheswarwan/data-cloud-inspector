@@ -134,7 +134,7 @@ const fieldCols = [
       <p class="text-xs text-muted-foreground">{{ list.length }} data streams</p>
       <ul class="max-h-[75vh] overflow-auto text-sm">
         <li v-for="s in list" :key="s.name">
-          <RouterLink :to="`/streams/${s.name}`" :class="['block px-2 py-1.5 rounded-md hover:bg-accent', { 'bg-accent': s.name === route.params.name }]">
+          <RouterLink :to="`/streams/${s.name}`" :class="['block px-2.5 py-1.5 rounded-lg border', s.name === route.params.name ? 'bg-teal-50 border-teal-200 dark:bg-teal-500/10 dark:border-teal-500/30' : 'border-transparent hover:bg-accent']">
             <div class="flex items-center gap-2"><span :class="['w-2 h-2 rounded-full shrink-0', DOT[s.health.level]]" :title="s.health.reason" /><span class="truncate">{{ s.label }}</span></div>
             <div class="text-xs text-muted-foreground truncate pl-4">{{ s.connector }}{{ s.sourceObject ? `: ${s.sourceObject}` : '' }} · {{ num(s.totalRecords) }} records</div>
           </RouterLink>
