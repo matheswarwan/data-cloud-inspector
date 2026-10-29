@@ -8,6 +8,7 @@ export const HELP = {
   'sql-objects': { title: 'Objects panel', page: '/sql', text: 'Search the objects beside the editor. Click an object or field to insert it where the cursor is, or tick fields and insert a SELECT of them.' },
   'sql-results': { title: 'Results', page: '/sql', text: 'Sort by any column, filter per column with the funnel icon, click a cell for its full value. Download CSV fetches every row, not only the ones loaded.' },
   builder: { title: 'Query builder', page: '/sql/builder', text: 'Build a query without writing SQL: click objects on the left to add them; each joins an earlier one (the join is suggested from your org\'s relationships, or pick the fields, with as many conditions as you need). Then pick the output fields, add filters and options, and run it, count the rows or open it in a SQL tab. List or Visual shows the same query.' },
+  people: { title: 'People', page: '/profile', text: 'Look up one person in depth (unified record, source records, match rules and everything related), or paste a list of up to 1,000 emails, phones or IDs to see who is found and in which segment.' },
   bulk: { title: 'People: a list', page: '/bulk', text: 'On People, the A list tab: paste up to 1,000 emails, phones or IDs and see for each one whether it was found, its unified profile and, if you pick a segment, whether it is a member and matches the criteria now. It runs in the background, so you can leave the page.' },
   profile: { title: 'People: one person', page: '/profile', text: 'On People, the One person tab: look up a person by email, phone, name or ID and pick an identity resolution ruleset. You see the unified record, every source record behind it, the match rules side by side with the values, and everything related to the person.' },
   'profile-missed': { title: 'Possible missed matches', page: '/profile', text: 'People who share an email with this profile but were not unified with it. This is where a match rule that is too strict shows up.' },
@@ -41,7 +42,7 @@ export const HELP = {
 export const HELP_GROUPS = [
   { title: 'Getting started', ids: ['read-only', 'search', 'connection', 'settings'] },
   { title: 'Explore the data', ids: ['objects', 'sql', 'sql-objects', 'sql-results', 'builder'] },
-  { title: 'People', ids: ['bulk', 'profile', 'profile-rules', 'profile-missed'] },
+  { title: 'People', ids: ['people', 'bulk', 'profile', 'profile-rules', 'profile-missed'] },
   { title: 'Data model and identity', ids: ['streams', 'models', 'models-diagram', 'identity', 'identity-compare', 'graphs'] },
   { title: 'Segments and activation', ids: ['segments', 'segment-counts', 'segment-check', 'activations', 'insights'] },
   { title: 'Personalization and checks', ids: ['personalization', 'explore', 'credits', 'compare', 'health'] },

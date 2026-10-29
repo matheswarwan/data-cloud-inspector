@@ -4,8 +4,9 @@ import { Boxes, Database, ListChecks, User, ArrowDownToLine, Network, Fingerprin
 export const NAV_ICONS = { Boxes, Database, ListChecks, User, ArrowDownToLine, Network, Fingerprint, Users, Send, Calculator, LayoutTemplate, GitCompare, Terminal, HeartPulse, Plug, Blocks, Share2, Home, Gauge, Workflow, Megaphone }
 export const navIcon = (name) => NAV_ICONS[name] || Circle
 
-// Help text per sidebar page (the help topic is the page path without its slash).
-export const PAGE_TOPIC = { '/objects': 'objects', '/sql': 'sql', '/sql/builder': 'builder', '/bulk': 'bulk', '/profile': 'profile', '/streams': 'streams', '/models': 'models', '/identity': 'identity', '/graphs': 'graphs', '/segments': 'segments', '/activations': 'activations', '/insights': 'insights', '/personalization': 'personalization', '/flows': 'flows', '/campaigns': 'campaigns', '/compare': 'compare', '/explore': 'explore', '/health': 'health', '/connection': 'connection' }
+// Help text per sidebar page (the help topic is the page path without its slash). Every page
+// needs one, or its Home card shows no description (feedback #1057; a test checks it).
+export const PAGE_TOPIC = { '/credits': 'credits', '/objects': 'objects', '/sql': 'sql', '/sql/builder': 'builder', '/bulk': 'bulk', '/profile': 'people', '/streams': 'streams', '/models': 'models', '/identity': 'identity', '/graphs': 'graphs', '/segments': 'segments', '/activations': 'activations', '/insights': 'insights', '/personalization': 'personalization', '/flows': 'flows', '/campaigns': 'campaigns', '/compare': 'compare', '/explore': 'explore', '/health': 'health', '/connection': 'connection' }
 
 // One colour per page (Home cards and page headers); the shadow is the same hue (r,g,b).
 export const TONES = {
