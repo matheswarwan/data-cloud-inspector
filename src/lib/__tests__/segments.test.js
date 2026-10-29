@@ -174,3 +174,23 @@ describe('personHistory (feedback #1028)', async () => {
     expect(segIdIn({ id15: '1sgAAA000000001', id: '1sgAAA000000001XYZ' })).toBe("IN ('1sgAAA000000001', '1sgAAA000000001XYZ')")
   })
 })
+
+describe('loadMembers (feedback #1031)', async () => {
+  const { loadMembers, membersSql } = await import('../segments.js')
+  const seg = { id15: '1sgAAA000000001', id: '1sgAAA000000001XYZ', on: 'ssot__Individual__dlm' }
+  const catalog = [{ name: 'ssot__Individual__dlm', primaryKeys: ['ssot__Id__c'], fields: [{ name: 'ssot__Id__c' }, { name: 'ssot__FirstName__c' }, { name: 'ssot__LastName__c' }] }]
+  it('pages by ID', () => {
+    expect(membersSql(seg, 'Individual_SM_1__dlm', { limit: 100, offset: 200 })).toBe("SELECT Id__c AS id, Timestamp__c AS since FROM Individual_SM_1__dlm WHERE Segment_Id__c IN ('1sgAAA000000001', '1sgAAA000000001XYZ') ORDER BY Id__c LIMIT 100 OFFSET 200")
+  })
+  it('adds names from the segment object for just the page', async () => {
+    const seen = []
+    const q = async (sql) => {
+      seen.push(sql)
+      return /Individual_SM_1/.test(sql)
+        ? { columns: [{ name: 'id' }, { name: 'since' }], rows: [['p1', 't1'], ['p2', 't2']] }
+        : { columns: [{ name: 'id' }, { name: 'first' }, { name: 'last' }], rows: [['p1', 'Olivia', 'Makileni']] }
+    }
+    expect(await loadMembers(q, seg, catalog, 'Individual_SM_1__dlm')).toEqual([{ id: 'p1', since: 't1', name: 'Olivia Makileni' }, { id: 'p2', since: 't2', name: '' }])
+    expect(seen[1]).toBe("SELECT ssot__Id__c AS id, ssot__FirstName__c AS first, ssot__LastName__c AS last FROM ssot__Individual__dlm WHERE ssot__Id__c IN ('p1', 'p2')")
+  })
+})

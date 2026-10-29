@@ -82,7 +82,7 @@ function onKey(e) { if (e.key === 'Escape') { if (panel.value) panel.value = nul
 </script>
 
 <template>
-  <section class="max-w-[1080px] mx-auto flex flex-col gap-8 pt-4 pb-10 px-0 sm:px-4">
+  <section class="max-w-[1080px] mx-auto flex flex-col gap-8 pt-4 pb-2 px-0 sm:px-4 min-h-[calc(100vh-49px-2rem)] lg:min-h-[calc(100vh-49px-3.5rem)]">
     <div ref="menuBox" class="relative flex justify-end -mb-6 z-10">
       <button
         class="h-[38px] inline-flex items-center gap-2 px-3 rounded-lg border bg-card text-sm font-medium shadow-sm hover:bg-accent"
@@ -166,7 +166,7 @@ function onKey(e) { if (e.key === 'Escape') { if (panel.value) panel.value = nul
       </ul>
     </section>
 
-    <footer class="flex justify-center pt-6 pb-2">
+    <footer class="mt-auto flex justify-center pt-6 pb-2">
       <img src="/images/ateko-bell.svg" alt="Ateko, backed by Bell Canada" class="h-14 w-auto dark:invert" />
     </footer>
 

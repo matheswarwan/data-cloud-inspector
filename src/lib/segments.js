@@ -392,3 +392,27 @@ export async function segmentNames(call, version, ids15) {
   for (const r of res.data?.records || []) out.set(id15(r.Id), r.Name)
   return out
 }
+
+const NAME_FIELDS = [['first', 'ssot__FirstName__c'], ['last', 'ssot__LastName__c'], ['person', 'ssot__PersonName__c']]
+
+/** SQL for one page of a segment's members from the latest membership table (feedback #1031). */
+export function membersSql(seg, latestTable, { limit = 100, offset = 0 } = {}) {
+  return `SELECT Id__c AS id, Timestamp__c AS since FROM ${latestTable} WHERE Segment_Id__c ${segIdIn(seg)} ORDER BY Id__c LIMIT ${limit}${offset ? ` OFFSET ${offset}` : ''}`
+}
+
+/**
+ * One page of members: `[{ id, since, name }]`. Names come from the object the segment is on
+ * when it has name fields (a second query for just these IDs, not a join over the whole table).
+ */
+export async function loadMembers(q, seg, catalog, latestTable, { limit = 100, offset = 0 } = {}) {
+  const rows = toObjects(await q(membersSql(seg, latestTable, { limit, offset })))
+  const obj = catalog.find((o) => o.name === seg.on)
+  const have = NAME_FIELDS.filter(([, f]) => obj?.fields?.some((x) => x.name === f))
+  const names = new Map()
+  if (rows.length && have.length) {
+    const pk = primaryKey(seg.on, catalog)
+    const found = toObjects(await q(`SELECT ${pk} AS id, ${have.map(([a, f]) => `${f} AS ${a}`).join(', ')} FROM ${seg.on} WHERE ${pk} IN ${inList(rows.map((r) => r.id))}`))
+    for (const p of found) names.set(p.id, [p.first, p.last].filter(Boolean).join(' ') || p.person || '')
+  }
+  return rows.map((r) => ({ id: r.id, since: r.since || '', name: names.get(r.id) || '' }))
+}

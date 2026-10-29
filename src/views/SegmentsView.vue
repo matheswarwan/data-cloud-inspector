@@ -20,7 +20,7 @@ import { inSpace } from '../lib/dataSpace.js'
 import { parseRulesets, search, INDIVIDUAL } from '../lib/profile.js'
 import { useSegments, ensureSegments } from '../app/useSegments.js'
 import {
-  describeCriteria, topConditions, segmentSql, membershipTables, membershipCount, publishHistory, checkMembers, personHistory, segmentNames,
+  describeCriteria, topConditions, segmentSql, membershipTables, membershipCount, publishHistory, checkMembers, personHistory, segmentNames, loadMembers, membersSql,
   SEGMENT_SORTS, sortSegments,
 } from '../lib/segments.js'
 
@@ -43,6 +43,10 @@ const who = ref('')
 const checking = ref(false)
 const checkResult = ref(null) // { rows: [{ name, id, member, memberSince, matchesNow, failing }], note }
 const notice = ref('')
+// Who is in the segment (feedback #1031): pages of 100 from the latest membership table, on request.
+const PAGE = 100
+const members = ref(null) // { rows, loading, error, done }
+const memberCols = [{ key: 'name', label: 'Name' }, { key: 'id', label: 'ID' }, { key: 'since', label: 'In the segment since' }]
 
 const load = (refresh = false) => ensureSegments({ refresh }).catch(() => { /* shown from store.error */ })
 onMounted(() => { ensureCatalog(); load() })
@@ -72,6 +76,7 @@ let seq = 0
 watch([seg, () => catalog.objects.length], async () => {
   const s = seg.value
   checkResult.value = null
+  members.value = null
   notice.value = ''
   if (!s || !catalog.objects.length) { detail.value = null; return }
   const my = ++seq
@@ -173,6 +178,26 @@ function historyLine(e) {
   if (e.delta) bits.push(e.delta.toLowerCase())
   if (e.publishes > 1) bits.push(`${e.publishes} history rows`)
   return bits.join(', ')
+}
+
+async function moreMembers() {
+  const s = seg.value
+  const table = detail.value?.latest
+  if (!s || !table) return
+  if (!members.value) members.value = { rows: [], loading: false, error: '', done: false }
+  const m = members.value // the reactive copy, so changes show
+  m.loading = true
+  m.error = ''
+  try {
+    const page = await loadMembers(q, s, catalog.objects, table, { limit: PAGE, offset: m.rows.length })
+    if (seg.value !== s) return
+    m.rows.push(...page.map((r) => ({ ...r, since: when(r.since) })))
+    m.done = page.length < PAGE
+  } catch (err) {
+    m.error = err.message
+  } finally {
+    m.loading = false
+  }
 }
 
 function toSql(text) { router.push({ path: '/sql', query: { sql: text } }) }
@@ -326,6 +351,30 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
                 </ul>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div :class="card">
+          <h3 class="px-5 py-3.5 border-b text-base font-semibold flex items-center gap-2">Members <span v-if="members?.rows.length" class="dci-count">{{ members.rows.length.toLocaleString() }}{{ members.done ? '' : '+' }}</span></h3>
+          <div class="p-3 space-y-2 text-sm">
+            <p v-if="!detail?.loading && !detail?.latest" class="text-muted-foreground">No membership table found for {{ seg.on }}.</p>
+            <template v-else>
+              <div class="flex flex-wrap gap-2">
+                <button v-if="!members" class="dci-btn" :disabled="detail?.loading" @click="moreMembers">Show members</button>
+                <button v-if="detail?.latest" class="dci-btn" @click="toSql(membersSql(seg, detail.latest, { limit: 1000 }))">Open in SQL</button>
+              </div>
+              <p v-if="members?.error" class="text-destructive">{{ members.error }}</p>
+              <DataTable v-if="members?.rows.length" :columns="memberCols" :rows="members.rows" :row-key="(r) => r.id" text-size="text-xs">
+                <template #cell-name="{ row }">
+                  <RouterLink :to="seg.on === 'ssot__Individual__dlm' ? `/profile/s/${row.id}` : `/profile/u/${row.id}`" class="text-link hover:underline">{{ row.name || '(no name)' }}</RouterLink>
+                </template>
+                <template #cell-id="{ row }"><span class="font-mono">{{ row.id }}</span></template>
+              </DataTable>
+              <p v-else-if="members && !members.loading && !members.error" class="text-muted-foreground">Nobody in the membership table for this segment.</p>
+              <Loading v-if="members?.loading" text="Loading members…" />
+              <button v-else-if="members?.rows.length && !members.done" class="dci-btn" @click="moreMembers">Load {{ PAGE }} more</button>
+              <p v-if="members?.rows.length" class="text-xs text-muted-foreground">From {{ detail.latest }}, {{ PAGE }} at a time in ID order. Sorting and filters apply to the rows loaded.</p>
+            </template>
           </div>
         </div>
 
