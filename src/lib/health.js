@@ -18,6 +18,7 @@ import { inSpace } from './dataSpace.js'
 import { problemCounts, withProblems } from './problems.js'
 import { loadFlows, isMarketingFlow } from './flows.js'
 import { isOn } from './features.js'
+import { healthSectionListed } from './optionalPages.js'
 import { runQuery } from './query.js'
 import { eventTimeField, toObjects } from './profile.js'
 
@@ -168,7 +169,10 @@ export async function loadHealth(call, version, { now = Date.now(), onProgress =
   const v = `/services/data/v${version}/ssot`
   let done = 0
   const MCN = isOn('mcnHealth')
-  const TOTAL = MCN ? 8 : 6
+  // Personalization and Marketing flows only when their pages are turned on (Settings > Pages).
+  const P13N = healthSectionListed('Personalization recommenders')
+  const FLOWS = MCN && healthSectionListed('Marketing flows')
+  const TOTAL = 5 + (P13N ? 1 : 0) + (MCN ? 1 : 0) + (FLOWS ? 1 : 0)
   const section = async (title, fn) => {
     let out
     try { out = { title, items: sortItems(await fn()), error: '' } } catch (err) {
@@ -196,13 +200,13 @@ export async function loadHealth(call, version, { now = Date.now(), onProgress =
     section('Calculated insights', async () => (await insightPages(call, version)).map(insightHealth)),
     section('Segments', async () => (await (loadSegs ? loadSegs() : loadSegments(call, version))).map((s) => segmentHealth(s, now))),
     section('Activations', async () => inSpace(await offsetPages(call, `${v}/activations`, 'activations'), call.dataSpace).map(activationHealth)),
-    section('Personalization recommenders', async () => {
+    ...(P13N ? [section('Personalization recommenders', async () => {
       const res = await call(`/services/data/v${version}/query?q=${encodeURIComponent(SETUP_QUERIES.recommenders)}`)
       if (!res.ok) throw new Error(res.error || `HTTP ${res.status}`)
       return (res.data?.records || []).filter((r) => !call.dataSpaceId || !r.DataSpaceId || r.DataSpaceId.slice(0, 15) === call.dataSpaceId.slice(0, 15)).map(recommenderHealth)
-    }),
-    ...(MCN ? [section('Marketing flows', async () => (await loadFlows(call, version)).filter(isMarketingFlow).map(marketingFlowHealth)),
-    section('Engagement data', async () => {
+    })] : []),
+    ...(FLOWS ? [section('Marketing flows', async () => (await loadFlows(call, version)).filter(isMarketingFlow).map(marketingFlowHealth))] : []),
+    ...(MCN ? [section('Engagement data', async () => {
       const objects = loadObjects ? await loadObjects() : []
       const engagement = (objects || []).filter((o) => o.kind === 'DMO' && o.category === 'Engagement').map((o) => ({ ...o, timeField: eventTimeField(o) })).filter((o) => o.timeField)
       return Promise.all(engagement.map(async (o) => {

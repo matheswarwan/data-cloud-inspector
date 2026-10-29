@@ -4,12 +4,15 @@ import HelpTip from '../components/HelpTip.vue'
 import { ref, shallowRef, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ChevronDown, ChevronLeft, ChevronRight, Code, Copy, List, Search, ShieldCheck, Workflow, X } from 'lucide-vue-next'
+import { mcnListed } from '../lib/optionalPages.js'
 import { profileMemory, rememberProfile, forgetAll, groupPath, groupIndex } from '../lib/profileMemory.js'
 import RelatedTable from '../components/RelatedTable.vue'
 import { channelOf, actionOf, engagementSummary, loadConsent, consentFacts } from '../lib/marketing.js'
 import { addressesFrom, loadCrmConsent } from '../lib/crmConsent.js'
 import { isOn } from '../lib/features.js'
-const MCN = isOn('mcnProfile') // consent and message history by channel (Marketing Cloud Next)
+// Consent and message history by channel (Marketing Cloud Next): only when Marketing flows or
+// Campaigns is turned on in Settings > Pages.
+const MCN = isOn('mcnProfile') && mcnListed()
 import RecordLink from '../components/RecordLink.vue'
 import { recordUrl, recordKind } from '../lib/links.js'
 import { currentOrg } from '../app/useOrg.js'

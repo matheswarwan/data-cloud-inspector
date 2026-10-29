@@ -21,3 +21,18 @@ describe('optional pages (feedback #1041)', () => {
     expect(shownPages()).toEqual(['marketingFlows'])
   })
 })
+
+describe('the same switches outside the sidebar', () => {
+  beforeEach(() => localStorage.clear())
+  it('hides the Personalization and Marketing flows Health sections and the MC Next profile panels', async () => {
+    const { healthSectionListed, mcnListed } = await import('../optionalPages.js')
+    expect(healthSectionListed('Personalization recommenders')).toBe(false)
+    expect(healthSectionListed('Marketing flows')).toBe(false)
+    expect(healthSectionListed('Segments')).toBe(true)
+    expect(mcnListed()).toBe(false)
+    setPageShown('campaigns', true)
+    expect(mcnListed()).toBe(true)
+    setPageShown('personalization', true)
+    expect(healthSectionListed('Personalization recommenders')).toBe(true)
+  })
+})

@@ -48,9 +48,12 @@ describe('report', () => {
     expect(md).toContain('Could not load: boom')
   })
   it('keeps the other sections when one fails', async () => {
+    // Personalization and Marketing flows show only with their pages on (Settings > Pages).
+    localStorage.setItem('dci_pages_shown', JSON.stringify(['personalization', 'marketingFlows']))
     const call = async (path) => (path.includes('activations') ? { ok: false, error: 'nope' } : { ok: true, data: {} })
     const sections = await loadHealth(call, '68.0')
     expect(sections.map((s) => s.title)).toEqual(['Data streams', 'Identity resolution', 'Calculated insights', 'Segments', 'Activations', 'Personalization recommenders', 'Marketing flows', 'Engagement data'])
+    localStorage.removeItem('dci_pages_shown')
     expect(sections[4].error).toBe('nope')
     expect(sections[0].error).toBe('')
   })

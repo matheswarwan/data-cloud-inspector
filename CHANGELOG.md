@@ -25,7 +25,7 @@ Security and privacy changes for enterprise review (`security/audits/1.0.7-0b0cf
 - Insights: filter the Data tab by values of one column (pasted IDs), with the SQL to open; the Download menu is no longer cut off.
 - Credit prediction: hover a day for the cards or usage types that used its credits; price per credit for money estimates; usage type multipliers (rate card) when Digital Wallet has them.
 - SQL: field autocomplete without a table prefix, objects grouped by use with Individual first. DLO mapping diagram on Objects. Side lists fit their cards.
-- Personalization, Marketing flows and Campaigns are hidden until turned on in Settings > Pages.
+- Personalization, Marketing flows and Campaigns are hidden until turned on in Settings > Pages, with their Health sections and the Marketing Cloud Next panels on Profiles.
 - Org details (segments, activations, insights, streams, mappings, flows, campaigns, data graphs) are used from this browser for a day by default (Settings > Storage > Keep org details) and read once for every page; Health sections each have Copy (failed and needs a look, or all) and Download.
 
 ## 1.0.7 (2026-10-27)

@@ -14,6 +14,7 @@ import { normalizeSegment, membershipTables, publishHistory } from '../lib/segme
 import { useJob, startJob, markSeen } from '../app/useJobs.js'
 import { healthJobId } from '../app/usePreload.js'
 import { recordUrl } from '../lib/links.js'
+import { healthSectionListed } from '../lib/optionalPages.js'
 import { loadHealth, countLevels, healthMarkdown, sectionMarkdown, problemItems, LEVELS, LEVEL_TEXT } from '../lib/health.js'
 import { latestProblemsSql } from '../lib/problems.js'
 import { useRouter } from 'vue-router'
@@ -27,7 +28,8 @@ const notice = ref('')
 // the result is there (also after reopening the inspector, until the browser closes).
 const jobId = computed(() => healthJobId(org.orgId, org.dataSpace))
 const job = computed(() => (org.orgId ? useJob(jobId.value) : null))
-const sections = computed(() => job.value?.result || [])
+// Sections of pages turned off in Settings > Pages stay hidden, also in a result checked earlier.
+const sections = computed(() => (job.value?.result || []).filter((s) => healthSectionListed(s.title)))
 const loading = computed(() => job.value?.status === 'running')
 const checkedAt = computed(() => (job.value?.finishedAt ? new Date(job.value.finishedAt) : null))
 
