@@ -189,12 +189,12 @@ const KINDS = [
 
         <label class="block">
           <span class="font-medium">{{ kind === 'problem' ? 'What happened?' : kind === 'idea' ? 'Your idea' : 'Your question' }}</span>
-          <textarea v-model="message" required rows="3" maxlength="2000" class="mt-1 w-full rounded-md border border-border bg-background p-2"
+          <textarea v-model="message" required rows="5" maxlength="20000" class="mt-1 w-full rounded-md border border-border bg-background p-2"
             :placeholder="kind === 'problem' ? 'For example: the profile shows no engagement although the person has web events' : ''" />
         </label>
         <label class="block">
           <span class="font-medium">More details</span> <span class="text-xs text-muted-foreground">(optional)</span>
-          <textarea v-model="details" rows="4" maxlength="5000" class="mt-1 w-full rounded-md border border-border bg-background p-2"
+          <textarea v-model="details" rows="4" maxlength="50000" class="mt-1 w-full rounded-md border border-border bg-background p-2"
             :placeholder="kind === 'problem' ? 'Steps to get there, what you expected, the exact error text…' : ''" />
         </label>
 
