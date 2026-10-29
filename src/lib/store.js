@@ -11,9 +11,7 @@ export function cacheGet(key, fallback = null) {
 }
 
 export function cacheSet(key, value) {
-  return new Promise((resolve) => {
-    try { chrome.storage[cacheArea()].set({ [key]: value }, () => resolve()) } catch { resolve() }
-  })
+  return setRoomy(cacheArea(), key, value)
 }
 
 export function storeGet(key, fallback = null) {
@@ -23,9 +21,44 @@ export function storeGet(key, fallback = null) {
 }
 
 export function storeSet(key, value) {
-  return new Promise((resolve) => {
-    try { chrome.storage.local.set({ [key]: value }, () => resolve()) } catch { resolve() }
-  })
+  return setRoomy('local', key, value)
+}
+
+// Storage holds 10 MB per area (no unlimitedStorage since 1.0.8), and a large org's caches can
+// fill it (feedback #1061: "kQuotaBytes quota exceeded"). When a write does not fit, cached org
+// data is dropped to make room and the write is tried again: first other orgs' caches, then
+// this org's other caches. Saved queries, history, orgs and settings are never dropped.
+// Resolves true when written; never rejects.
+const CACHE_KEY = /^dci_(s|catalog)_([A-Za-z0-9]+)/
+const orgOfKey = (key) => CACHE_KEY.exec(key)?.[2] || ''
+
+// The promise form: a failed write rejects instead of logging "Unchecked runtime.lastError".
+async function rawSet(area, items) {
+  try { await chrome.storage[area].set(items); return '' } catch (err) { return err?.message || 'error' }
+}
+
+/** Cache keys to drop to make room for `key`, in order: other orgs' caches, then this org's other caches. */
+export function keysToFree(allKeys, key) {
+  const org = orgOfKey(key)
+  const caches = allKeys.filter((k) => k !== key && CACHE_KEY.test(k))
+  const other = caches.filter((k) => !org || orgOfKey(k) !== org)
+  const same = caches.filter((k) => org && orgOfKey(k) === org)
+  return [other, same].filter((list) => list.length)
+}
+
+export async function setRoomy(area, key, value) {
+  let err = await rawSet(area, { [key]: value })
+  if (!err) return true
+  if (!/quota/i.test(err)) return false
+  let all = {}
+  try { all = (await chrome.storage[area].get(null)) || {} } catch { return false }
+  for (const drop of keysToFree(Object.keys(all), key)) {
+    try { await chrome.storage[area].remove(drop) } catch { return false }
+    err = await rawSet(area, { [key]: value })
+    if (!err) return true
+    if (!/quota/i.test(err)) return false
+  }
+  return false
 }
 
 export function storeRemove(keys) {
@@ -51,7 +84,7 @@ const refreshing = new Set()
 
 export async function orgCached(key, ttlMs, loader, { refresh = false, onUpdate = null, maxAgeMs = MAX_AGE, now = Date.now } = {}) {
   const area = cacheArea()
-  const save = async (value) => { try { await chrome.storage[area].set({ [key]: { at: now(), value } }) } catch { /* too large or unavailable */ } }
+  const save = (value) => setRoomy(area, key, { at: now(), value })
   if (!refresh) {
     let hit = null
     try { hit = (await chrome.storage[area].get(key))?.[key] } catch { /* no storage: load */ }

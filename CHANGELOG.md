@@ -5,6 +5,7 @@ Store versions of Data Cloud Inspector, newest first. Each entry says whether pe
 ## Unreleased (next: 1.0.9)
 
 - People > One person shown as cards (design "Option D – People (cards)"): a person card with counts and indicator chips (true/false fields that are true), source record cards, one card per email or phone across sources with its consent and any related row that holds the contact point's ID, related objects as cards (dated rows as a timeline), engagement by month with channel filters, segment membership with recent adds and removals. Every section has Table and SQL.
+- Storage full: when the browser's 10 MB of extension storage is full, older cached org details (other orgs first) are dropped to make room instead of the write failing with "kQuotaBytes quota exceeded" (feedback #1061). Saved queries, history, orgs and settings are never dropped.
 - Credit prediction: each usage event counted once (a card's breakdown came to double its total), and a note when a card's breakdown and its total still differ (feedback #1060).
 
 ## 1.0.8 (2026-10-29)
