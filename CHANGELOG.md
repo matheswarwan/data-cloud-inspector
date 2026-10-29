@@ -17,7 +17,7 @@ Security and privacy changes for enterprise review (`security/audits/1.0.7-0b0cf
 - Read-only guard: only `/services/data/` paths (Apex REST and other `/services/` paths refused).
 - Privacy policy from one source (`PRIVACY.md`), bundled in the extension (Help, Settings, Home) and hosted; publisher Ateko. `SECURITY.md`, `docs/security-summary.md`, `docs/enterprise-deployment.md`, reproducible build with SHA-256 (`npm run package`).
 
-**New and fixed since 1.0.7** (feedback #1023 to #1058):
+**New and fixed since 1.0.7** (feedback #1023 to #1059):
 
 - Search box on every table; Help lists what changed in each version (this page).
 - Segments: counts, person check and publish history first, criteria folded; segment ID with Copy and search by ID; Members table, 100 at a time with names; for segments never published, who matches the criteria now; publish history chart shows each publish's count and change on hover; the person check reads the membership history and nested segments.
@@ -25,7 +25,7 @@ Security and privacy changes for enterprise review (`security/audits/1.0.7-0b0cf
 - Profiles and Bulk lookup are one People page with two tabs, One person and A list (up to 1,000); both old addresses still open their tab.
 - Every page card on Home has its name, description and icon (Credit prediction had no description).
 - Insights: filter the Data tab by values of one column (pasted IDs), with the SQL to open; the Download menu is no longer cut off.
-- Credit prediction: Top resources (which data stream, data transform, segment or other resource used the credits, with share and approx money) and the same per day on hover; price per credit for money estimates; numbers read as "~512 million"; the last reading is kept and shown without querying until Read again. Credits by card: purchased, used and left with a bar, each card opening to the resource types that used it. Click a day to keep its card open, copy it or see every resource. The projection follows the usual day-of-week pattern instead of a flat line.
+- Credit prediction: Top resources (which data stream, data transform, segment or other resource used the credits, with share and approx money) and the same per day on hover; price per credit for money estimates; numbers read as "~512 million"; the last reading is kept and shown without querying until Read again. Credits by card: purchased, used and left with a bar, each card opening to the resource types that used it. Click a day to keep its card open, copy it or see every resource. The projection follows the usual day-of-week pattern instead of a flat line. Each card says what it is, counts storage in its own unit, explains an overage and breaks down by resource or usage type.
 - SQL: field autocomplete without a table prefix, objects grouped by use with Individual first. DLO mapping diagram on Objects. Side lists fit their cards.
 - Personalization, Marketing flows and Campaigns are hidden until turned on in Settings > Pages, with their Health sections and the Marketing Cloud Next panels on Profiles.
 - Org details (segments, activations, insights, streams, mappings, flows, campaigns, data graphs) are used from this browser for a day by default (Settings > Storage > Keep org details) and read once for every page; Health sections each have Copy (failed and needs a look, or all) and Download.

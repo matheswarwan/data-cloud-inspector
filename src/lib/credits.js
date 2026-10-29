@@ -292,6 +292,7 @@ const RES_CANDIDATES = {
   usage: ['usagetypedevelopername', 'usagequalifiedname'],
   card: ['carddefinitiondevelopername', 'cardname'],
   env: ['usagebusinessenvtype', 'businessenvtype'],
+  unit: ['unit'],
 }
 const exact = (object, list) => (object?.fields || []).find((f) => list.includes(bare(f.name)))?.name || ''
 
@@ -331,29 +332,61 @@ export function resourceDaysSql(src, { days = 90, now = new Date() } = {}) {
   ].join('\n')
 }
 
-/** Credits per card and resource type over all the rows (used to date, feedback #1054). Columns: card, type, credits. */
+/**
+ * Used to date per card, resource type and usage type (feedback #1054, #1059), with the unit
+ * the card counts in (credits, or storage units). Columns: card, type, usage, unit, amount.
+ */
 export function cardTypesSql(src) {
   const f = src.fields
   return [
-    `SELECT ${f.card || `''`} AS card, ${f.type} AS type, SUM(${f.amount}) AS credits`,
+    `SELECT ${f.card || `''`} AS card, ${f.type} AS type, ${f.usage || `''`} AS usage, MAX(${f.unit || `''`}) AS unit, SUM(${f.amount}) AS credits`,
     `FROM ${src.object}`,
     f.status ? `WHERE ${f.status} = 'PROCESSED'` : '',
-    `GROUP BY 1, 2`,
+    `GROUP BY 1, 2, 3`,
   ].filter(Boolean).join('\n')
 }
 
-/** Rows [card, type, credits] into `{ [card]: [{ type, credits }] }`, most first. */
+const blankish = (v) => v == null || /^\s*(none|null)?\s*$/i.test(String(v))
+
+/**
+ * Rows [card, type, usage, unit, amount] into `{ [card]: { unit, parts: [{ label, type, usage, credits }] } }`,
+ * most first. A row with no resource type (storage, for one) is named by its usage type
+ * instead of "(none)" (feedback #1059).
+ */
 export function shapeCardTypes(rows = []) {
   const by = {}
-  for (const [card, type, credits] of rows) {
-    const list = (by[card || '(none)'] ||= [])
-    const t = type || '(none)'
-    const hit = list.find((x) => x.type === t)
+  for (const row of rows) {
+    const [card, type, usage, unit, credits] = row.length >= 5 ? row : [row[0], row[1], '', '', row[2]]
+    const c = (by[card || '(none)'] ||= { unit: '', parts: [] })
+    if (!c.unit && !blankish(unit)) c.unit = String(unit)
+    const t = blankish(type) ? '' : String(type)
+    const u = blankish(usage) ? '' : String(usage)
+    const label = t || u || 'Not attributed to a resource'
+    const hit = c.parts.find((x) => x.type === t && x.usage === u)
     if (hit) hit.credits += num(credits)
-    else list.push({ type: t, credits: num(credits) })
+    else c.parts.push({ label, type: t, usage: u, credits: num(credits) })
   }
-  for (const list of Object.values(by)) list.sort((a, b) => b.credits - a.credits)
+  for (const c of Object.values(by)) c.parts.sort((a, b) => b.credits - a.credits)
   return by
+}
+
+// What each Digital Wallet card is (feedback #1059). From Salesforce's Data Cloud and Agentforce
+// pricing pages; a card not listed shows its name only.
+export const CARD_INFO = {
+  PlatformServicesCard: 'Data Cloud credits for platform services: ingesting and processing data (streams, transforms), identity resolution, calculated insights, segmentation, activation and queries. Most usage lands here.',
+  DataStorageCard: 'Data Cloud storage: how much data is stored, counted in its own unit (storage, not credits). Over 100% means more data is stored than the storage bought.',
+  FlexCredits: 'Flex Credits: a shared pool that Agentforce actions and other consumption-based services draw on.',
+  EinsteinAI_Einstein1: 'Einstein AI requests (generative AI calls such as prompts and Einstein features).',
+  SegmentationsActivations: 'Segmentation and activation allowance for segment publishes and activations to targets.',
+  DataCloudRealTimeProfile: 'Real-time profile and data graph usage (real-time personalization and profile lookups).',
+  DigitalEngagementConversation: 'Digital Engagement conversations (messaging channels).',
+}
+
+/** One line on what a card is, or ''. Matches the card's name with or without a suffix. */
+export function cardInfo(name) {
+  const n = String(name || '')
+  const key = Object.keys(CARD_INFO).find((k) => n === k || n.startsWith(`${k}_`) || n.toLowerCase() === k.toLowerCase())
+  return key ? CARD_INFO[key] : ''
 }
 
 /**

@@ -16,7 +16,7 @@ import SqlBlock from '../components/SqlBlock.vue'
 import { useOrg, currentOrg, orgName, orgTitle } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
-import { findCreditObjects, probeCreditObjects, guessFields, dailySql, totalsSql, orgsSql, shapeDaily, shapeTotals, sortEnvs, envName, forecast, balances, creditPrice, setCreditPrice, moneyText, approx, resourceSource, resourcesSql, resourceDaysSql, shapeResources, shapeResourceDays, resourcesForDay, cardTypesSql, shapeCardTypes, cardRows } from '../lib/credits.js'
+import { findCreditObjects, probeCreditObjects, guessFields, dailySql, totalsSql, orgsSql, shapeDaily, shapeTotals, sortEnvs, envName, forecast, balances, creditPrice, setCreditPrice, moneyText, approx, resourceSource, resourcesSql, resourceDaysSql, shapeResources, shapeResourceDays, resourcesForDay, cardTypesSql, shapeCardTypes, cardRows, cardInfo } from '../lib/credits.js'
 import { cacheGet, cacheSet, orgCached } from '../lib/store.js'
 import { metadataTtl } from '../lib/cacheAge.js'
 
@@ -252,7 +252,11 @@ const exact = (v) => (v == null ? '—' : Number(v).toLocaleString(undefined, { 
 // Cards (feedback #1054): purchased, used to date and left per card, opening to the resource
 // types that used it.
 const cards = computed(() => (result.value ? cardRows(result.value.entitlements, result.value.consumedAll) : []))
-const cardTypes = (name) => result.value?.cardTypes?.[name] || []
+const cardTypes = (name) => result.value?.cardTypes?.[name]?.parts || []
+// The unit a card counts in (feedback #1059): storage cards are not credits, so no money for them.
+const cardUnit = (name) => result.value?.cardTypes?.[name]?.unit || ''
+const inCredits = (name) => !cardUnit(name) || /credit/i.test(cardUnit(name))
+const unitWord = (name) => (inCredits(name) ? '' : ` ${cardUnit(name)}`)
 const cardOpen = ref({})
 const typesTotal = (name) => cardTypes(name).reduce((n, t) => n + t.credits, 0) || 1
 const pct = (x) => (x == null ? '' : `${x < 0.001 && x > 0 ? '<0.1' : Math.round(x * 1000) / 10}%`)
@@ -527,19 +531,22 @@ const btn = 'dci-btn'
                 <span class="min-w-0 space-y-1">
                   <span class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                     <span class="font-medium break-all">{{ c.name }}</span>
-                    <span class="text-muted-foreground"><span :title="exact(c.used)">used {{ approx(c.used) }}</span><template v-if="c.purchased != null"> of <span :title="exact(c.purchased)">{{ approx(c.purchased) }}</span> purchased ({{ pct(c.share) }})</template><template v-else>, no purchase found</template></span>
-                    <span v-if="c.left != null" :class="c.left < 0 ? 'text-destructive' : 'text-muted-foreground'" :title="exact(c.left)">{{ c.left < 0 ? `${approx(-c.left)} over` : `${approx(c.left)} left` }}</span>
-                    <span v-if="price" class="ml-auto font-medium">{{ money(c.used) }}<span v-if="c.purchased != null" class="text-muted-foreground font-normal"> of {{ money(c.purchased) }}</span></span>
+                    <span class="text-muted-foreground"><span :title="exact(c.used)">used {{ approx(c.used) }}{{ unitWord(c.name) }}</span><template v-if="c.purchased != null"> of <span :title="exact(c.purchased)">{{ approx(c.purchased) }}{{ unitWord(c.name) }}</span> purchased ({{ pct(c.share) }})</template><template v-else>, no purchase found</template></span>
+                    <span v-if="c.left != null" :class="c.left < 0 ? 'text-destructive' : 'text-muted-foreground'" :title="exact(c.left)">{{ c.left < 0 ? `${approx(-c.left)}${unitWord(c.name)} over` : `${approx(c.left)}${unitWord(c.name)} left` }}</span>
+                    <span v-if="price && inCredits(c.name)" class="ml-auto font-medium">{{ money(c.used) }}<span v-if="c.purchased != null" class="text-muted-foreground font-normal"> of {{ money(c.purchased) }}</span></span>
                   </span>
+                  <span v-if="cardInfo(c.name)" class="block text-xs text-muted-foreground">{{ cardInfo(c.name) }}</span>
+                  <span v-if="c.left != null && c.left < 0" class="block text-xs text-destructive">Used more than purchased. Open it to see what used it; the Digital Wallet in Setup shows the contract and any overage.</span>
                   <span v-if="c.purchased" class="block h-1.5 rounded-full bg-muted overflow-hidden" :aria-label="`${pct(c.share)} used`"><span class="block h-full rounded-full" :class="c.share > 1 ? 'bg-destructive' : c.share > 0.8 ? 'bg-amber-500' : 'bg-primary'" :style="{ width: `${Math.min(100, Math.max(c.share * 100, c.used ? 0.5 : 0))}%` }" /></span>
                 </span>
               </button>
-              <ul v-if="cardOpen[c.name]" class="pb-2 pl-9 pr-3 space-y-1 text-xs" :aria-label="`${c.name} by resource type`">
-                <li v-for="t in cardTypes(c.name)" :key="t.type" class="grid grid-cols-[minmax(8rem,14rem)_minmax(0,1fr)_auto_auto] items-center gap-3">
-                  <span class="truncate" :title="t.type">{{ t.type }}</span>
+              <ul v-if="cardOpen[c.name]" class="pb-2 pl-9 pr-3 space-y-1 text-xs" :aria-label="`${c.name} by resource and usage type`">
+                <li class="text-muted-foreground">By resource type, or usage type where no resource is named{{ cardUnit(c.name) ? `; counted in ${cardUnit(c.name)}` : '' }}.</li>
+                <li v-for="t in cardTypes(c.name)" :key="`${t.type}|${t.usage}`" class="grid grid-cols-[minmax(8rem,16rem)_minmax(0,1fr)_auto_auto] items-center gap-3">
+                  <span class="truncate" :title="[t.type, t.usage].filter(Boolean).join(' · ')">{{ t.label }}<span v-if="t.type && t.usage" class="text-muted-foreground"> · {{ t.usage }}</span></span>
                   <span class="h-1.5 rounded-full bg-muted overflow-hidden"><span class="block h-full bg-primary/70 rounded-full" :style="{ width: `${(t.credits / Math.max(1, cardTypes(c.name)[0].credits)) * 100}%` }" /></span>
                   <span class="tabular-nums text-right" :title="exact(t.credits)">{{ approx(t.credits) }} <span class="text-muted-foreground">({{ pct(t.credits / typesTotal(c.name)) }})</span></span>
-                  <span v-if="price" class="tabular-nums text-right w-24">{{ money(t.credits) }}</span>
+                  <span v-if="price && inCredits(c.name)" class="tabular-nums text-right w-24">{{ money(t.credits) }}</span>
                 </li>
               </ul>
             </li>
