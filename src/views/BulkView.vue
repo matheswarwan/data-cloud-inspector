@@ -1,5 +1,6 @@
 <script setup>
 import PageHeader from '../components/PageHeader.vue'
+import PeopleTabs from '../components/PeopleTabs.vue'
 import DownloadMenu from '../components/DownloadMenu.vue'
 import HelpTip from '../components/HelpTip.vue'
 import DataTable from '../components/DataTable.vue'
@@ -141,7 +142,9 @@ const btn = 'dci-btn'
 <template>
   <section class="max-w-6xl mx-auto space-y-4">
     <div>
-      <PageHeader path="/bulk" title="Bulk lookup" topic="bulk" data-help="bulk">Paste emails, phones or IDs (one per line, or separated by commas), up to {{ MAX_INPUTS.toLocaleString() }}. Each is checked in Data Cloud, with its unified profile and, if you pick one, segment membership.</PageHeader>
+      <PageHeader path="/profile" title="People" topic="bulk" data-help="bulk">Look up one person in depth, or check a list of up to 1,000.</PageHeader>
+      <PeopleTabs />
+      <p class="text-sm text-muted-foreground">Paste emails, phones or IDs (one per line, or separated by commas), up to {{ MAX_INPUTS.toLocaleString() }}. Each is checked in Data Cloud, with its unified profile and, if you pick one, segment membership.</p>
     </div>
 
     <div :class="[card, 'p-3 space-y-2']">

@@ -5,6 +5,8 @@ import { ref, shallowRef, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ChevronDown, ChevronLeft, ChevronRight, Code, Copy, List, Search, ShieldCheck, Workflow, X } from 'lucide-vue-next'
 import { mcnListed } from '../lib/optionalPages.js'
+import PeopleTabs from '../components/PeopleTabs.vue'
+import PageHeader from '../components/PageHeader.vue'
 import { profileMemory, rememberProfile, forgetAll, groupPath, groupIndex } from '../lib/profileMemory.js'
 import RelatedTable from '../components/RelatedTable.vue'
 import { channelOf, actionOf, engagementSummary, loadConsent, consentFacts } from '../lib/marketing.js'
@@ -308,6 +310,8 @@ const btn = 'dci-btn'
 
 <template>
   <section class="space-y-4 max-w-7xl mx-auto">
+    <PageHeader path="/profile" title="People" topic="profile">Look up one person in depth, or check a list of up to 1,000.</PageHeader>
+    <PeopleTabs />
     <form class="dci-card p-3 flex flex-wrap gap-2 items-center shadow-[0_14px_32px_-22px_rgba(13,148,136,0.45)]" @submit.prevent="submitSearch">
       <label class="dci-search flex-1 min-w-72"><Search class="w-4 h-4 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden="true" /><input v-model="text" placeholder="Email, phone, name or ID (use * as a wildcard)" aria-label="Search people" /></label>
       <label class="text-sm text-muted-foreground" for="rs">Ruleset</label>
@@ -319,7 +323,6 @@ const btn = 'dci-btn'
         {{ searching ? 'Searching…' : 'Search' }}
       </button>
       <button v-if="kept || profile || results" type="button" class="px-1 text-sm font-medium text-link hover:underline" title="Forget the kept search results and profiles" @click="clearSearch">Clear</button>
-      <RouterLink to="/bulk" class="px-1 text-sm font-medium text-link hover:underline">Bulk lookup</RouterLink>
     </form>
     <div v-if="samples" class="border rounded-xl bg-card p-3 text-sm space-y-2">
       <p class="text-muted-foreground">{{ samples === 'loading' ? 'Picking 10 random people…' : samples.length ? 'Nothing to search for, so here are 10 random people to try:' : 'No people found to suggest.' }}</p>

@@ -15,7 +15,7 @@ export function paletteItems({ pages = [], objects = [], segments = [], saved = 
 /** Matches, best first: exact, then prefix, then word prefix, then anywhere; at most `limit`. */
 export function searchPalette(items, text, { limit = 40 } = {}) {
   const t = text.trim().toLowerCase()
-  const actions = t ? [{ kind: 'Action', label: `Find person: ${text.trim()}`, detail: 'Search Profiles by email, phone, name or ID', to: { path: '/profile', query: { q: text.trim() } } }] : []
+  const actions = t ? [{ kind: 'Action', label: `Find person: ${text.trim()}`, detail: 'Search People by email, phone, name or ID', to: { path: '/profile', query: { q: text.trim() } } }] : []
   if (!t) return [...actions, ...items.filter((i) => i.kind === 'Page')].slice(0, limit)
   const scored = []
   for (const i of items) {

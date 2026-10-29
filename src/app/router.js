@@ -35,8 +35,9 @@ export const ALL_NAV = [
   { path: '/objects', label: 'Objects', icon: 'Boxes', group: 1, feature: 'objects' },
   { path: '/sql', label: 'SQL', icon: 'Database', group: 1, feature: 'sql' },
   { path: '/sql/builder', label: 'Query builder', icon: 'Blocks', group: 1, feature: 'queryBuilder' },
-  { path: '/bulk', label: 'Bulk lookup', icon: 'ListChecks', group: 2, job: 'bulk:', feature: 'bulk' },
-  { path: '/profile', label: 'Profiles', icon: 'User', group: 2, feature: 'profiles' },
+  // People (feedback #1056): one sidebar entry; Bulk lookup is its "A list" tab at /bulk.
+  { path: '/profile', label: 'People', icon: 'User', group: 2, job: 'bulk:', feature: 'profiles', also: ['/bulk'] },
+  { path: '/bulk', label: 'Bulk lookup', icon: 'ListChecks', group: 2, feature: 'bulk', tab: true },
   { path: '/streams', label: 'Data streams', icon: 'ArrowDownToLine', group: 3, feature: 'streams' },
   { path: '/models', label: 'Data models', icon: 'Network', group: 3, feature: 'models' },
   { path: '/identity', label: 'Identity', icon: 'Fingerprint', group: 3, feature: 'identity' },
@@ -57,7 +58,7 @@ export const ALL_NAV = [
 // search at once (feedback #1041).
 export const NAV = reactive([])
 export function refreshNav() {
-  NAV.splice(0, NAV.length, ...ALL_NAV.filter((n) => isOn(n.feature) && pageListed(n.feature)))
+  NAV.splice(0, NAV.length, ...ALL_NAV.filter((n) => !n.tab && isOn(n.feature) && pageListed(n.feature)))
 }
 refreshNav()
 

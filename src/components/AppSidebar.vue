@@ -6,6 +6,9 @@ import { Settings, CircleHelp, PanelLeftOpen, PanelLeftClose } from 'lucide-vue-
 import { navIcon as icon } from '../app/navIcons.js'
 import { NAV } from '../app/router.js'
 import { jobBadge } from '../app/useJobs.js'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
 
 const KEY = 'dci_sidebarCollapsed'
 const read = () => { try { return localStorage.getItem(KEY) === '1' } catch { return false } }
@@ -25,6 +28,7 @@ const FOOTER = [{ path: '/help', label: 'Help', icon: CircleHelp }, { path: '/se
           :to="item.path" :title="collapsed ? item.label : ''"
           class="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
           active-class="bg-accent text-foreground font-medium"
+          :class="item.also?.some((p) => route.path === p || route.path.startsWith(`${p}/`)) ? 'bg-accent text-foreground font-medium' : ''"
         >
           <component :is="icon(item.icon)" class="w-4 h-4 shrink-0" />
           <span v-if="!collapsed" class="truncate">{{ item.label }}</span>
