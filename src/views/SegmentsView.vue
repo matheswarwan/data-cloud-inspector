@@ -11,7 +11,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import ListPanel from '../components/ListPanel.vue'
 import DataTable from '../components/DataTable.vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChevronDown, ChevronRight, ExternalLink, RefreshCw, Search } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight, Copy, ExternalLink, RefreshCw, Search } from 'lucide-vue-next'
 import { useOrg, currentOrg, orgTitle } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
@@ -60,7 +60,7 @@ const sortDate = (s) => {
 }
 const list = computed(() => {
   const t = filter.value.trim().toLowerCase()
-  const found = t ? segments.value.filter((s) => s.label.toLowerCase().includes(t) || s.apiName.toLowerCase().includes(t)) : segments.value
+  const found = t ? segments.value.filter((s) => s.label.toLowerCase().includes(t) || s.apiName.toLowerCase().includes(t) || s.id.toLowerCase().startsWith(t)) : segments.value
   return sortSegments(found, sortBy.value)
 })
 const seg = computed(() => segments.value.find((s) => s.apiName === route.params.name) || null)
@@ -198,7 +198,7 @@ function segSections() {
   const s = seg.value
   const d = detail.value
   return [
-    { heading: 'Details', kv: [['API name', s.apiName], ['Segment on', s.on], ['Status', s.status.toLowerCase()], ['Last published', `${when(s.lastPublished) || 'never'} (${s.publishStatus.toLowerCase()})`], ['Schedule', s.publishInterval.replace(/_/g, ' ').toLowerCase()], ['Members at publish', num(s.lastCount)], ['In the membership table now', d?.latest ? num(d.latestCount) : 'no table found'], ['Matching the criteria now', typeof d?.countNow === 'number' ? num(d.countNow) : 'not counted'], ['Type', `${s.type}${s.lookback ? `, lookback ${s.lookback}` : ''}`], ['Created', when(s.created)], ['Modified', when(s.modified)]] },
+    { heading: 'Details', kv: [['API name', s.apiName], ['Segment ID', s.id], ['Segment on', s.on], ['Status', s.status.toLowerCase()], ['Last published', `${when(s.lastPublished) || 'never'} (${s.publishStatus.toLowerCase()})`], ['Schedule', s.publishInterval.replace(/_/g, ' ').toLowerCase()], ['Members at publish', num(s.lastCount)], ['In the membership table now', d?.latest ? num(d.latestCount) : 'no table found'], ['Matching the criteria now', typeof d?.countNow === 'number' ? num(d.countNow) : 'not counted'], ['Type', `${s.type}${s.lookback ? `, lookback ${s.lookback}` : ''}`], ['Created', when(s.created)], ['Modified', when(s.modified)]] },
     { heading: 'Criteria', list: lines.value.map((l) => `${'  '.repeat(l.depth)}${l.text}`) },
     ...(sql.value && !sql.value.error ? [{ heading: 'Equivalent SQL', code: sql.value.select, lang: 'sql' }] : []),
     { heading: 'Publish history', columns: versionCols, rows: d?.versions || [], empty: 'No publishes recorded.' },
@@ -246,7 +246,7 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
         <div class="flex flex-wrap items-start gap-3">
           <div class="min-w-0 space-y-1">
             <h2 class="text-2xl font-bold leading-[30px] break-words">{{ seg.label }}</h2>
-            <div class="font-mono text-[13px] text-muted-foreground break-all">{{ seg.apiName }}</div>
+            <div class="font-mono text-[13px] text-muted-foreground break-all">{{ seg.apiName }}<template v-if="seg.id"> · ID {{ seg.id }} <button class="dci-btn-icon align-middle" title="Copy segment ID" aria-label="Copy segment ID" @click="copy(seg.id, 'the segment ID')"><Copy class="w-3.5 h-3.5" /></button></template></div>
             <div class="flex flex-wrap gap-1.5">
               <span :class="badgeClass(seg.status)">{{ seg.status.toLowerCase() }}</span>
               <span :class="badgeClass(seg.publishStatus || 'not published')">{{ seg.publishStatus.toLowerCase() || 'not published' }}</span>
@@ -348,6 +348,7 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
           <p v-if="detail?.history" class="px-3 pb-3 pt-1 text-xs text-muted-foreground">From <RouterLink :to="`/objects/${detail.history}`" class="text-link hover:underline font-mono">{{ detail.history }}</RouterLink>.</p>
         </div>
         <dl class="dci-card dci-kv px-5 pt-1 pb-2">
+          <div v-if="seg.id"><dt>Segment ID</dt><dd class="font-mono text-[13px] break-all">{{ seg.id }}<span v-if="seg.id15 !== seg.id" class="text-muted-foreground"> (15 characters: {{ seg.id15 }})</span></dd></div>
           <div><dt>Segment on</dt><dd><RouterLink :to="`/objects/${seg.on}`" class="text-link hover:underline font-mono text-[13px]">{{ seg.on }}</RouterLink></dd></div>
           <div><dt>Status</dt><dd class="inline-flex items-center gap-1.5"><span :class="['w-2 h-2 rounded-full', /active/i.test(seg.status) ? 'bg-green-600' : 'bg-gray-400']" />{{ seg.status.toLowerCase() }}</dd></div>
           <div><dt>Last published</dt><dd>{{ when(seg.lastPublished) || 'never' }} ({{ seg.publishStatus.toLowerCase() || 'not published' }})</dd></div>
