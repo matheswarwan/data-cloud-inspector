@@ -16,6 +16,17 @@
 // the objects exist only in production but hold the sandboxes' usage too, which draws on the
 // production cards. Usage Reporting Org ID names the org (production, sandbox or companion).
 // Digital Wallet setup creates the streams and DLOs; they must be in a data space to be queried.
+// Field lists confirmed on a production org (feedback #1047 to #1053, 2026-10-29):
+// - TenantEnrichedUsageEvent: eventtime__c, unitsconsumed__c (credits), usagevalue__c,
+//   resourcetype__c, resourceidorapiname__c, rootresourcetype__c, rootresourceidorapiname__c,
+//   usagetypedevelopername__c, carddefinitiondevelopername__c, cardname__c, multiplier__c,
+//   usagebusinessenvtype__c, usagereportingorgid__c. Credits per resource come from here.
+// - TenantBillingUsageEvent: EventTime__c, UsageValue__c (raw usage), ResourceIdOrApiName__c,
+//   ResourceType__c, UsageQualifiedName__c, BusinessEnvType__c (no credits).
+// - TenantHourlyEntitlementConsumption: usagehourbucket__c, unitsconsumed__c, resourcetype__c,
+//   resourceidorapiname__c, usagetypedevelopername__c, rowdetail__c, businessenvtype__c.
+// - TenantEntitlementTransaction: quantity__c, entitlementcarddefdevlname__c, startdate__c, enddate__c.
+// - TenantUsageTypeMultiplier: multiplier__c and tier2..5 multipliers per usagetypedef__c.
 
 export const ROLES = [
   { id: 'daily', label: 'Daily consumption', match: /tenantdailyentitlementconsumption/i, use: 'consumption' },
@@ -253,10 +264,136 @@ export function balances(entitlements = [], consumed = []) {
   return entitlements.map((e) => ({ name: e.name, purchased: e.total, consumed: used.get(e.name) ?? null, remaining: used.has(e.name) ? e.total - used.get(e.name) : null }))
 }
 
+// ---- resources (feedback #1046) ----
+// Which data stream, data transform, segment or other resource used the credits: summed from
+// the enriched usage events, which carry the credits (unitsconsumed__c) per resource.
+
+const RES_CANDIDATES = {
+  date: ['eventtime', 'usagehourbucket'],
+  amount: ['unitsconsumed'],
+  type: ['resourcetype'],
+  name: ['resourceidorapiname'],
+  usage: ['usagetypedevelopername', 'usagequalifiedname'],
+  card: ['carddefinitiondevelopername', 'cardname'],
+  env: ['usagebusinessenvtype', 'businessenvtype'],
+}
+const exact = (object, list) => (object?.fields || []).find((f) => list.includes(bare(f.name)))?.name || ''
+
+/** The object and fields to sum credits per resource from, or null when the org has none. */
+export function resourceSource(objects = []) {
+  const found = findCreditObjects(objects)
+  for (const id of ['enriched', 'hourly']) {
+    const object = found.find((x) => x.role.id === id)?.object
+    if (!object) continue
+    const f = Object.fromEntries(Object.entries(RES_CANDIDATES).map(([k, list]) => [k, exact(object, list)]))
+    if (f.date && f.amount && f.type && f.name) return { object: object.name, fields: { ...f, status: id === 'hourly' ? exact(object, ['rowdetail']) : '' } }
+  }
+  return null
+}
+
+/** Credits per resource over the period. Columns: type, name, usage, card, env, credits. */
+export function resourcesSql(src, { days = 180, now = new Date() } = {}) {
+  const f = src.fields
+  return [
+    `SELECT ${f.type} AS type, ${f.name} AS name, ${f.usage || `''`} AS usage, ${f.card || `''`} AS card, ${f.env || `''`} AS env, SUM(${f.amount}) AS credits`,
+    `FROM ${src.object}`,
+    `WHERE ${f.date} >= CAST('${cutoffDate(days, now)} 00:00:00' AS timestamp)${processed(f)}`,
+    `GROUP BY 1, 2, 3, 4, 5`,
+    `ORDER BY 6 DESC`,
+    `LIMIT 5000`,
+  ].join('\n')
+}
+
+/** Credits per resource and day over the last `days` (the chart's hover). Columns: day, type, name, env, credits. */
+export function resourceDaysSql(src, { days = 90, now = new Date() } = {}) {
+  const f = src.fields
+  return [
+    `SELECT DATE_TRUNC('day', ${f.date}) AS day, ${f.type} AS type, ${f.name} AS name, ${f.env || `''`} AS env, SUM(${f.amount}) AS credits`,
+    `FROM ${src.object}`,
+    `WHERE ${f.date} >= CAST('${cutoffDate(days, now)} 00:00:00' AS timestamp)${processed(f)}`,
+    `GROUP BY 1, 2, 3, 4`,
+  ].join('\n')
+}
+
+/** Rows [type, name, usage, card, env, credits] into resources, most credits first, with each environment's share. */
+export function shapeResources(rows = []) {
+  const by = new Map()
+  for (const [type, name, usage, card, env, credits] of rows) {
+    const key = `${type}|${name}`
+    const r = by.get(key) || { key, type: type || '(none)', name: name || '(none)', usages: new Set(), cards: new Set(), envs: {}, credits: 0 }
+    const c = num(credits)
+    r.credits += c
+    if (usage) r.usages.add(String(usage))
+    if (card) r.cards.add(String(card))
+    const e = envName(env)
+    r.envs[e] = (r.envs[e] || 0) + c
+    by.set(key, r)
+  }
+  return [...by.values()].map((r) => ({ ...r, usages: [...r.usages], cards: [...r.cards] })).sort((a, b) => b.credits - a.credits)
+}
+
+/**
+ * Rows [day, type, name, env, credits] into `{ [day]: { [env]: [{ type, name, credits }] } }`, the
+ * top `keep` per day and environment (the rest summed as "Other"), small enough to store.
+ */
+export function shapeResourceDays(rows = [], { keep = 12 } = {}) {
+  const by = {}
+  for (const [day, type, name, env, credits] of rows) {
+    const k = dayKey(day)
+    if (!k) continue
+    const e = envName(env)
+    ;((by[k] ||= {})[e] ||= []).push({ type: type || '(none)', name: name || '(none)', credits: num(credits) })
+  }
+  for (const envs of Object.values(by)) {
+    for (const [e, list] of Object.entries(envs)) {
+      list.sort((a, b) => b.credits - a.credits)
+      const rest = list.slice(keep).reduce((n, x) => n + x.credits, 0)
+      envs[e] = rest ? [...list.slice(0, keep), { type: '', name: `${list.length - keep} other resources`, credits: rest, other: true }] : list
+    }
+  }
+  return by
+}
+
+/** One day's resources for an environment, or every environment together ('all'). */
+export function resourcesForDay(byDay, day, env = 'all') {
+  const envs = byDay?.[day]
+  if (!envs) return []
+  if (env !== 'all') return envs[env] || []
+  const merged = new Map()
+  for (const list of Object.values(envs)) {
+    for (const r of list) {
+      const k = r.other ? 'other' : `${r.type}|${r.name}`
+      const m = merged.get(k) || { ...r, credits: 0 }
+      m.credits += r.credits
+      merged.set(k, m)
+    }
+  }
+  const out = [...merged.values()].sort((a, b) => (a.other ? 1 : 0) - (b.other ? 1 : 0) || b.credits - a.credits)
+  return out
+}
+
+// ---- numbers people read (feedback #1046) ----
+
+const UNITS = [[1e12, 'trillion'], [1e9, 'billion'], [1e6, 'million'], [1e3, 'thousand']]
+
+/** "~512 million", "~3.5 million", "~84 thousand", "843"; exact value under 1,000. */
+export function approx(v) {
+  if (v == null || v === '' || !Number.isFinite(Number(v))) return '—'
+  const n = Number(v)
+  const a = Math.abs(n)
+  for (const [size, word] of UNITS) {
+    if (a >= size) {
+      const x = a / size
+      const t = x >= 100 ? String(Math.round(x)) : String(Math.round(x * 10) / 10)
+      return `${n < 0 ? '−' : ''}~${t} ${word}`
+    }
+  }
+  return n.toLocaleString(undefined, { maximumFractionDigits: a < 10 ? 2 : 0 })
+}
+
 // ---- money (feedback #1042) ----
 // Salesforce does not expose what a credit costs, so the price comes from the user (their
-// contract), kept per org in this browser. The usage type multipliers (TenantUsageTypeMultiplier,
-// the rate card that turns usage into credits) are read as they are.
+// contract), kept per org in this browser.
 
 const PRICE_KEY = (orgId) => `dci_credit_price_${String(orgId || '').slice(0, 15)}`
 
@@ -275,18 +412,18 @@ export function setCreditPrice(orgId, price, currency = 'USD') {
   } catch { /* private window */ }
 }
 
-/** Credits as money text ("$1,234"), or '' without a price. Small amounts keep cents. */
+/** Credits as money text ("$1,234", "~$12.3 million"), or '' without a price. Small amounts keep cents. */
 export function moneyText(credits, p) {
   if (!p || credits == null || !Number.isFinite(Number(credits))) return ''
   const v = Number(credits) * p.price
+  if (Math.abs(v) >= 1e6) {
+    let sym = `${p.currency} `
+    try { sym = new Intl.NumberFormat(undefined, { style: 'currency', currency: p.currency }).formatToParts(0).find((x) => x.type === 'currency')?.value || sym } catch { /* unknown code */ }
+    return `${v < 0 ? '−' : ''}~${sym}${approx(Math.abs(v)).slice(1)}`
+  }
   try {
     return v.toLocaleString(undefined, { style: 'currency', currency: p.currency, maximumFractionDigits: Math.abs(v) < 100 ? 2 : 0 })
   } catch {
     return `${p.currency} ${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
   }
-}
-
-/** The usage type multipliers, as stored. */
-export function multipliersSql(objectName) {
-  return `SELECT *\nFROM ${objectName}\nLIMIT 500`
 }

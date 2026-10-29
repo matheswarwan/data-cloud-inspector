@@ -16,7 +16,9 @@ import SqlBlock from '../components/SqlBlock.vue'
 import { useOrg, currentOrg, orgName, orgTitle } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
-import { findCreditObjects, probeCreditObjects, guessFields, dailySql, totalsSql, orgsSql, shapeDaily, shapeTotals, sortEnvs, envName, forecast, balances, creditPrice, setCreditPrice, moneyText, multipliersSql } from '../lib/credits.js'
+import { findCreditObjects, probeCreditObjects, guessFields, dailySql, totalsSql, orgsSql, shapeDaily, shapeTotals, sortEnvs, envName, forecast, balances, creditPrice, setCreditPrice, moneyText, approx, resourceSource, resourcesSql, resourceDaysSql, shapeResources, shapeResourceDays, resourcesForDay } from '../lib/credits.js'
+import { cacheGet, cacheSet, orgCached } from '../lib/store.js'
+import { metadataTtl } from '../lib/cacheAge.js'
 
 const org = useOrg()
 const catalog = useCatalog()
@@ -29,11 +31,14 @@ const probing = ref(false)
 const probedKey = ref('')
 const objects = computed(() => [...catalog.objects, ...probed.value.filter((p) => !catalog.objects.some((o) => o.name === p.name))])
 const found = computed(() => findCreditObjects(objects.value))
-async function probe() {
+// The probe's answer is kept in this browser (feedback #1046: no queries when the page opens);
+// Check again reads it fresh.
+async function probe({ refresh = false } = {}) {
   const key = `${org.orgId}|${org.dataSpace}`
   probing.value = true
   try {
-    const list = await probeCreditObjects((sql) => runQuery(orgCall(), org.version, sql, { rowLimit: 1 }))
+    const list = await orgCached(`dci_s_${org.orgId}_${org.dataSpace || 'default'}_creditObjects`, metadataTtl(),
+      () => probeCreditObjects((sql) => runQuery(orgCall(), org.version, sql, { rowLimit: 1 })), { refresh })
     if (key === `${org.orgId}|${org.dataSpace}`) { probed.value = list; probedKey.value = key }
   } finally { probing.value = false }
 }
@@ -46,7 +51,7 @@ watch([() => catalog.loading, () => org.orgId, () => org.dataSpace, () => org.ve
 async function checkAgain() {
   probedKey.value = ''
   await ensureCatalog({ refresh: true })
-  await probe()
+  await probe({ refresh: true })
 }
 const sources = computed(() => found.value.filter((x) => x.role.use === 'consumption'))
 const entSources = computed(() => found.value.filter((x) => x.role.use === 'entitlement'))
@@ -85,12 +90,20 @@ const sqlText = computed(() => {
   parts.push(totalsSql(source.value, fields.value))
   if (fields.value.org) parts.push(orgsSql(source.value, fields.value))
   if (ent.value && entFields.value.amount) parts.push(totalsSql(ent.value, { ...entFields.value, date: '', status: '' }))
-  if (multObject.value) parts.push(multipliersSql(multObject.value))
+  if (resSrc.value) parts.push(resourcesSql(resSrc.value, { days: days.value }), resourceDaysSql(resSrc.value))
   return parts.join(';\n\n')
 })
 
-// The usage type multipliers (rate card), read as stored when Digital Wallet has the DLO (feedback #1042).
-const multObject = computed(() => found.value.find((x) => x.role.id === 'multipliers')?.object.name || '')
+// Which resource (data stream, data transform, segment...) used the credits (feedback #1046),
+// from the enriched usage events when the org has them.
+const resSrc = computed(() => resourceSource(objects.value))
+// The last reading is kept in this browser and shown when the page opens; Read again reads now.
+const storeKey = () => `dci_s_${org.orgId}_${org.dataSpace || 'default'}_credits`
+async function loadStored() {
+  const key = storeKey()
+  const hit = org.orgId ? await cacheGet(key) : null
+  if (key === storeKey() && hit?.value && !result.value) result.value = { ...hit.value, at: new Date(hit.at) }
+}
 
 async function read() {
   if (!ready.value) return
@@ -104,12 +117,19 @@ async function read() {
       fields.value.org ? run(orgsSql(source.value, fields.value)).catch((err) => ({ error: err.message })) : null,
       ent.value && entFields.value.amount ? run(totalsSql(ent.value, { ...entFields.value, date: '', status: '', env: '' })).catch((err) => ({ error: err.message })) : null,
     ])
-    const m = multObject.value ? await run(multipliersSql(multObject.value)).catch((err) => ({ error: err.message })) : null
+    const rs = resSrc.value
+    const [res, resDays] = rs ? await Promise.all([
+      runQuery(call, org.version, resourcesSql(rs, { days: days.value }), { rowLimit: 5000 }).catch((err) => ({ error: err.message })),
+      runQuery(call, org.version, resourceDaysSql(rs), { rowLimit: 50000 }).catch((err) => ({ error: err.message })),
+    ]) : [null, null]
     const shaped = shapeDaily(d.rows, { days: days.value })
     const consumedAll = shapeTotals(all.rows)
     const byOrg = o?.rows ? o.rows.map(([env, id, total, first, last]) => ({ env: envName(env), id: id || '', total: Number(total) || 0, first: first || '', last: last || '' })) : null
     const entitlements = e?.rows ? shapeTotals(e.rows).map(({ name, total }) => ({ name, total })) : null
-    result.value = { ...shaped, consumedAll, byOrg, orgError: o?.error || '', entitlements, entError: e?.error || '', multipliers: m, at: new Date() }
+    result.value = { ...shaped, consumedAll, byOrg, orgError: o?.error || '', entitlements, entError: e?.error || '',
+      resources: res?.rows ? shapeResources(res.rows) : null, resError: res?.error || resDays?.error || '', resourceDays: resDays?.rows ? shapeResourceDays(resDays.rows) : null, resObject: rs?.object || '',
+      at: new Date() }
+    cacheSet(storeKey(), { at: Date.now(), value: JSON.parse(JSON.stringify({ ...result.value, at: undefined })) })
     if (!(view.value in shaped.envs)) view.value = 'all'
   } catch (err) {
     error.value = err.message
@@ -117,7 +137,7 @@ async function read() {
     busy.value = false
   }
 }
-watch(() => [org.orgId, org.dataSpace], () => { result.value = null; error.value = '' })
+watch(() => [org.orgId, org.dataSpace], () => { result.value = null; error.value = ''; loadStored() }, { immediate: true })
 
 // Environment: 'all' (one chart, bars split by environment) or one environment on its own
 const view = ref('all')
@@ -171,7 +191,6 @@ function savePrice() {
   price.value = creditPrice(org.orgId)
 }
 const money = (credits) => moneyText(credits, price.value)
-const multCols = computed(() => (result.value?.multipliers?.columns || []).map((c, i) => ({ key: String(i), label: c.name, value: (r) => r[i] })))
 
 // Chart: the last 90 days and 30 days ahead, one bar per day
 const chart = computed(() => {
@@ -199,10 +218,31 @@ const chart = computed(() => {
 const hoverIdx = ref(-1)
 const hoverBar = computed(() => chart.value?.bars[hoverIdx.value] || null)
 const hoverLeft = computed(() => (hoverBar.value ? ((hoverBar.value.x + hoverBar.value.w / 2) / chart.value.W) * 100 : 0))
+const hoverResources = computed(() => (hoverBar.value && !hoverBar.value.ahead ? resourcesForDay(result.value?.resourceDays, hoverBar.value.day, view.value) : []))
 const share = (part, total) => (total ? `${Math.round((part / total) * 100)}%` : '')
 
-const n0 = (v) => (v == null ? '—' : Math.round(v).toLocaleString())
-const n2 = (v) => (v == null ? '—' : Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }))
+// On screen numbers read as words ("~512 million", feedback #1046), the exact value on hover;
+// downloads keep exact values.
+const n0 = approx
+const n2 = approx
+const exact = (v) => (v == null ? '—' : Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }))
+// Top resources (feedback #1046): credits, share and money per data stream, transform...
+const resRows = computed(() => {
+  const list = result.value?.resources || []
+  const rows = view.value === 'all' ? list : list.filter((r) => r.envs[view.value]).map((r) => ({ ...r, credits: r.envs[view.value] }))
+  const total = rows.reduce((n, r) => n + r.credits, 0)
+  return rows.sort((a, b) => b.credits - a.credits).map((r) => ({ ...r, share: total ? r.credits / total : 0 }))
+})
+const resCols = computed(() => [
+  { key: 'name', label: 'Resource' },
+  { key: 'type', label: 'Type' },
+  { key: 'usages', label: 'Usage type', value: (r) => r.usages.join(', ') },
+  { key: 'cards', label: 'Card', value: (r) => r.cards.join(', ') },
+  { key: 'credits', label: 'Credits', kind: 'number', align: 'right' },
+  { key: 'share', label: 'Share', kind: 'number', align: 'right', value: (r) => `${Math.round(r.share * 1000) / 10}%`, sortValue: (r) => r.share },
+  ...(price.value ? [{ key: 'money', label: `Approx ${price.value.currency}`, kind: 'number', align: 'right', value: (r) => money(r.credits), sortValue: (r) => r.credits }] : []),
+])
+
 const groupCols = [
   { key: 'name', label: 'Card or usage type' },
   { key: 'total', label: `Used in the period`, kind: 'number', align: 'right' },
@@ -247,21 +287,21 @@ function doc() {
   const blocks = [
     { type: 'p', text: `${orgTitle(org.orgId)}, data space ${org.dataSpace || 'default'}. Read ${r.at.toLocaleString()} from ${source.value} (${fields.value.amount} by ${fields.value.date}${fields.value.group ? `, per ${fields.value.group}` : ''}${fields.value.env ? `, environment from ${fields.value.env}` : ''}), last ${days.value} days. Figures: ${scope}.` },
   ]
-  if (envRows.value.length) blocks.push({ type: 'h', level: 2, text: 'By environment' }, { type: 'table', columns: ['Environment', 'Last 30 days', 'A day', 'Trend', 'Next 30 days', 'To year end', 'Used to date'], rows: envRows.value.map((x) => [x.env, n2(x.last30), n2(x.avg30), x.trend, n2(x.next30), n2(x.toYearEnd), n2(x.toDate)]) })
-  if (r.byOrg?.length) blocks.push({ type: 'h', level: 2, text: 'By org' }, { type: 'table', columns: ['Environment', 'Org', 'Org ID', 'Used to date', 'From', 'To'], rows: r.byOrg.map((x) => [x.env, orgShown(x.id), x.id, n2(x.total), String(x.first).slice(0, 10), String(x.last).slice(0, 10)]) })
+  if (envRows.value.length) blocks.push({ type: 'h', level: 2, text: 'By environment' }, { type: 'table', columns: ['Environment', 'Last 30 days', 'A day', 'Trend', 'Next 30 days', 'To year end', 'Used to date'], rows: envRows.value.map((x) => [x.env, exact(x.last30), exact(x.avg30), x.trend, exact(x.next30), exact(x.toYearEnd), exact(x.toDate)]) })
+  if (r.byOrg?.length) blocks.push({ type: 'h', level: 2, text: 'By org' }, { type: 'table', columns: ['Environment', 'Org', 'Org ID', 'Used to date', 'From', 'To'], rows: r.byOrg.map((x) => [x.env, orgShown(x.id), x.id, exact(x.total), String(x.first).slice(0, 10), String(x.last).slice(0, 10)]) })
   blocks.push(
     { type: 'h', level: 2, text: `Forecast (${scope})` },
     { type: 'kv', rows: [
-      ['Used, last 30 days', n2(f.last30)], ['Average per day (30 days)', n2(f.avg30)], ['Average per day (7 days)', n2(f.avg7)], ['Trend', f.trend],
-      ['Next 30 days (projected)', n2(f.next30)], ['Next 90 days (projected)', n2(f.next90)], ['To the end of this month', n2(f.toMonthEnd)], ['To the end of this year', n2(f.toYearEnd)],
-      ...(remainingTotal.value != null && view.value === 'all' ? [['Left (purchased minus used)', n2(remainingTotal.value)], ['Runs out (at the 30-day rate)', f.runOutDate ? `${f.runOutDate}, in ${f.runOutDays} days` : 'not at this rate']] : []),
+      ['Used, last 30 days', exact(f.last30)], ['Average per day (30 days)', exact(f.avg30)], ['Average per day (7 days)', exact(f.avg7)], ['Trend', f.trend],
+      ['Next 30 days (projected)', exact(f.next30)], ['Next 90 days (projected)', exact(f.next90)], ['To the end of this month', exact(f.toMonthEnd)], ['To the end of this year', exact(f.toYearEnd)],
+      ...(remainingTotal.value != null && view.value === 'all' ? [['Left (purchased minus used)', exact(remainingTotal.value)], ['Runs out (at the 30-day rate)', f.runOutDate ? `${f.runOutDate}, in ${f.runOutDays} days` : 'not at this rate']] : []),
     ] },
     { type: 'h', level: 2, text: 'By card or usage type, this period' },
-    { type: 'table', columns: ['Card or usage type', 'Used'], rows: v.groups.map((g) => [g.name, n2(g.total)]) },
+    { type: 'table', columns: ['Card or usage type', 'Used'], rows: v.groups.map((g) => [g.name, exact(g.total)]) },
   )
-  if (left.value.length) blocks.push({ type: 'h', level: 2, text: 'Purchased and left' }, { type: 'table', columns: ['Card', 'Purchased', 'Used', 'Left'], rows: left.value.map((b) => [b.name, n2(b.purchased), n2(b.consumed), n2(b.remaining)]) })
+  if (left.value.length) blocks.push({ type: 'h', level: 2, text: 'Purchased and left' }, { type: 'table', columns: ['Card', 'Purchased', 'Used', 'Left'], rows: left.value.map((b) => [b.name, exact(b.purchased), exact(b.consumed), exact(b.remaining)]) })
   const envCols2 = envList.value.length > 1 ? envList.value : []
-  blocks.push({ type: 'h', level: 2, text: 'Daily use' }, { type: 'table', columns: ['Day', 'Used', ...envCols2], rows: r.series.map((p, i) => [p.day, n2(p.total), ...envCols2.map((e) => n2(r.envs[e].series[i]?.total))]) })
+  blocks.push({ type: 'h', level: 2, text: 'Daily use' }, { type: 'table', columns: ['Day', 'Used', ...envCols2], rows: r.series.map((p, i) => [p.day, exact(p.total), ...envCols2.map((e) => exact(r.envs[e].series[i]?.total))]) })
   blocks.push({ type: 'p', text: 'The forecast is a straight line through the last 90 days of daily use. Sandbox usage draws on the production cards, so what is left is shared. It is an estimate, not a bill: Salesforce\'s Digital Wallet is the record.' })
   return { title: `Data Cloud credits: ${orgName(org.orgId)}`, blocks }
 }
@@ -348,7 +388,7 @@ const btn = 'dci-btn'
         <div class="flex flex-wrap items-center gap-2">
           <button class="dci-btn-primary" :disabled="busy || !ready" @click="read"><RefreshCw class="w-4 h-4" /> {{ result ? 'Read again' : 'Read consumption' }}</button>
           <button :class="btn" :disabled="!ready" @click="sqlShown = !sqlShown">{{ sqlShown ? 'Hide SQL' : 'Show SQL' }}</button>
-          <span class="text-xs text-muted-foreground">Runs 2 to 5 read-only queries, which use a few query credits themselves.</span>
+          <span class="text-xs text-muted-foreground">Runs 2 to 6 read-only queries, which use a few query credits themselves. The result is kept in this browser and shown next time without querying.</span>
         </div>
         <SqlBlock v-if="sqlShown" :code="sqlText" box-class="max-h-72" />
       </div>
@@ -409,7 +449,16 @@ const btn = 'dci-btn'
               <div v-if="chart.stacked" class="mt-1.5 space-y-0.5">
                 <div v-for="p in hoverBar.parts.filter((x) => x.total)" :key="p.env" class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full shrink-0" :class="envDot(p.env)"></span><span class="flex-1">{{ p.env }}</span><span class="tabular-nums">{{ n2(p.total) }}</span></div>
               </div>
-              <div v-if="hoverBar.groups?.length" class="mt-2">
+              <div v-if="hoverResources.length" class="mt-2">
+                <div class="text-muted-foreground mb-0.5">Used by</div>
+                <div v-for="r in hoverResources.slice(0, 8)" :key="`${r.type}|${r.name}`" class="flex items-baseline gap-2">
+                  <span class="flex-1 min-w-0 truncate" :title="`${r.name}${r.type ? ` (${r.type})` : ''}`">{{ r.name }}<span v-if="r.type" class="text-muted-foreground"> · {{ r.type }}</span></span>
+                  <span class="tabular-nums">{{ n2(r.credits) }}</span>
+                  <span v-if="price" class="w-20 text-right tabular-nums">{{ money(r.credits) }}</span>
+                </div>
+                <div v-if="hoverResources.length > 8" class="text-muted-foreground">and {{ hoverResources.length - 8 }} more</div>
+              </div>
+              <div v-else-if="hoverBar.groups?.length" class="mt-2">
                 <div class="text-muted-foreground mb-0.5">{{ fields.group ? 'Used by' : 'Total' }}</div>
                 <div v-for="g in hoverBar.groups.slice(0, 8)" :key="g.name" class="flex items-baseline gap-2">
                   <span class="flex-1 min-w-0 truncate" :title="g.name">{{ g.name }}</span>
@@ -454,12 +503,15 @@ const btn = 'dci-btn'
           <p class="text-xs text-muted-foreground">Left is purchased minus used for cards whose names match on both sides; check signs and units against the Digital Wallet before relying on it.</p>
         </div>
         <div class="space-y-1">
-          <div class="text-sm font-medium">Usage type multipliers (rate card)</div>
-          <p v-if="!multObject" class="text-xs text-muted-foreground">Not found: Digital Wallet's TenantUsageTypeMultiplier DLO is not in this data space. It lists how many credits each unit of usage costs; add its stream in Digital Wallet setup to see it here.</p>
-          <p v-else-if="result.multipliers?.error" class="text-xs text-destructive">Could not read {{ multObject }}: {{ result.multipliers.error }}</p>
-          <template v-else-if="result.multipliers">
-            <DataTable :columns="multCols" :rows="result.multipliers.rows" text-size="text-xs" box-class="max-h-80" empty="No multipliers stored." />
-            <p class="text-xs text-muted-foreground">From <RouterLink :to="`/objects/${multObject}`" class="font-mono text-link hover:underline">{{ multObject }}</RouterLink>, as stored: credits = usage × multiplier.</p>
+          <div class="text-sm font-medium">Top resources, last {{ days }} days{{ view === 'all' ? '' : `, ${view}` }}</div>
+          <p v-if="!result.resObject" class="text-xs text-muted-foreground">To see which data stream, data transform or other resource used the credits, add Digital Wallet's TenantEnrichedUsageEvent DLO to this data space, then Check again and Read again.</p>
+          <p v-else-if="result.resError" class="text-xs text-destructive">Could not read {{ result.resObject }}: {{ result.resError }}</p>
+          <template v-else-if="result.resources">
+            <DataTable :columns="resCols" :rows="resRows" row-key="key" text-size="text-xs" box-class="max-h-96" empty="No credits used by a resource in this period.">
+              <template #cell-name="{ row }"><span class="font-mono break-all">{{ row.name }}</span></template>
+              <template #cell-credits="{ value }"><span :title="exact(value)">{{ approx(value) }}</span></template>
+            </DataTable>
+            <p class="text-xs text-muted-foreground">Credits per resource from <RouterLink :to="`/objects/${result.resObject}`" class="font-mono text-link hover:underline">{{ result.resObject }}</RouterLink>; the money column uses your price per credit.</p>
           </template>
         </div>
       </template>
