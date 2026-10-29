@@ -530,3 +530,54 @@ export function moneyText(credits, p) {
     return `${p.currency} ${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
   }
 }
+
+// ---- page layout helpers (design "Option D – Credit prediction", 2026-10-29) ----
+
+/** Axis labels: "2M", "500K", "1.5B". */
+export function shortNum(v) {
+  const a = Math.abs(Number(v) || 0)
+  const f = (x, s) => `${Math.round(x * 10) / 10}${s}`
+  if (a >= 1e9) return f(v / 1e9, 'B')
+  if (a >= 1e6) return f(v / 1e6, 'M')
+  if (a >= 1e3) return f(v / 1e3, 'K')
+  return String(Math.round(v * 100) / 100)
+}
+
+/** Round gridline steps for a chart up to `max`: `{ top, ticks: [0, step, ...] }`, 3 or 4 steps. */
+export function niceTicks(max) {
+  if (!(max > 0)) return { top: 1, ticks: [0, 1] }
+  const raw = max / 3
+  const mag = 10 ** Math.floor(Math.log10(raw))
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw)
+  const top = Math.ceil(max / step) * step
+  const ticks = []
+  for (let v = 0; v <= top + step / 2; v += step) ticks.push(Math.round(v * 1e6) / 1e6)
+  return { top, ticks }
+}
+
+/**
+ * Credits by card as the page shows them: cards with use, by share used (over first), with
+ * their split by environment and date range; and the cards not used yet.
+ */
+export function cardGrid(cards = [], consumed = []) {
+  const by = new Map((consumed || []).map((g) => [g.name, g]))
+  const used = cards.filter((c) => c.used > 0).map((c) => ({ ...c, envs: by.get(c.name)?.envs || {}, first: by.get(c.name)?.first || '', last: by.get(c.name)?.last || '' }))
+    .sort((a, b) => (b.share ?? -1) - (a.share ?? -1) || b.used - a.used)
+  const unused = cards.filter((c) => !(c.used > 0)).sort((a, b) => (b.purchased || 0) - (a.purchased || 0))
+  return { used, unused }
+}
+
+/** Banners over the page: cards used past their purchase, and environments whose use is rising (not production). */
+export function creditAlerts(cards = [], envRows = []) {
+  const out = []
+  for (const c of cards) if (c.left != null && c.left < 0) out.push({ kind: 'over', card: c })
+  for (const e of envRows) if (e.env !== 'Production' && e.trend === 'rising' && e.last30 > 0) out.push({ kind: 'rising', env: e })
+  return out
+}
+
+/** The top `n` resources and what share of all credits they make: `{ top, count, total, topShare }`. */
+export function topResources(rows = [], n = 6) {
+  const total = rows.reduce((s, r) => s + r.credits, 0)
+  const top = rows.slice(0, n)
+  return { top, count: rows.length, total, topShare: total ? top.reduce((s, r) => s + r.credits, 0) / total : 0 }
+}

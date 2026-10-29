@@ -205,3 +205,33 @@ describe('each usage event counted once (feedback #1060)', () => {
     expect(cardTypesSql(src)).toContain('FROM (SELECT DISTINCT tenantbillingusageeventid__c, eventtime__c, resourcetype__c, resourceidorapiname__c, usagetypedevelopername__c, carddefinitiondevelopername__c, unit__c, unitsconsumed__c FROM TenantEnrichedUsageEvent__dll) e')
   })
 })
+
+describe('credit page helpers (design Option D)', () => {
+  it('labels and steps the chart axis', async () => {
+    const { shortNum, niceTicks } = await import('../credits.js')
+    expect(shortNum(2e6)).toBe('2M')
+    expect(shortNum(1500)).toBe('1.5K')
+    expect(niceTicks(5.4e6)).toEqual({ top: 6e6, ticks: [0, 2e6, 4e6, 6e6] })
+  })
+  it('sorts cards by share used and lists unused ones', async () => {
+    const { cardGrid } = await import('../credits.js')
+    const g = cardGrid([
+      { name: 'A', used: 10, purchased: 100, share: 0.1, left: 90 },
+      { name: 'S', used: 128, purchased: 100, share: 1.28, left: -28 },
+      { name: 'U', used: 0, purchased: 50, share: 0, left: 50 },
+    ], [{ name: 'S', envs: { Production: 128 }, first: '2025-02-01', last: '2026-10-28' }])
+    expect(g.used.map((c) => c.name)).toEqual(['S', 'A'])
+    expect(g.used[0].envs).toEqual({ Production: 128 })
+    expect(g.unused.map((c) => c.name)).toEqual(['U'])
+  })
+  it('raises over-purchase and rising sandbox alerts', async () => {
+    const { creditAlerts } = await import('../credits.js')
+    const a = creditAlerts([{ name: 'S', left: -1 }, { name: 'A', left: 3 }], [{ env: 'Production', trend: 'rising', last30: 5 }, { env: 'Sandbox', trend: 'rising', last30: 5 }])
+    expect(a.map((x) => x.kind)).toEqual(['over', 'rising'])
+  })
+  it('sums the top resources', async () => {
+    const { topResources } = await import('../credits.js')
+    const t = topResources([{ credits: 6 }, { credits: 3 }, { credits: 1 }], 2)
+    expect(t).toMatchObject({ count: 3, total: 10, topShare: 0.9 })
+  })
+})

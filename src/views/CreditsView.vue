@@ -7,7 +7,7 @@ import PageHeader from '../components/PageHeader.vue'
 // production but count sandbox usage too, so every figure can be split by environment and
 // by the org that used it. Without the objects, the page says how to turn them on.
 import { ref, computed, watch, onMounted } from 'vue'
-import { Check, ChevronDown, ChevronRight, Copy, RefreshCw, X } from 'lucide-vue-next'
+import { Activity, AlertTriangle, CalendarRange, Check, Copy, Info, Layers, RefreshCw, TrendingUp, Wallet, X } from 'lucide-vue-next'
 import HelpTip from '../components/HelpTip.vue'
 import Loading from '../components/Loading.vue'
 import DataTable from '../components/DataTable.vue'
@@ -16,7 +16,7 @@ import SqlBlock from '../components/SqlBlock.vue'
 import { useOrg, currentOrg, orgName, orgTitle } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
-import { findCreditObjects, probeCreditObjects, guessFields, dailySql, totalsSql, orgsSql, shapeDaily, shapeTotals, sortEnvs, envName, forecast, balances, creditPrice, setCreditPrice, moneyText, approx, resourceSource, resourcesSql, resourceDaysSql, shapeResources, shapeResourceDays, resourcesForDay, cardTypesSql, shapeCardTypes, cardRows, cardInfo } from '../lib/credits.js'
+import { findCreditObjects, probeCreditObjects, guessFields, dailySql, totalsSql, orgsSql, shapeDaily, shapeTotals, sortEnvs, envName, forecast, balances, creditPrice, setCreditPrice, moneyText, approx, resourceSource, resourcesSql, resourceDaysSql, shapeResources, shapeResourceDays, resourcesForDay, cardTypesSql, shapeCardTypes, cardRows, cardInfo, shortNum, niceTicks, cardGrid, creditAlerts, topResources } from '../lib/credits.js'
 import { cacheGet, cacheSet, orgCached } from '../lib/store.js'
 import { metadataTtl } from '../lib/cacheAge.js'
 
@@ -191,9 +191,14 @@ function savePrice() {
   setCreditPrice(org.orgId, priceInput.value, currency.value)
   price.value = creditPrice(org.orgId)
 }
-const money = (credits) => moneyText(credits, price.value)
+// Money figures only while "Show in money" is on (design Option D); remembered in this browser.
+const moneyOn = ref(false)
+try { moneyOn.value = localStorage.getItem('dci_credit_money') === 'on' } catch { /* private window */ }
+watch(moneyOn, (v) => { try { localStorage.setItem('dci_credit_money', v ? 'on' : 'off') } catch { /* ignore */ } })
+const money = (credits) => (moneyOn.value ? moneyText(credits, price.value) : '')
 
-// Chart: the last 90 days and 30 days ahead, one bar per day
+// Chart: the last 90 days and 30 days ahead, one bar per day, with round gridlines, month
+// labels and a Today line (design Option D).
 const chart = computed(() => {
   if (!shown.value || !fc.value) return null
   const stacked = view.value === 'all' && envList.value.length > 1
@@ -201,18 +206,23 @@ const chart = computed(() => {
   const past = shown.value.series.slice(-90).map((p) => ({ ...p, ahead: false, parts: stacked ? perEnv(p.day) : [{ env: view.value === 'all' ? envList.value[0] : view.value, total: p.total }] }))
   const ahead = fc.value.projected.slice(0, 30).map((p) => ({ ...p, ahead: true, parts: [{ env: '', total: p.total }] }))
   const bars = [...past, ...ahead]
-  const max = Math.max(1, ...bars.map((b) => b.total))
-  const W = 900, H = 200, pad = 24
+  const { top, ticks } = niceTicks(Math.max(1, ...bars.map((b) => b.total)))
+  const W = 900, H = 240, pad = 44
   const bw = (W - pad) / bars.length
+  const y = (v) => H - (v / top) * H
   return {
-    W, H, max,
+    W, H, pad, max: top,
+    ticks: ticks.map((v) => ({ v, y: y(v), label: shortNum(v) })),
+    months: bars.map((b, i) => ({ b, i })).filter(({ b, i }) => i > 0 && b.day.endsWith('-01')).map(({ b, i }) => ({ x: pad + i * bw, label: new Date(`${b.day}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) })),
     bars: bars.map((b, i) => {
-      let top = H
-      const segs = b.parts.filter((p) => p.total > 0).map((p) => { const h = (p.total / max) * (H - 20); top -= h; return { env: p.env, total: p.total, y: top, h } })
-      return { ...b, x: pad + i * bw, w: Math.max(1, bw - 2), segs }
+      let t = H
+      const segs = b.parts.filter((p) => p.total > 0).map((p) => { const h = (p.total / top) * H; t -= h; return { env: p.env, total: p.total, y: t, h } })
+      return { ...b, x: pad + i * bw, w: Math.max(1, bw - 1.5), segs }
     }),
     stacked,
     split: pad + past.length * bw,
+    // The day panel opens on the last full day (today is still counting).
+    lastPast: Math.max(0, past.map((p) => p.day < new Date().toISOString().slice(0, 10)).lastIndexOf(true)),
   }
 })
 // The day under the pointer, with what used its credits (feedback #1042).
@@ -221,7 +231,7 @@ const hoverIdx = ref(-1)
 const pinned = ref(-1)
 const showAll = ref(false)
 const copied = ref(false)
-const activeIdx = computed(() => (pinned.value >= 0 ? pinned.value : hoverIdx.value))
+const activeIdx = computed(() => (pinned.value >= 0 ? pinned.value : hoverIdx.value >= 0 ? hoverIdx.value : chart.value ? chart.value.lastPast : -1))
 const hoverBar = computed(() => chart.value?.bars[activeIdx.value] || null)
 function togglePin(i) { pinned.value = pinned.value === i ? -1 : i; showAll.value = false }
 function closePin() { pinned.value = -1; showAll.value = false }
@@ -240,7 +250,6 @@ async function copyDay() {
   copied.value = true
   setTimeout(() => { copied.value = false }, 1500)
 }
-const hoverLeft = computed(() => (hoverBar.value ? ((hoverBar.value.x + hoverBar.value.w / 2) / chart.value.W) * 100 : 0))
 const hoverResources = computed(() => (hoverBar.value && !hoverBar.value.ahead ? resourcesForDay(result.value?.resourceDays, hoverBar.value.day, view.value) : []))
 const share = (part, total) => (total ? `${Math.round((part / total) * 100)}%` : '')
 
@@ -275,8 +284,32 @@ const resCols = computed(() => [
   { key: 'cards', label: 'Card', value: (r) => r.cards.join(', ') },
   { key: 'credits', label: 'Credits', kind: 'number', align: 'right' },
   { key: 'share', label: 'Share', kind: 'number', align: 'right', value: (r) => `${Math.round(r.share * 1000) / 10}%`, sortValue: (r) => r.share },
-  ...(price.value ? [{ key: 'money', label: `Approx ${price.value.currency}`, kind: 'number', align: 'right', value: (r) => money(r.credits), sortValue: (r) => r.credits }] : []),
+  ...(price.value && moneyOn.value ? [{ key: 'money', label: `Approx ${price.value.currency}`, kind: 'number', align: 'right', value: (r) => money(r.credits), sortValue: (r) => r.credits }] : []),
 ])
+
+// Credits by card as a grid, alerts over the page, and the top resources list (design Option D).
+const grid = computed(() => cardGrid(cards.value, result.value?.consumedAll))
+const alerts = computed(() => creditAlerts(cards.value, envRows.value))
+const tops = computed(() => topResources(resRows.value, 6))
+const showAllRes = ref(false)
+const aboutOpen = ref(false)
+const openCard = (name) => { cardOpen.value = { ...cardOpen.value, [name]: true }; document.getElementById(`card-${name}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }
+const ring = (share) => {
+  const deg = Math.min(360, Math.max(0, (share || 0) * 360))
+  const c = share > 1 ? 'rgb(220 38 38)' : share > 0.8 ? 'rgb(245 158 11)' : 'hsl(var(--primary))'
+  return { background: `conic-gradient(${c} 0deg ${deg}deg, hsl(var(--muted)) ${deg}deg 360deg)` }
+}
+const range = (a, b) => [a, b].filter(Boolean).map((d) => new Date(`${String(d).slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })).join(' – ')
+// A line of the last 90 days per environment for its card.
+const spark = (e) => {
+  const today = new Date().toISOString().slice(0, 10)
+  const pts = (result.value?.envs[e]?.series || []).filter((p) => p.day < today).slice(-90).map((p) => p.total)
+  if (pts.length < 2) return ''
+  const max = Math.max(1, ...pts)
+  return pts.map((v, i) => `${(i / (pts.length - 1)) * 300},${40 - (v / max) * 36}`).join(' ')
+}
+const TREND_TONE = { rising: 'dci-badge-amber', falling: 'dci-badge-green', flat: '' }
+const resName = (r) => (r.name === '(none)' ? 'Org-level usage' : r.name)
 
 const groupCols = [
   { key: 'name', label: 'Card or usage type' },
@@ -348,10 +381,18 @@ const btn = 'dci-btn'
 </script>
 
 <template>
-  <section class="max-w-6xl mx-auto space-y-4">
-    <div>
-      <PageHeader path="/credits" title="Credit prediction" topic="credits">How many Data Cloud credits this org used, by card or usage type, and where the recent daily use is heading. Read from the org's own consumption data with SQL.</PageHeader>
-    </div>
+  <section class="max-w-[1240px] mx-auto space-y-5">
+    <PageHeader path="/credits" title="Credit prediction" topic="credits">How many Data Cloud credits this org used, by card or usage type, and where the recent daily use is heading.
+      <template v-if="sources.length" #actions>
+        <span v-if="result" class="text-xs text-muted-foreground">Last read {{ result.at.toLocaleString() }}</span>
+        <button class="dci-btn-primary" :disabled="busy || !ready" @click="read"><RefreshCw :class="['w-4 h-4', busy ? 'animate-spin' : '']" /> {{ result ? 'Read again' : 'Read consumption' }}</button>
+        <template v-if="result && fc">
+          <button type="button" :class="['dci-btn', moneyOn ? '!border-primary !bg-primary/10 !text-primary' : '']" :aria-pressed="moneyOn" @click="moneyOn = !moneyOn">$ Show in money</button>
+          <DownloadMenu :get-doc="doc" :get-sheets="sheets" :file-name="`data-cloud-credits-${orgName(org.orgId)}`" />
+          <button type="button" :class="['dci-btn w-[38px] !px-0 justify-center', aboutOpen ? '!border-primary !bg-primary/10 !text-primary' : '']" :aria-pressed="aboutOpen" aria-label="About this data: setup, SQL and more tables" title="About this data: setup, SQL and more tables" @click="aboutOpen = !aboutOpen"><Info class="w-4 h-4" /></button>
+        </template>
+      </template>
+    </PageHeader>
 
     <p v-if="sandbox" class="text-sm p-3 border rounded-xl border-amber-400 bg-card">This is a sandbox. The consumption objects exist only in production, and production's copy includes this sandbox's usage (environment Sandbox, with this org's ID). Connect to the production org and split by environment there.</p>
 
@@ -372,7 +413,7 @@ const btn = 'dci-btn'
     </div>
 
     <template v-else>
-      <div class="border rounded-xl bg-card p-3 space-y-3 text-sm">
+      <div v-if="!result || aboutOpen" class="border rounded-xl bg-card p-3 space-y-3 text-sm">
         <details :open="setupOpen" class="space-y-3" @toggle="setupOpen = $event.target.open">
         <summary class="cursor-pointer select-none"><span class="font-medium">Setup</span> <span class="text-xs text-muted-foreground">{{ setupSummary }}</span></summary>
         <div class="space-y-3 mt-2">
@@ -414,7 +455,6 @@ const btn = 'dci-btn'
         </div>
         </details>
         <div class="flex flex-wrap items-center gap-2">
-          <button class="dci-btn-primary" :disabled="busy || !ready" @click="read"><RefreshCw class="w-4 h-4" /> {{ result ? 'Read again' : 'Read consumption' }}</button>
           <button :class="btn" :disabled="!ready" @click="sqlShown = !sqlShown">{{ sqlShown ? 'Hide SQL' : 'Show SQL' }}</button>
           <span class="text-xs text-muted-foreground">Runs 2 to 7 read-only queries, which use a few query credits themselves. The result is kept in this browser and shown next time without querying.</span>
         </div>
@@ -425,155 +465,239 @@ const btn = 'dci-btn'
       <p v-if="error" class="text-sm text-destructive whitespace-pre-wrap">{{ error }}</p>
 
       <template v-if="result && fc">
-        <div class="flex flex-wrap items-center gap-2">
-          <div v-if="envList.length > 1" class="flex rounded-md border overflow-hidden text-sm" role="group" aria-label="Environment">
-            <button v-for="e in ['all', ...envList]" :key="e" class="px-2.5 py-1 inline-flex items-center gap-1.5" :class="view === e ? 'bg-accent font-medium' : 'hover:bg-accent/50'" :aria-pressed="view === e" @click="view = e"><span v-if="e !== 'all'" class="w-2 h-2 rounded-full" :class="envDot(e)"></span>{{ e === 'all' ? 'All environments' : e }}</button>
-          </div>
-          <span v-else-if="envList.length === 1 && fields.env" class="text-xs text-muted-foreground">Only {{ envList[0] }} usage in this period.</span>
-          <p class="text-xs text-muted-foreground">Read {{ result.at.toLocaleString() }}.</p>
-          <span class="ml-auto"><DownloadMenu :get-doc="doc" :get-sheets="sheets" :file-name="`data-cloud-credits-${orgName(org.orgId)}`" /></span>
-        </div>
-        <form class="flex flex-wrap items-center gap-2 text-sm" aria-label="Price per credit" @submit.prevent="savePrice">
-          <label class="flex items-center gap-1.5">Price per credit
-            <input v-model="priceInput" inputmode="decimal" placeholder="e.g. 0.001" class="w-28 border rounded-md px-2 py-1 bg-background" aria-label="Price per credit" @change="savePrice" />
-          </label>
-          <select v-model="currency" :class="sel" aria-label="Currency" @change="savePrice"><option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option></select>
-          <span class="text-xs text-muted-foreground">{{ price ? `Money figures use ${price.price} ${price.currency} a credit (${moneyText(1000, price)} per 1,000 credits), saved for this org in this browser.` : 'From your Salesforce contract (Salesforce does not show the price to the API). Leave empty for credits only.' }}</span>
+        <!-- Price per credit, while "Show in money" is on -->
+        <form v-if="moneyOn" class="dci-card px-4 py-3 flex flex-wrap items-center gap-3 text-sm" aria-label="Price per credit" @submit.prevent="savePrice">
+          <label for="cr-price" class="text-[13px] font-semibold">Price per credit</label>
+          <input id="cr-price" v-model="priceInput" inputmode="decimal" placeholder="e.g. 0.001" class="w-32 h-9 rounded-full border px-3.5 bg-background" @change="savePrice" />
+          <select v-model="currency" class="h-9 rounded-full border px-3 bg-background text-sm" aria-label="Currency" @change="savePrice"><option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option></select>
+          <span class="text-xs text-muted-foreground flex-1 min-w-60">{{ price ? `${price.price} ${price.currency} a credit (${moneyText(1000, price)} per 1,000 credits), saved for this org in this browser.` : 'From your Salesforce contract. Salesforce does not expose the price to the API, so it stays in this browser.' }}</span>
           <HelpTip topic="credits-price" />
         </form>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">Used, last 30 days</div><div class="text-xl font-semibold">{{ n0(fc.last30) }}</div><div v-if="price" class="text-sm font-medium">{{ money(fc.last30) }}</div><div class="text-xs text-muted-foreground">{{ n2(fc.avg30) }} a day; 7-day average {{ n2(fc.avg7) }}</div></div>
-          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">Next 30 days (projected)</div><div class="text-xl font-semibold">{{ n0(fc.next30) }}</div><div v-if="price" class="text-sm font-medium">{{ money(fc.next30) }}</div><div class="text-xs text-muted-foreground">trend {{ fc.trend }}; next 90 days {{ n0(fc.next90) }}</div></div>
-          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">To the end of the year (projected)</div><div class="text-xl font-semibold">{{ n0(fc.toYearEnd) }}</div><div v-if="price" class="text-sm font-medium">{{ money(fc.toYearEnd) }}</div><div class="text-xs text-muted-foreground">this month {{ n0(fc.toMonthEnd) }} more</div></div>
-          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">Left (purchased minus used, all environments)</div><div class="text-xl font-semibold">{{ remainingTotal == null ? '—' : n0(remainingTotal) }}</div><div v-if="price && remainingTotal != null" class="text-sm font-medium">{{ money(remainingTotal) }}</div><div class="text-xs text-muted-foreground">{{ view !== 'all' && remainingTotal != null ? 'shared by every environment; run-out date under All environments' : remainingTotal == null ? (result.entError ? `could not read purchases: ${result.entError}` : 'no purchase data read') : fc.runOutDate ? (fc.runOutDays > 36500 ? 'more than 100 years at this rate' : `runs out around ${fc.runOutDate} (${approx(fc.runOutDays)} days)`) : 'not used up at this rate' }}</div></div>
+
+        <!-- Alerts -->
+        <div v-if="alerts.length" class="flex flex-col gap-2">
+          <div v-for="a in alerts" :key="a.kind + (a.card?.name || a.env?.env)" role="alert" :class="['flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border text-sm', a.kind === 'over' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-300' : 'bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-300']">
+            <component :is="a.kind === 'over' ? AlertTriangle : TrendingUp" class="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span v-if="a.kind === 'over'"><b>{{ a.card.name }} is over its purchase</b>: {{ approx(a.card.used) }}{{ unitWord(a.card.name) }} used of {{ approx(a.card.purchased) }} ({{ pct(a.card.share) }}), about {{ approx(-a.card.left) }} over.</span>
+            <span v-else><b>{{ a.env.env }} use is rising</b>: {{ approx(a.env.last30) }} in the last 30 days, {{ approx(a.env.avg30) }} a day. It draws on the production cards.</span>
+            <button v-if="a.kind === 'over'" type="button" class="ml-auto text-[13px] font-semibold underline-offset-2 hover:underline" @click="openCard(a.card.name)">See what used it</button>
+          </div>
         </div>
 
-        <figure v-if="chart" class="border rounded-xl bg-card p-3">
-          <figcaption class="text-sm font-medium mb-2 flex flex-wrap items-center gap-3">
-            <span>Credits per day{{ view === 'all' ? '' : `, ${view} only` }}: last 90 days, then 30 days projected</span>
-            <span v-if="chart.stacked" class="flex items-center gap-3 text-xs font-normal text-muted-foreground"><span v-for="e in envList" :key="e" class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full" :class="envDot(e)"></span>{{ e }}</span></span>
-          </figcaption>
-          <div class="relative" @mouseleave="hoverIdx = -1" @keydown.esc="closePin">
-          <svg :viewBox="`0 0 ${chart.W} ${chart.H + 18}`" class="w-full h-auto" role="img" :aria-label="`Daily credits, highest ${n0(chart.max)} a day; projected next 30 days ${n0(fc.next30)}`">
-            <line :x1="24" :x2="chart.W" :y1="chart.H" :y2="chart.H" class="stroke-border" />
-            <text x="0" y="10" class="fill-muted-foreground text-[10px]">{{ n0(chart.max) }}</text>
-            <text x="0" :y="chart.H" class="fill-muted-foreground text-[10px]">0</text>
-            <line :x1="chart.split" :x2="chart.split" y1="0" :y2="chart.H" class="stroke-muted-foreground" stroke-dasharray="3 3" />
-            <text :x="chart.split + 4" y="10" class="fill-muted-foreground text-[10px]">projected</text>
-            <g v-for="(b, i) in chart.bars" :key="b.day" :opacity="activeIdx >= 0 && activeIdx !== i ? 0.55 : 1">
-              <rect v-for="(sg, j) in b.segs" :key="j" :x="b.x" :y="sg.y" :width="b.w" :height="Math.max(0, sg.h)" rx="1" :class="envFill(sg.env, b.ahead)" />
-              <rect :x="b.x - 1" y="0" :width="b.w + 2" :height="chart.H" fill="transparent" class="cursor-pointer" @mouseenter="hoverIdx = i" @click="togglePin(i)" />
-            </g>
-            <text :x="24" :y="chart.H + 14" class="fill-muted-foreground text-[10px]">{{ chart.bars[0]?.day }}</text>
-            <text :x="chart.W" :y="chart.H + 14" text-anchor="end" class="fill-muted-foreground text-[10px]">{{ chart.bars[chart.bars.length - 1]?.day }}</text>
-          </svg>
-          <div
-            v-if="hoverBar" :class="['absolute top-0 z-20 w-80 rounded-lg border bg-popover text-popover-foreground shadow-lg p-2.5 text-xs max-h-[70vh] overflow-auto', pinned >= 0 ? 'ring-2 ring-primary/40' : 'pointer-events-none']"
-            :style="{ left: `clamp(0px, calc(${hoverLeft}% - 10rem), calc(100% - 20rem))`, transform: 'translateY(-100%)' }" aria-live="polite" :role="pinned >= 0 ? 'dialog' : undefined" :aria-label="pinned >= 0 ? `Credits on ${hoverBar.day}` : undefined"
-          >
-            <div class="flex items-baseline justify-between gap-2"><span class="font-semibold text-sm">{{ n2(hoverBar.total) }} credits</span><span v-if="money(hoverBar.total)" class="font-medium">{{ money(hoverBar.total) }}</span></div>
-            <div v-if="pinned >= 0" class="flex items-center gap-2 mt-1">
-              <button class="dci-btn dci-btn-sm" @click="copyDay"><component :is="copied ? Check : Copy" class="w-3.5 h-3.5" /> {{ copied ? 'Copied' : 'Copy' }}</button>
-              <button class="dci-btn dci-btn-sm ml-auto" aria-label="Close" @click="closePin"><X class="w-3.5 h-3.5" /></button>
-            </div>
-            <div class="text-muted-foreground">{{ hoverBar.day }}{{ hoverBar.ahead ? ', projected from the trend' : '' }}</div>
-            <template v-if="!hoverBar.ahead">
-              <div v-if="chart.stacked" class="mt-1.5 space-y-0.5">
-                <div v-for="p in hoverBar.parts.filter((x) => x.total)" :key="p.env" class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full shrink-0" :class="envDot(p.env)"></span><span class="flex-1">{{ p.env }}</span><span class="tabular-nums">{{ n2(p.total) }}</span></div>
-              </div>
-              <div v-if="hoverResources.length" class="mt-2">
-                <div class="text-muted-foreground mb-0.5">Used by</div>
-                <div v-for="r in listed(hoverResources)" :key="`${r.type}|${r.name}`" class="flex items-baseline gap-2">
-                  <span class="flex-1 min-w-0 truncate" :title="`${r.name}${r.type ? ` (${r.type})` : ''}`">{{ r.name }}<span v-if="r.type" class="text-muted-foreground"> · {{ r.type }}</span></span>
-                  <span class="tabular-nums">{{ n2(r.credits) }}</span>
-                  <span v-if="price" class="w-20 text-right tabular-nums">{{ money(r.credits) }}</span>
-                </div>
-                <button v-if="hoverResources.length > 8 && pinned >= 0" class="text-link hover:underline" @click="showAll = !showAll">{{ showAll ? 'Show fewer' : `and ${hoverResources.length - 8} more` }}</button>
-                <div v-else-if="hoverResources.length > 8" class="text-muted-foreground">and {{ hoverResources.length - 8 }} more (click the bar to see all)</div>
-              </div>
-              <div v-else-if="hoverBar.groups?.length" class="mt-2">
-                <div class="text-muted-foreground mb-0.5">{{ fields.group ? 'Used by' : 'Total' }}</div>
-                <div v-for="g in listed(hoverBar.groups)" :key="g.name" class="flex items-baseline gap-2">
-                  <span class="flex-1 min-w-0 truncate" :title="g.name">{{ g.name }}</span>
-                  <span class="tabular-nums">{{ n2(g.total) }}</span>
-                  <span class="w-9 text-right text-muted-foreground tabular-nums">{{ share(g.total, hoverBar.total) }}</span>
-                  <span v-if="price" class="w-16 text-right tabular-nums">{{ money(g.total) }}</span>
-                </div>
-                <button v-if="hoverBar.groups.length > 8 && pinned >= 0" class="text-link hover:underline" @click="showAll = !showAll">{{ showAll ? 'Show fewer' : `and ${hoverBar.groups.length - 8} more` }}</button>
-                <div v-else-if="hoverBar.groups.length > 8" class="text-muted-foreground">and {{ hoverBar.groups.length - 8 }} more (click the bar to see all)</div>
-              </div>
-              <div v-else-if="!hoverBar.total" class="mt-1 text-muted-foreground">No credits used.</div>
-            </template>
-            <div v-if="!price" class="mt-2 text-muted-foreground">Set a price per credit above the chart for money estimates.</div>
+        <!-- Tiles -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <div v-for="t in [
+            { label: 'Used, last 30 days', v: fc.last30, sub: `${n2(fc.avg30)} a day`, icon: Activity, tone: 'bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300' },
+            { label: 'Next 30 days (projected)', v: fc.next30, sub: `next 90 days ${n0(fc.next90)} · trend ${fc.trend}`, icon: TrendingUp, tone: 'bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300' },
+            { label: 'To year end (projected)', v: fc.toYearEnd, sub: `this month ${n0(fc.toMonthEnd)} more`, icon: CalendarRange, tone: 'bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300' },
+            { label: view === 'all' ? 'Left, all environments' : 'Left (shared)', v: remainingTotal, sub: remainingTotal == null ? (result.entError ? `could not read purchases: ${result.entError}` : 'no purchase data read') : 'purchased minus used', icon: Wallet, tone: 'bg-teal-50 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300', runOut: true },
+          ]" :key="t.label" class="dci-card p-4 flex flex-col gap-2 min-w-0">
+            <div class="flex items-center justify-between gap-2"><span class="text-[13px] text-muted-foreground">{{ t.label }}</span><span :class="['w-7 h-7 rounded-xl flex items-center justify-center shrink-0', t.tone]" aria-hidden="true"><component :is="t.icon" class="w-3.5 h-3.5" /></span></div>
+            <span class="text-[28px] leading-8 font-bold tracking-tight break-words" :title="exact(t.v)">{{ t.v == null ? '—' : n0(t.v) }}</span>
+            <span v-if="money(t.v)" class="text-sm font-medium">{{ money(t.v) }}</span>
+            <span class="text-xs text-muted-foreground">{{ t.sub }}</span>
+            <span v-if="t.runOut && remainingTotal != null" class="text-xs font-medium">{{ view !== 'all' ? 'Run-out date under All' : fc.runOutDate ? (fc.runOutDays > 36500 ? 'Lasts more than 100 years at this rate' : `Runs out around ${new Date(fc.runOutDate).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })} · ${approx(fc.runOutDays)} days`) : 'Not used up at this rate' }}</span>
           </div>
-          </div>
-          <p class="text-xs text-muted-foreground mt-1">Hover a bar for its day and what used the credits; click it to keep the card open, copy it or see every resource. The projection is the trend through the last 90 days, shaped by the usual day-of-week pattern when there are at least four weeks of data (today, still counting, is left out). An estimate, not a bill: the Digital Wallet in Setup is the record.</p>
-        </figure>
+        </div>
 
-        <div class="space-y-1">
-          <div class="text-sm font-medium">Top resources, last {{ days }} days{{ view === 'all' ? '' : `, ${view}` }}</div>
+        <!-- Credits per day -->
+        <section v-if="chart" class="dci-card px-5 py-[18px] flex flex-col gap-3.5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-base font-semibold">Credits per day</h2>
+            <div class="flex flex-wrap items-center gap-3.5">
+              <div class="flex flex-wrap gap-3.5 text-xs">
+                <span v-for="e in (chart.stacked ? envList : [view === 'all' ? envList[0] : view]).filter(Boolean)" :key="e" class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-[3px]" :class="envDot(e)" />{{ e }}</span>
+                <span class="inline-flex items-center gap-1.5"><svg class="w-2.5 h-2.5 rounded-[3px]" aria-hidden="true"><rect width="10" height="10" fill="url(#cr-hatch)" /></svg>Projected</span>
+              </div>
+              <div v-if="envList.length > 1" role="group" aria-label="Environment" class="inline-flex p-[3px] rounded-full border bg-card">
+                <button v-for="e in ['all', ...envList]" :key="e" type="button" :class="['h-[30px] px-3 rounded-full text-[13px]', view === e ? 'bg-primary text-primary-foreground font-semibold' : 'font-medium hover:bg-accent']" :aria-pressed="view === e" @click="view = e">{{ e === 'all' ? 'All' : e }}</button>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-stretch gap-[18px]">
+            <div class="flex-[999_1_560px] min-w-0 relative" @mouseleave="hoverIdx = -1" @keydown.esc="closePin">
+              <svg :viewBox="`0 0 ${chart.W} ${chart.H + 22}`" class="w-full h-auto overflow-visible" role="img" :aria-label="`Daily credits, up to ${n0(chart.max)} a day; projected next 30 days ${n0(fc.next30)}`">
+                <defs>
+                  <pattern id="cr-hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" class="fill-primary/15" /><rect width="2" height="4" class="fill-primary/50" /></pattern>
+                </defs>
+                <g v-for="t in chart.ticks" :key="t.v">
+                  <line :x1="chart.pad" :x2="chart.W" :y1="t.y" :y2="t.y" class="stroke-border" :stroke-dasharray="t.v ? '3 3' : ''" />
+                  <text :x="chart.pad - 6" :y="t.y + 4" text-anchor="end" class="fill-muted-foreground text-[11px]">{{ t.label }}</text>
+                </g>
+                <g v-for="(b, i) in chart.bars" :key="b.day">
+                  <rect v-if="i === activeIdx" :x="b.x - 0.5" y="0" :width="b.w + 1" :height="chart.H" rx="2" class="fill-primary/10" />
+                  <rect v-for="(sg, j) in b.segs" :key="j" :x="b.x" :y="sg.y" :width="b.w" :height="Math.max(0, sg.h)" rx="1" :fill="b.ahead ? 'url(#cr-hatch)' : undefined" :class="b.ahead ? '' : envFill(sg.env)" :opacity="activeIdx >= 0 && activeIdx !== i && pinned >= 0 ? 0.6 : 1" />
+                  <rect :x="b.x - 0.75" y="0" :width="b.w + 1.5" :height="chart.H" fill="transparent" class="cursor-pointer" @mouseenter="hoverIdx = i" @click="togglePin(i)"><title>{{ b.day }}: {{ n2(b.total) }}</title></rect>
+                </g>
+                <line :x1="chart.split" :x2="chart.split" y1="-4" :y2="chart.H" class="stroke-foreground" stroke-width="1.5" stroke-dasharray="4 3" />
+                <text :x="chart.split + 4" y="8" class="fill-foreground text-[11px] font-semibold">Today</text>
+                <text :x="chart.pad" :y="chart.H + 16" class="fill-muted-foreground text-[11px]">{{ new Date(`${chart.bars[0].day}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) }}</text>
+                <text v-for="m in chart.months" :key="m.x" :x="m.x" :y="chart.H + 16" text-anchor="middle" class="fill-muted-foreground text-[11px]">{{ m.label }}</text>
+                <text :x="chart.W" :y="chart.H + 16" text-anchor="end" class="fill-muted-foreground text-[11px]">{{ new Date(`${chart.bars[chart.bars.length - 1].day}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) }}</text>
+              </svg>
+            </div>
+            <aside v-if="hoverBar" aria-label="Day detail" aria-live="polite" class="flex-[1_1_260px] max-w-[300px] min-w-0 p-4 rounded-xl border bg-muted/30 flex flex-col gap-2.5 text-[13px]">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs text-muted-foreground">{{ new Date(`${hoverBar.day}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) }}</span>
+                <span class="flex items-center gap-1">
+                  <button type="button" class="dci-btn dci-btn-sm" :title="'Copy this day'" @click="copyDay"><component :is="copied ? Check : Copy" class="w-3.5 h-3.5" /><span class="sr-only">{{ copied ? 'Copied' : 'Copy' }}</span></button>
+                  <button v-if="pinned >= 0" type="button" class="dci-btn dci-btn-sm" aria-label="Back to today" title="Back to the last full day" @click="closePin"><X class="w-3.5 h-3.5" /></button>
+                </span>
+              </div>
+              <span class="text-[22px] font-bold leading-7" :title="exact(hoverBar.total)">{{ n2(hoverBar.total) }} <span class="text-[13px] font-medium text-muted-foreground">credits</span></span>
+              <span v-if="money(hoverBar.total)" class="font-medium">{{ money(hoverBar.total) }}</span>
+              <span v-if="hoverBar.ahead" class="dci-badge dci-badge-blue self-start">Projected from the trend</span>
+              <div v-if="chart.stacked && !hoverBar.ahead" class="flex flex-col gap-1.5">
+                <span v-for="p in hoverBar.parts" :key="p.env" class="flex justify-between gap-2"><span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" :class="envDot(p.env)" />{{ p.env }}</span><span class="font-semibold tabular-nums">{{ n2(p.total) }}</span></span>
+              </div>
+              <div v-if="!hoverBar.ahead && (hoverResources.length || hoverBar.groups?.length)" class="flex flex-col gap-1.5 pt-2.5 border-t">
+                <span class="text-xs font-semibold">{{ hoverResources.length || fields.group ? 'Used by' : 'Total' }}</span>
+                <template v-if="hoverResources.length">
+                  <span v-for="r in listed(hoverResources)" :key="`${r.type}|${r.name}`" class="flex justify-between gap-2 text-xs">
+                    <span class="font-mono text-[11px] truncate min-w-0" :title="`${r.name}${r.type ? ` (${r.type})` : ''}`">{{ r.name }}</span>
+                    <span class="font-medium whitespace-nowrap tabular-nums">{{ n2(r.credits) }}<template v-if="money(r.credits)"> · {{ money(r.credits) }}</template></span>
+                  </span>
+                  <button v-if="hoverResources.length > 8" type="button" class="self-start text-xs font-semibold text-link hover:underline" @click="pinned = activeIdx; showAll = !showAll">{{ showAll ? 'Show fewer' : `and ${hoverResources.length - 8} more` }}</button>
+                </template>
+                <template v-else>
+                  <span v-for="g in listed(hoverBar.groups)" :key="g.name" class="flex justify-between gap-2 text-xs">
+                    <span class="truncate min-w-0" :title="g.name">{{ g.name }}</span>
+                    <span class="font-medium whitespace-nowrap tabular-nums">{{ n2(g.total) }} <span class="text-muted-foreground">{{ share(g.total, hoverBar.total) }}</span></span>
+                  </span>
+                  <button v-if="hoverBar.groups.length > 8" type="button" class="self-start text-xs font-semibold text-link hover:underline" @click="pinned = activeIdx; showAll = !showAll">{{ showAll ? 'Show fewer' : `and ${hoverBar.groups.length - 8} more` }}</button>
+                </template>
+              </div>
+              <span v-else-if="!hoverBar.ahead && !hoverBar.total" class="text-xs text-muted-foreground">No credits used.</span>
+              <span v-if="pinned < 0" class="text-xs text-muted-foreground">Click a past day to see which resources used its credits.</span>
+            </aside>
+          </div>
+          <p class="text-xs text-muted-foreground">Projection: the trend through the last 90 days, shaped by the usual day-of-week pattern when there are four weeks of data. Today is still counting and is left out. An estimate, not a bill: the Digital Wallet in Setup is the record.</p>
+        </section>
+
+        <!-- Credits by card -->
+        <section v-if="cards.length" class="dci-card px-5 py-[18px] flex flex-col gap-3.5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="text-base font-semibold">Credits by card, to date</h2>
+            <span class="text-xs text-muted-foreground">All environments · sorted by share used</span>
+          </div>
+          <div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-3.5">
+            <div v-for="c in grid.used" :id="`card-${c.name}`" :key="c.name" :class="['rounded-[14px] border p-4 flex flex-col gap-3 min-w-0', c.left != null && c.left < 0 ? 'border-red-200 bg-red-50/40 dark:border-red-500/30 dark:bg-red-500/5' : 'bg-card']">
+              <div class="flex items-center gap-3">
+                <span class="w-14 h-14 shrink-0 rounded-full flex items-center justify-center" :style="ring(c.share)" aria-hidden="true">
+                  <span :class="['w-[42px] h-[42px] rounded-full bg-card flex items-center justify-center text-[11px] font-bold', c.share > 1 ? 'text-red-700 dark:text-red-300' : '']">{{ c.share == null ? '—' : pct(c.share) }}</span>
+                </span>
+                <div class="flex flex-col gap-0.5 min-w-0">
+                  <span class="flex items-center gap-1.5 text-[15px] font-bold break-all"><AlertTriangle v-if="c.left != null && c.left < 0" class="w-4 h-4 text-red-600 shrink-0" aria-label="Over its purchase" />{{ c.name }}</span>
+                  <span v-if="cardInfo(c.name)" class="text-xs text-muted-foreground leading-[17px]">{{ cardInfo(c.name) }}</span>
+                </div>
+              </div>
+              <dl class="grid grid-cols-3 gap-2 px-3 py-2.5 rounded-[10px] bg-muted/50 text-[13px]">
+                <div><dt class="text-[11px] text-muted-foreground">Used</dt><dd class="font-semibold" :title="exact(c.used)">{{ approx(c.used) }}</dd></div>
+                <div><dt class="text-[11px] text-muted-foreground">Purchased</dt><dd class="font-semibold" :title="exact(c.purchased)">{{ c.purchased == null ? 'not found' : approx(c.purchased) }}</dd></div>
+                <div v-if="c.left != null"><dt class="text-[11px] text-muted-foreground">{{ c.left < 0 ? 'Over' : 'Left' }}</dt><dd :class="c.left < 0 ? 'font-bold text-red-700 dark:text-red-300' : 'font-semibold'" :title="exact(c.left)">{{ approx(Math.abs(c.left)) }}</dd></div>
+              </dl>
+              <span v-if="cardUnit(c.name) && !inCredits(c.name)" class="text-xs text-muted-foreground">Counted in {{ cardUnit(c.name) }}, not credits.</span>
+              <span v-if="money(c.used) && inCredits(c.name)" class="text-xs font-medium">{{ money(c.used) }}<span v-if="c.purchased != null" class="text-muted-foreground font-normal"> of {{ money(c.purchased) }}</span></span>
+              <details v-if="Object.keys(c.envs).length" class="text-xs">
+                <summary class="cursor-pointer font-semibold text-link">By environment<template v-if="c.first"> · {{ range(c.first, c.last) }}</template></summary>
+                <div class="flex flex-wrap gap-1.5 mt-2">
+                  <span v-for="e in sortEnvs(Object.keys(c.envs))" :key="e" :class="['dci-badge', e === 'Production' ? 'dci-badge-teal' : e === 'Sandbox' ? 'dci-badge-amber' : '']">{{ e }} {{ approx(c.envs[e]) }}</span>
+                </div>
+              </details>
+              <details v-if="cardTypes(c.name).length" class="text-xs" :open="!!cardOpen[c.name]" @toggle="cardOpen = { ...cardOpen, [c.name]: $event.target.open }">
+                <summary class="cursor-pointer font-semibold text-link">What used it</summary>
+                <ul class="mt-2 space-y-1.5" :aria-label="`${c.name} by resource and usage type`">
+                  <li class="text-muted-foreground">By resource type, or usage type where no resource is named{{ cardUnit(c.name) ? `; counted in ${cardUnit(c.name)}` : '' }}.</li>
+                  <li v-if="c.used && Math.abs(typesTotal(c.name) - c.used) / c.used > 0.05" class="text-amber-700 dark:text-amber-400">The breakdown adds up to {{ approx(typesTotal(c.name)) }}, the card's total {{ approx(c.used) }}. They come from different Digital Wallet objects ({{ result.resObject }} and {{ source }}); the card total is the one the Digital Wallet bills. Each event is counted once.</li>
+                  <li v-for="t in cardTypes(c.name)" :key="`${t.type}|${t.usage}`" class="flex flex-col gap-1">
+                    <span class="flex justify-between gap-2"><span class="truncate" :title="[t.type, t.usage].filter(Boolean).join(' · ')">{{ t.label }}<span v-if="t.type && t.usage" class="text-muted-foreground"> · {{ t.usage }}</span></span><span class="tabular-nums whitespace-nowrap" :title="exact(t.credits)">{{ approx(t.credits) }} <span class="text-muted-foreground">{{ pct(t.credits / typesTotal(c.name)) }}</span></span></span>
+                    <span class="h-1.5 rounded-full bg-muted overflow-hidden"><span class="block h-full bg-primary/70 rounded-full" :style="{ width: `${(t.credits / Math.max(1, cardTypes(c.name)[0].credits)) * 100}%` }" /></span>
+                  </li>
+                </ul>
+              </details>
+            </div>
+            <div v-if="grid.unused.length" class="rounded-[14px] border border-dashed bg-muted/30 p-4 flex flex-col gap-2.5">
+              <span class="text-[15px] font-bold">{{ grid.unused.length }} card{{ grid.unused.length === 1 ? '' : 's' }} not used yet</span>
+              <div v-for="c in grid.unused" :key="c.name" class="flex justify-between gap-2 text-[13px] py-1.5 border-t">
+                <span class="break-all">{{ c.name }}</span>
+                <span class="text-muted-foreground whitespace-nowrap">{{ c.purchased == null ? 'no purchase' : `${approx(c.purchased)} left` }}</span>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-muted-foreground">Purchased is shared by every usage type on the card. Card names must match on both sides; check against the Digital Wallet before relying on it.</p>
+        </section>
+
+        <!-- Top resources -->
+        <section class="dci-card px-5 py-[18px] flex flex-col gap-1">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <h2 class="text-base font-semibold">Top resources, last {{ days }} days{{ view === 'all' ? '' : `, ${view}` }}</h2>
+            <span v-if="tops.count" class="text-[13px] font-semibold px-3 py-1 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">Top {{ tops.top.length }} of {{ tops.count.toLocaleString() }} = {{ Math.round(tops.topShare * 100) }}% of credits</span>
+          </div>
           <p v-if="!result.resObject" class="text-xs text-muted-foreground">To see which data stream, data transform or other resource used the credits, add Digital Wallet's TenantEnrichedUsageEvent DLO to this data space, then Check again and Read again.</p>
           <p v-else-if="result.resError" class="text-xs text-destructive">Could not read {{ result.resObject }}: {{ result.resError }}</p>
           <template v-else-if="result.resources">
-            <DataTable :columns="resCols" :rows="resRows" row-key="key" text-size="text-xs" box-class="max-h-96" empty="No credits used by a resource in this period.">
-              <template #cell-name="{ row }"><span class="font-mono break-all">{{ row.name }}</span></template>
+            <p v-if="!tops.count" class="text-sm text-muted-foreground">No credits used by a resource in this period.</p>
+            <template v-if="!showAllRes">
+              <div v-for="r in tops.top" :key="r.key" class="grid grid-cols-[36px_minmax(0,1fr)_auto] gap-3 items-center py-2.5 border-t">
+                <span :class="['w-8 h-8 rounded-xl flex items-center justify-center', r.name === '(none)' ? 'bg-muted text-muted-foreground' : 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300']" aria-hidden="true"><Layers class="w-4 h-4" /></span>
+                <div class="flex flex-col gap-1.5 min-w-0">
+                  <span v-if="r.name === '(none)'" class="text-sm font-semibold" title="Usage not tied to one resource: queries, storage, rows accessed and more">Org-level usage <span class="font-medium text-muted-foreground">(no single resource)</span></span>
+                  <span v-else class="font-mono text-[13px] font-medium break-all">{{ r.name }}</span>
+                  <span class="h-2 rounded bg-muted overflow-hidden"><span :class="['block h-full rounded', r.name === '(none)' ? 'bg-muted-foreground/50' : 'bg-blue-600']" :style="{ width: `${(r.credits / Math.max(1, tops.top[0].credits)) * 100}%` }" /></span>
+                  <span class="text-[11px] text-muted-foreground break-words">{{ r.name === '(none)' ? `${r.usages.slice(0, 4).join(', ')}${r.usages.length > 4 ? ` +${r.usages.length - 4} more` : ''}` : r.type }}<template v-if="r.cards.length"> · {{ r.cards.length > 2 ? `${r.cards.length} cards` : r.cards.join(', ') }}</template></span>
+                </div>
+                <div class="flex flex-col items-end">
+                  <span class="text-[15px] font-bold whitespace-nowrap" :title="exact(r.credits)">{{ approx(r.credits) }}</span>
+                  <span class="text-xs text-muted-foreground">{{ pct(r.share) }}<template v-if="money(r.credits)"> · {{ money(r.credits) }}</template></span>
+                </div>
+              </div>
+            </template>
+            <DataTable v-else :columns="resCols" :rows="resRows" row-key="key" text-size="text-xs" box-class="max-h-96" empty="No credits used by a resource in this period.">
+              <template #cell-name="{ row }"><span class="font-mono break-all">{{ resName(row) }}</span></template>
               <template #cell-credits="{ value }"><span :title="exact(value)">{{ approx(value) }}</span></template>
             </DataTable>
-            <p class="text-xs text-muted-foreground">Credits per resource from <RouterLink :to="`/objects/${result.resObject}`" class="font-mono text-link hover:underline">{{ result.resObject }}</RouterLink>; the money column uses your price per credit.</p>
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t">
+              <span class="text-xs text-muted-foreground">From <RouterLink :to="`/objects/${result.resObject}`" class="font-mono text-link hover:underline">{{ result.resObject }}</RouterLink></span>
+              <button v-if="tops.count > tops.top.length || showAllRes" type="button" class="text-[13px] font-semibold text-link hover:underline" @click="showAllRes = !showAllRes">{{ showAllRes ? 'Show the top 6' : `See all ${tops.count.toLocaleString()} resources` }}</button>
+            </div>
           </template>
-        </div>
-        <div v-if="cards.length" class="space-y-1">
-          <div class="text-sm font-medium">Credits by card, to date (all environments)</div>
-          <ul class="border rounded-xl bg-card divide-y text-sm">
-            <li v-for="c in cards" :key="c.name">
-              <button class="w-full text-left px-3 py-2.5 hover:bg-accent/50 grid grid-cols-[1rem_minmax(0,1fr)] gap-x-2 items-start" :aria-expanded="!!cardOpen[c.name]" :disabled="!cardTypes(c.name).length" @click="cardOpen = { ...cardOpen, [c.name]: !cardOpen[c.name] }">
-                <component :is="cardOpen[c.name] ? ChevronDown : ChevronRight" :class="['w-4 h-4 mt-0.5 text-muted-foreground', cardTypes(c.name).length ? '' : 'invisible']" />
-                <span class="min-w-0 space-y-1">
-                  <span class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                    <span class="font-medium break-all">{{ c.name }}</span>
-                    <span class="text-muted-foreground"><span :title="exact(c.used)">used {{ approx(c.used) }}{{ unitWord(c.name) }}</span><template v-if="c.purchased != null"> of <span :title="exact(c.purchased)">{{ approx(c.purchased) }}{{ unitWord(c.name) }}</span> purchased ({{ pct(c.share) }})</template><template v-else>, no purchase found</template></span>
-                    <span v-if="c.left != null" :class="c.left < 0 ? 'text-destructive' : 'text-muted-foreground'" :title="exact(c.left)">{{ c.left < 0 ? `${approx(-c.left)}${unitWord(c.name)} over` : `${approx(c.left)}${unitWord(c.name)} left` }}</span>
-                    <span v-if="price && inCredits(c.name)" class="ml-auto font-medium">{{ money(c.used) }}<span v-if="c.purchased != null" class="text-muted-foreground font-normal"> of {{ money(c.purchased) }}</span></span>
-                  </span>
-                  <span v-if="cardInfo(c.name)" class="block text-xs text-muted-foreground">{{ cardInfo(c.name) }}</span>
-                  <span v-if="c.left != null && c.left < 0" class="block text-xs text-destructive">Used more than purchased. Open it to see what used it; the Digital Wallet in Setup shows the contract and any overage.</span>
-                  <span v-if="c.purchased" class="block h-1.5 rounded-full bg-muted overflow-hidden" :aria-label="`${pct(c.share)} used`"><span class="block h-full rounded-full" :class="c.share > 1 ? 'bg-destructive' : c.share > 0.8 ? 'bg-amber-500' : 'bg-primary'" :style="{ width: `${Math.min(100, Math.max(c.share * 100, c.used ? 0.5 : 0))}%` }" /></span>
-                </span>
-              </button>
-              <ul v-if="cardOpen[c.name]" class="pb-2 pl-9 pr-3 space-y-1 text-xs" :aria-label="`${c.name} by resource and usage type`">
-                <li class="text-muted-foreground">By resource type, or usage type where no resource is named{{ cardUnit(c.name) ? `; counted in ${cardUnit(c.name)}` : '' }}.</li>
-                <li v-if="c.used && Math.abs(typesTotal(c.name) - c.used) / c.used > 0.05" class="text-amber-700 dark:text-amber-400">The breakdown adds up to {{ approx(typesTotal(c.name)) }}, the card's total {{ approx(c.used) }}. They come from different Digital Wallet objects ({{ result.resObject }} and {{ source }}); the card total is the one the Digital Wallet bills. Each event is counted once.</li>
-                <li v-for="t in cardTypes(c.name)" :key="`${t.type}|${t.usage}`" class="grid grid-cols-[minmax(8rem,16rem)_minmax(0,1fr)_auto_auto] items-center gap-3">
-                  <span class="truncate" :title="[t.type, t.usage].filter(Boolean).join(' · ')">{{ t.label }}<span v-if="t.type && t.usage" class="text-muted-foreground"> · {{ t.usage }}</span></span>
-                  <span class="h-1.5 rounded-full bg-muted overflow-hidden"><span class="block h-full bg-primary/70 rounded-full" :style="{ width: `${(t.credits / Math.max(1, cardTypes(c.name)[0].credits)) * 100}%` }" /></span>
-                  <span class="tabular-nums text-right" :title="exact(t.credits)">{{ approx(t.credits) }} <span class="text-muted-foreground">({{ pct(t.credits / typesTotal(c.name)) }})</span></span>
-                  <span v-if="price && inCredits(c.name)" class="tabular-nums text-right w-24">{{ money(t.credits) }}</span>
-                </li>
-              </ul>
-            </li>
-          </ul>
-          <p class="text-xs text-muted-foreground">Purchased is shared by every resource type on the card; used and the types are to date{{ result.resObject ? `, the types from ${result.resObject}` : '' }}. Card names must match on both sides; check against the Digital Wallet before relying on it.</p>
+        </section>
+
+        <!-- By environment -->
+        <div v-if="fields.env && envRows.length" class="flex flex-col gap-2.5">
+          <h2 class="text-base font-semibold">By environment</h2>
+          <div class="grid md:grid-cols-2 gap-3.5">
+            <div v-for="e in envRows" :key="e.env" class="dci-card px-5 py-[18px] flex flex-col gap-3.5 min-w-0">
+              <div class="flex items-center justify-between gap-2">
+                <span class="inline-flex items-center gap-2 text-base font-bold"><span class="w-2.5 h-2.5 rounded-full" :class="envDot(e.env)" />{{ e.env }}</span>
+                <span :class="['dci-badge capitalize', TREND_TONE[e.trend] || '']">{{ e.trend }}</span>
+              </div>
+              <svg v-if="spark(e.env)" viewBox="0 0 300 40" preserveAspectRatio="none" class="w-full h-10" aria-hidden="true"><polyline :points="spark(e.env)" fill="none" :class="e.env === 'Production' ? 'stroke-primary' : e.env === 'Sandbox' ? 'stroke-amber-500' : 'stroke-sky-400'" stroke-width="1.5" vector-effect="non-scaling-stroke" /></svg>
+              <dl class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div v-for="[k, v] in [['Last 30 days', e.last30], ['A day (30 days)', e.avg30], ['Used to date', e.toDate], ['Next 30 days', e.next30], ['To year end', e.toYearEnd]]" :key="k">
+                  <dt class="text-[11px] text-muted-foreground">{{ k }}</dt><dd class="text-[15px] font-bold" :title="exact(v)">{{ n2(v) }}</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+          <p class="text-xs text-muted-foreground">Each forecast is the trend through that environment's last 90 days with its day-of-week pattern. Sandbox and scratch usage draws on the production cards.</p>
         </div>
 
-        <div v-if="fields.env && envRows.length" class="space-y-1">
-          <div class="text-sm font-medium">By environment</div>
-          <DataTable :columns="envCols" :rows="envRows" row-key="env" text-size="text-xs">
-            <template #cell-env="{ value }"><span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" :class="envDot(value)"></span>{{ value }}</span></template>
-            <template #cell-last30="{ value }">{{ n2(value) }}</template><template #cell-avg30="{ value }">{{ n2(value) }}</template><template #cell-next30="{ value }">{{ n2(value) }}</template><template #cell-toYearEnd="{ value }">{{ n2(value) }}</template><template #cell-toDate="{ value }">{{ n2(value) }}</template>
-          </DataTable>
-          <p class="text-xs text-muted-foreground">Each environment's forecast is the trend through its own last 90 days with its day-of-week pattern. Sandbox and scratch usage draws on the production cards.</p>
-        </div>
-        <div v-if="result.byOrg?.length || result.orgError" class="space-y-1">
-          <div class="text-sm font-medium">By org</div>
-          <p v-if="result.orgError" class="text-xs text-destructive">Could not read usage per org: {{ result.orgError }}</p>
-          <DataTable v-else :columns="orgCols" :rows="result.byOrg" :row-key="(r) => `${r.env}|${r.id}`" text-size="text-xs" box-class="max-h-80"><template #cell-total="{ value }">{{ n2(value) }}</template></DataTable>
-          <p class="text-xs text-muted-foreground">Orgs this browser has connected to show their name; others show only their ID.</p>
+        <!-- About this data: the tables that are not in the cards -->
+        <div v-if="aboutOpen" class="flex flex-col gap-4">
+          <div v-if="result.byOrg?.length || result.orgError" class="space-y-1">
+            <div class="text-sm font-medium">By org</div>
+            <p v-if="result.orgError" class="text-xs text-destructive">Could not read usage per org: {{ result.orgError }}</p>
+            <DataTable v-else :columns="orgCols" :rows="result.byOrg" :row-key="(r) => `${r.env}|${r.id}`" text-size="text-xs" box-class="max-h-80"><template #cell-total="{ value }">{{ n2(value) }}</template></DataTable>
+            <p class="text-xs text-muted-foreground">Orgs this browser has connected to show their name; others show only their ID.</p>
+          </div>
+          <div class="grid md:grid-cols-2 gap-3">
+            <div class="space-y-1"><div class="text-sm font-medium">By {{ fields.group || 'total' }}, last {{ days }} days{{ view === 'all' ? '' : `, ${view}` }}</div><DataTable :columns="groupCols" :rows="shown.groups" row-key="name" text-size="text-xs" box-class="max-h-80"><template #cell-total="{ value }">{{ n2(value) }}</template></DataTable></div>
+            <div class="space-y-1"><div class="text-sm font-medium">Used to date</div><DataTable :columns="allCols" :rows="result.consumedAll" row-key="name" text-size="text-xs" box-class="max-h-80"><template #cell-total="{ value }">{{ n2(value) }}</template></DataTable></div>
+          </div>
         </div>
 
-        <div class="grid md:grid-cols-2 gap-3">
-          <div class="space-y-1"><div class="text-sm font-medium">By {{ fields.group || 'total' }}, last {{ days }} days{{ view === 'all' ? '' : `, ${view}` }}</div><DataTable :columns="groupCols" :rows="shown.groups" row-key="name" text-size="text-xs" box-class="max-h-80"><template #cell-total="{ value }">{{ n2(value) }}</template></DataTable></div>
-          <div class="space-y-1"><div class="text-sm font-medium">Used to date</div><DataTable :columns="allCols" :rows="result.consumedAll" row-key="name" text-size="text-xs" box-class="max-h-80"><template #cell-total="{ value }">{{ n2(value) }}</template></DataTable></div>
-        </div>
+        <p class="text-xs text-muted-foreground text-center">Read from <RouterLink :to="`/objects/${source}`" class="font-mono text-link hover:underline">{{ source }}</RouterLink><template v-if="result.resObject"> and <RouterLink :to="`/objects/${result.resObject}`" class="font-mono text-link hover:underline">{{ result.resObject }}</RouterLink></template> · 2 to 7 read-only queries per read. <button type="button" class="text-link hover:underline" @click="aboutOpen = !aboutOpen">{{ aboutOpen ? 'Hide' : 'Show' }} setup, SQL and the by-org tables</button></p>
       </template>
     </template>
   </section>
