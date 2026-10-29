@@ -4,6 +4,7 @@ Store versions of Data Cloud Inspector, newest first. Each entry says whether pe
 
 ## Unreleased (next: 1.0.9)
 
+- New page Data targets (feedback #1064): every activation target from ActivationTarget (platform, connection and target type, output format, status, run status, last publish and its error, export directory or endpoint, owner, communication capping), the activations that send to it, its audience objects with row counts, and all fields. An activation's Target now opens it.
 - Health in the new layout (design "Option D – Health"): a score ring with the headline ("3 things failed and 120 need a look"), a tile per area that filters the page, problems in groups (Failed activations, Segments never published, Engagement data going stale on a 1 hour to 1 year scale, Inactive) with numbered rows, hints for known errors such as partnererror, Mark as expected (this browser; they count as OK), what changed since the last check with "new" badges, and Problems / Everything.
 - Credit prediction: Customize layout (move blocks with drag or arrows, half or full width, Reset; saved in this browser).
 - Credit prediction: money figures use the list price of $500 per 100,000 credits ($0.005 a credit) until you enter your own (feedback #1062).

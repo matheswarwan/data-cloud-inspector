@@ -1,12 +1,12 @@
 // The icon of each sidebar page (router.js NAV `icon`), shared by the sidebar and Home's cards.
-import { Boxes, Database, ListChecks, User, ArrowDownToLine, Network, Fingerprint, Users, Send, Calculator, LayoutTemplate, GitCompare, Terminal, HeartPulse, Plug, Blocks, Share2, Home, Gauge, Workflow, Megaphone, Circle } from 'lucide-vue-next'
+import { Boxes, Database, ListChecks, User, ArrowDownToLine, Network, Fingerprint, Users, Send, Calculator, LayoutTemplate, GitCompare, Terminal, HeartPulse, Plug, Blocks, Share2, Home, Gauge, Workflow, Megaphone, Target, Circle } from 'lucide-vue-next'
 
-export const NAV_ICONS = { Boxes, Database, ListChecks, User, ArrowDownToLine, Network, Fingerprint, Users, Send, Calculator, LayoutTemplate, GitCompare, Terminal, HeartPulse, Plug, Blocks, Share2, Home, Gauge, Workflow, Megaphone }
+export const NAV_ICONS = { Boxes, Database, ListChecks, User, ArrowDownToLine, Network, Fingerprint, Users, Send, Calculator, LayoutTemplate, GitCompare, Terminal, HeartPulse, Plug, Blocks, Share2, Home, Gauge, Workflow, Megaphone, Target }
 export const navIcon = (name) => NAV_ICONS[name] || Circle
 
 // Help text per sidebar page (the help topic is the page path without its slash). Every page
 // needs one, or its Home card shows no description (feedback #1057; a test checks it).
-export const PAGE_TOPIC = { '/credits': 'credits', '/objects': 'objects', '/sql': 'sql', '/sql/builder': 'builder', '/bulk': 'bulk', '/profile': 'people', '/streams': 'streams', '/models': 'models', '/identity': 'identity', '/graphs': 'graphs', '/segments': 'segments', '/activations': 'activations', '/insights': 'insights', '/personalization': 'personalization', '/flows': 'flows', '/campaigns': 'campaigns', '/compare': 'compare', '/explore': 'explore', '/health': 'health', '/connection': 'connection' }
+export const PAGE_TOPIC = { '/credits': 'credits', '/objects': 'objects', '/sql': 'sql', '/sql/builder': 'builder', '/bulk': 'bulk', '/profile': 'people', '/streams': 'streams', '/models': 'models', '/identity': 'identity', '/graphs': 'graphs', '/segments': 'segments', '/activations': 'activations', '/targets': 'targets', '/insights': 'insights', '/personalization': 'personalization', '/flows': 'flows', '/campaigns': 'campaigns', '/compare': 'compare', '/explore': 'explore', '/health': 'health', '/connection': 'connection' }
 
 // One colour per page (Home cards and page headers); the shadow is the same hue (r,g,b).
 export const TONES = {
@@ -20,7 +20,7 @@ export const TONES = {
 }
 export const PAGE_TONE = {
   '/profile': 'violet', '/sql': 'blue', '/objects': 'teal', '/segments': 'orange', '/health': 'pink', '/models': 'indigo',
-  '/streams': 'blue', '/activations': 'sky', '/insights': 'violet', '/identity': 'teal', '/graphs': 'indigo', '/bulk': 'violet',
+  '/streams': 'blue', '/activations': 'sky', '/targets': 'sky', '/insights': 'violet', '/identity': 'teal', '/graphs': 'indigo', '/bulk': 'violet',
   '/personalization': 'pink', '/flows': 'sky', '/campaigns': 'orange', '/explore': 'indigo', '/credits': 'teal', '/compare': 'sky', '/connection': 'teal',
 }
 const ORDER = Object.keys(TONES)

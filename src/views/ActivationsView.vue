@@ -148,7 +148,7 @@ const attrCols = [
             <span class="w-10 h-10 shrink-0 rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300 flex items-center justify-center"><Send class="w-5 h-5" aria-hidden="true" /></span>
             <div class="min-w-0">
               <div class="text-xs text-muted-foreground">Target</div>
-              <a v-if="act.targetId" :href="recordUrl(currentOrg()?.host, act.targetId)" target="_blank" rel="noopener" class="font-semibold text-link hover:underline break-all">{{ act.target }}</a><span v-else class="font-semibold break-all">{{ act.target }}</span>
+              <RouterLink v-if="act.targetId" :to="`/targets/${act.targetId}`" class="font-semibold text-link hover:underline break-all" title="Open in Data targets">{{ act.target }}</RouterLink><a v-if="act.targetId" :href="recordUrl(currentOrg()?.host, act.targetId)" target="_blank" rel="noopener" class="ml-1.5 inline-flex align-middle text-muted-foreground hover:text-foreground" title="Open in Salesforce" aria-label="Open the target in Salesforce"><ExternalLink class="w-3.5 h-3.5" /></a><span v-else class="font-semibold break-all">{{ act.target }}</span>
               <div class="text-xs" :class="/fail|error/i.test(act.lastPublishStatus) ? 'text-destructive' : 'text-muted-foreground'">Last publish <span class="inline-flex items-center gap-1"><span :class="['w-2 h-2 rounded-full', /fail|error/i.test(act.lastPublishStatus) ? 'bg-red-500' : act.lastPublishStatus ? 'bg-green-600' : 'bg-gray-400']" />{{ act.lastPublishStatus.toLowerCase() || 'never' }}</span>, {{ when(act.lastPublish) }}</div>
             </div>
           </div>

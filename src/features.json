@@ -3,7 +3,7 @@
   "default": {
     "objects": true, "sql": true, "queryBuilder": true, "bulk": true, "profiles": true,
     "streams": true, "models": true, "identity": true, "dataGraphs": true, "segments": true,
-    "activations": true, "insights": true, "personalization": true, "marketingFlows": true,
+    "activations": true, "targets": true, "insights": true, "personalization": true, "marketingFlows": true,
     "campaigns": true, "restExplorer": true, "credits": true, "compare": true, "health": true,
     "connection": true,
     "mcnProfile": true, "mcnHealth": true, "diagramforce": true

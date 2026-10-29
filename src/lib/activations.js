@@ -8,7 +8,7 @@ import { inSpace } from './dataSpace.js'
 
 export async function loadActivations(call, version) {
   return inSpace(await offsetPages(call, `/services/data/v${version}/ssot/activations`, 'activations'), call.dataSpace)
-    .map((a) => ({ id: a.id, name: a.name, developerName: a.developerName, segment: a.segmentApiName || '', segmentId: a.segmentId || a.marketSegmentId || '', target: a.activationTargetName || a.activationTarget?.name || '', status: a.status || '', lastPublish: a.lastPublishDate || '', lastPublishStatus: a.lastPublishStatus || '', refreshType: a.refreshType || '' }))
+    .map((a) => ({ id: a.id, name: a.name, developerName: a.developerName, segment: a.segmentApiName || '', segmentId: a.segmentId || a.marketSegmentId || '', target: a.activationTargetName || a.activationTarget?.name || '', targetId: a.activationTargetId || a.activationTarget?.id || '', status: a.status || '', lastPublish: a.lastPublishDate || '', lastPublishStatus: a.lastPublishStatus || '', refreshType: a.refreshType || '' }))
     .sort((x, y) => x.name.localeCompare(y.name))
 }
 

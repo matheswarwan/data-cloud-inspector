@@ -25,6 +25,7 @@ import ActivationsView from '../views/ActivationsView.vue'
 import InsightsView from '../views/InsightsView.vue'
 import DataModelsView from '../views/DataModelsView.vue'
 import CreditsView from '../views/CreditsView.vue'
+import TargetsView from '../views/TargetsView.vue'
 
 // The sidebar, in the order and groups the user chose (feedback #95); `group` starts a new
 // section. Activations is not in that list and sits with Segments. Last group reordered and
@@ -44,6 +45,8 @@ export const ALL_NAV = [
   { path: '/graphs', label: 'Data graphs', icon: 'Share2', group: 3, feature: 'dataGraphs' },
   { path: '/segments', label: 'Segments', icon: 'Users', group: 3, feature: 'segments' },
   { path: '/activations', label: 'Activations', icon: 'Send', group: 3, feature: 'activations' },
+  // Data targets (feedback #1064): where activations send, next to Activations.
+  { path: '/targets', label: 'Data targets', icon: 'Target', group: 3, feature: 'targets' },
   { path: '/insights', label: 'Insights', icon: 'Calculator', group: 3, feature: 'insights' },
   { path: '/personalization', label: 'Personalization', icon: 'LayoutTemplate', group: 4, feature: 'personalization' },
   { path: '/flows', label: 'Marketing flows', icon: 'Workflow', group: 4, feature: 'marketingFlows' },
@@ -73,6 +76,7 @@ export function createAppRouter() {
       { path: '/bulk', component: BulkView },
       { path: '/streams/:name?', component: StreamsView },
       { path: '/activations/:id?', component: ActivationsView },
+      { path: '/targets/:id?', component: TargetsView },
       { path: '/insights/:name?', component: InsightsView },
       { path: '/models', component: DataModelsView },
       { path: '/objects/:name?', component: ObjectsView },
