@@ -356,15 +356,16 @@ export async function checkMembers(q, seg, catalog, ids, latestTable) {
 }
 
 /**
- * Every segment `ids` appear in, from a membership history table (feedback #1028): one entry per
- * person and segment, newest publish first.
+ * The segments `ids` appear in, from a membership history table (feedback #1028): one entry per
+ * person and segment, newest publish first. With `seg`, only that segment and the ones nested
+ * under it (feedback #1030).
  * `Map(id -> [{ segmentId, parentId, at, version, delta, snapshot, leaving, publishes }])`
  */
-export async function personHistory(q, historyTable, ids) {
+export async function personHistory(q, historyTable, ids, seg = null) {
   const list = inList(ids)
   const out = new Map(ids.map((id) => [id, []]))
   if (!historyTable || !list) return out
-  const rows = toObjects(await q(`SELECT Id__c AS id, Segment_Id__c AS seg, Parent_Segment_Id__c AS parent, Delta_Type__c AS delta, Snapshot_Type__c AS snapshot, Timestamp__c AS at, Version_Stamp__c AS version FROM ${historyTable} WHERE Id__c IN ${list} ORDER BY Timestamp__c DESC LIMIT 5000`))
+  const rows = toObjects(await q(`SELECT Id__c AS id, Segment_Id__c AS seg, Parent_Segment_Id__c AS parent, Delta_Type__c AS delta, Snapshot_Type__c AS snapshot, Timestamp__c AS at, Version_Stamp__c AS version FROM ${historyTable} WHERE Id__c IN ${list}${seg ? ` AND (Segment_Id__c ${segIdIn(seg)} OR Parent_Segment_Id__c ${segIdIn(seg)})` : ''} ORDER BY Timestamp__c DESC LIMIT 5000`))
   const seen = new Map()
   for (const r of rows) {
     const key = `${r.id}|${id15(r.seg)}`
@@ -374,5 +375,20 @@ export async function personHistory(q, historyTable, ids) {
     seen.set(key, e)
     out.get(r.id)?.push(e)
   }
+  return out
+}
+
+/**
+ * Names of segments missing from the segment list (nested or other data spaces), from SOQL on
+ * MarketSegment (feedback #1030). `Map(id15 -> name)`; empty when the object cannot be read.
+ */
+export async function segmentNames(call, version, ids15) {
+  const out = new Map()
+  const ids = [...new Set(ids15.filter(Boolean))].slice(0, 200)
+  if (!ids.length) return out
+  const soql = `SELECT Id, Name FROM MarketSegment WHERE Id IN (${ids.map((i) => `'${i.replace(/[^\w]/g, '')}'`).join(', ')})`
+  const res = await call(`/services/data/v${version}/query?q=${encodeURIComponent(soql)}`)
+  if (!res?.ok) return out
+  for (const r of res.data?.records || []) out.set(id15(r.Id), r.Name)
   return out
 }

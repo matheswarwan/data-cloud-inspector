@@ -20,7 +20,7 @@ import { inSpace } from '../lib/dataSpace.js'
 import { parseRulesets, search, INDIVIDUAL } from '../lib/profile.js'
 import { useSegments, ensureSegments } from '../app/useSegments.js'
 import {
-  describeCriteria, topConditions, segmentSql, membershipTables, membershipCount, publishHistory, checkMembers, personHistory,
+  describeCriteria, topConditions, segmentSql, membershipTables, membershipCount, publishHistory, checkMembers, personHistory, segmentNames,
   SEGMENT_SORTS, sortSegments,
 } from '../lib/segments.js'
 
@@ -119,22 +119,29 @@ async function check() {
       note = `This segment is on ${s.on}; enter that object's record ID.`
     }
     if (!people.length) { checkResult.value = { rows: [], note: note || 'Nobody found.' }; return }
+    // The same person can come from several data sources under one ID: check each ID once.
+    people = [...new Map(people.map((p) => [p.id, p])).values()]
     const ids = people.map((p) => p.id).slice(0, 50)
     if (people.length > 50) note = [note, `${people.length} people found; checking the first 50. Use an email or ID to narrow it down.`].filter(Boolean).join(' ')
-    // The membership history (feedback #1028) also gives every other segment each person is in.
+    // The membership history (feedback #1028): this segment and segments nested under it.
     const [rows, history] = await Promise.all([
       checkMembers(q, s, catalog.objects, ids, detail.value?.latest),
-      personHistory(q, detail.value?.history, ids).catch(() => null),
+      personHistory(q, detail.value?.history, ids, s).catch(() => null),
     ])
-    const byId = new Map(segments.value.map((x) => [x.id15, x]))
-    const named = (e) => ({ ...e, segment: byId.get(e.segmentId) || null, parent: e.parentId ? byId.get(e.parentId) || null : null })
+    // Only this segment (feedback #1030): its own history rows, or rows of segments nested
+    // under it (Parent_Segment_Id__c). Names come from the segment list, else from MarketSegment.
+    const mine = (e) => e.segmentId === s.id15 || e.parentId === s.id15
+    const entries = ids.flatMap((id) => (history?.get(id) || []).filter(mine))
+    const byId = new Map(segments.value.map((x) => [x.id15, x.label]))
+    const missing = entries.map((e) => e.segmentId).filter((i) => !byId.has(i))
+    const extra = missing.length ? await segmentNames(orgCall(), org.version, missing).catch(() => new Map()) : new Map()
+    const nameOf = (i) => byId.get(i) || extra.get(i) || ''
     checkResult.value = {
       historyTable: detail.value?.history || '',
       historyError: history === null,
       rows: rows.map((r) => {
-        const all = (history?.get(r.id) || []).map(named)
-        const here = all.find((e) => e.segmentId === s.id15) || null
-        return { ...r, name: people.find((p) => p.id === r.id)?.name || r.id, here, others: all.filter((e) => e !== here) }
+        const here = (history?.get(r.id) || []).filter(mine).map((e) => ({ ...e, name: nameOf(e.segmentId), nested: e.segmentId !== s.id15 }))
+        return { ...r, name: people.find((p) => p.id === r.id)?.name || r.id, here: here.find((e) => !e.nested) || null, nested: here.filter((e) => e.nested) }
       }),
       note,
     }
@@ -307,13 +314,12 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
                 <li v-for="i in r.failing" :key="i">Fails: <span class="font-mono">{{ describeCriteria(conditions[i]).map((l) => l.text).join(' ') }}</span></li>
               </ul>
               <div v-if="r.here" class="text-xs text-muted-foreground mt-1">History: {{ historyLine(r.here) }}{{ r.here.leaving ? ' (left)' : '' }}</div>
-              <div v-if="r.others.length" class="mt-2">
-                <div class="text-xs font-medium">Other segments in the history ({{ r.others.length }})</div>
-                <ul class="text-xs mt-1 space-y-0.5">
-                  <li v-for="e in r.others" :key="e.segmentId" class="flex flex-wrap gap-x-2">
-                    <RouterLink v-if="e.segment" :to="`/segments/${encodeURIComponent(e.segment.apiName)}`" class="text-link hover:underline">{{ e.segment.label }}</RouterLink>
-                    <span v-else class="font-mono">{{ e.segmentId }} <span class="text-muted-foreground">(not in this data space's segment list)</span></span>
-                    <span v-if="e.parentId" class="text-muted-foreground">in {{ e.parent ? e.parent.label : e.parentId }}</span>
+              <div v-if="r.nested.length" class="mt-1 text-xs">
+                <div class="font-medium">In segments nested under this one</div>
+                <ul class="mt-0.5 space-y-0.5">
+                  <li v-for="e in r.nested" :key="e.segmentId" class="flex flex-wrap gap-x-2">
+                    <span>{{ e.name || 'Unnamed segment' }}</span>
+                    <span class="font-mono text-muted-foreground">{{ e.segmentId }}</span>
                     <span class="text-muted-foreground">{{ historyLine(e) }}</span>
                     <span v-if="e.leaving" class="dci-badge dci-badge-amber">left</span>
                   </li>
