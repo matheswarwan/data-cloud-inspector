@@ -182,8 +182,9 @@ const ciDoc = () => docFrom({ title: `Calculated insight: ${ci.value.label}`, in
     <Loading v-if="!ci && loading" text="Loading" />
     <p v-else-if="!ci" class="text-sm text-muted-foreground">This calculated insight is not in the selected data space.</p>
     <template v-else>
-      <section class="dci-card relative overflow-hidden p-5 space-y-4 shadow-[0_14px_32px_-22px_rgba(124,58,237,0.5)]">
-        <div aria-hidden="true" class="pointer-events-none absolute -top-12 left-16 w-[420px] h-[140px] rounded-[50%] bg-violet-600/10 blur-[44px]" />
+      <!-- Only the glow is clipped, so the Download menu can open past the card (feedback #1039). -->
+      <section class="dci-card relative p-5 space-y-4 shadow-[0_14px_32px_-22px_rgba(124,58,237,0.5)]">
+        <div aria-hidden="true" class="pointer-events-none absolute inset-0 overflow-hidden rounded-[14px]"><div class="absolute -top-12 left-16 w-[420px] h-[140px] rounded-[50%] bg-violet-600/10 blur-[44px]" /></div>
         <div class="relative flex flex-wrap items-start justify-between gap-4">
           <div class="flex items-center gap-3.5 min-w-0">
             <span class="w-12 h-12 shrink-0 rounded-xl bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300 flex items-center justify-center"><Calculator class="w-6 h-6" aria-hidden="true" /></span>

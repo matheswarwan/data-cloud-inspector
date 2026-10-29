@@ -28,11 +28,26 @@ export function filterActive(f) {
   return !!f && (!!f.text?.trim() || Array.isArray(f.values))
 }
 
-/** Rows that pass every column filter (`filters`: { [key]: { text, values } }), then sorted. */
-export function tableRows(rows, columns, { sort = null, filters = {} } = {}) {
+/**
+ * Does a row match the table search (feedback #1036)? Every word of `text` has to appear in
+ * some column, ignoring case, so "ada m000" finds a row with that name and that ID.
+ */
+export function rowMatches(row, columns, text) {
+  const words = String(text || '').toLowerCase().split(/\s+/).filter(Boolean)
+  if (!words.length) return true
+  const cells = columns.map((c) => valueText(colValue(c, row)).toLowerCase())
+  return words.every((w) => cells.some((t) => t.includes(w)))
+}
+
+/**
+ * Rows that match the search (`search`, any column) and pass every column filter (`filters`:
+ * { [key]: { text, values } }), then sorted.
+ */
+export function tableRows(rows, columns, { sort = null, filters = {}, search = '' } = {}) {
   const byKey = new Map(columns.map((c) => [c.key, c]))
   const active = Object.entries(filters).filter(([k, f]) => byKey.has(k) && filterActive(f))
   let out = rows.map((row, i) => ({ row, i }))
+  if (search.trim()) out = out.filter(({ row }) => rowMatches(row, columns, search))
   for (const [k, f] of active) {
     const col = byKey.get(k)
     const t = f.text?.trim().toLowerCase()

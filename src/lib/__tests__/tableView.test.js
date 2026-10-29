@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { tableRows, distinctValues, nextSort, filterActive, valueText } from '../tableView.js'
+import { tableRows, distinctValues, nextSort, filterActive, valueText, rowMatches } from '../tableView.js'
 
 const cols = [
   { key: 'name' },
@@ -68,4 +68,18 @@ describe('helpers', () => {
     expect(filterActive(undefined)).toBe(false)
   })
   it('joins arrays', () => { expect(valueText(['a', 'b'])).toBe('a, b') })
+})
+
+describe('table search (feedback #1036)', () => {
+  const cols = [{ key: 'name' }, { key: 'id' }, { key: 'tags', value: (r) => r.tags }]
+  const rows = [{ name: 'Ada Lovelace', id: 'm000', tags: ['vip'] }, { name: 'Alan Turing', id: 'm001', tags: [] }, { name: 'Ada Byron', id: 'x9', tags: ['new'] }]
+  it('matches every word in any column, ignoring case', () => {
+    expect(tableRows(rows, cols, { search: 'ada' }).map((r) => r.id)).toEqual(['m000', 'x9'])
+    expect(tableRows(rows, cols, { search: 'ADA m000' }).map((r) => r.id)).toEqual(['m000'])
+    expect(tableRows(rows, cols, { search: 'vip' }).map((r) => r.id)).toEqual(['m000'])
+    expect(rowMatches(rows[1], cols, '  ')).toBe(true)
+  })
+  it('combines with column filters', () => {
+    expect(tableRows(rows, cols, { search: 'ada', filters: { id: { text: 'x', values: null } } }).map((r) => r.id)).toEqual(['x9'])
+  })
 })

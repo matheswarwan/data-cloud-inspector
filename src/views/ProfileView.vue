@@ -3,7 +3,8 @@ import DownloadMenu from '../components/DownloadMenu.vue'
 import HelpTip from '../components/HelpTip.vue'
 import { ref, shallowRef, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChevronDown, ChevronRight, Code, Copy, Search, ShieldCheck, Workflow } from 'lucide-vue-next'
+import { ChevronDown, ChevronLeft, ChevronRight, Code, Copy, List, Search, ShieldCheck, Workflow, X } from 'lucide-vue-next'
+import { profileMemory, rememberProfile, forgetAll, groupPath, groupIndex } from '../lib/profileMemory.js'
 import RelatedTable from '../components/RelatedTable.vue'
 import { channelOf, actionOf, engagementSummary, loadConsent, consentFacts } from '../lib/marketing.js'
 import { addressesFrom, loadCrmConsent } from '../lib/crmConsent.js'
@@ -45,6 +46,9 @@ const crmConsent = shallowRef(null) // { rows, errors, addresses } from Salesfor
 const missed = ref([])
 const loading = ref('')
 const open = ref({}) // expanded source rows / events
+// The last search and the profiles opened from it, kept while the app is open (feedback #1037).
+const mem = () => profileMemory(`${org.orgId}|${org.dataSpace}`)
+const kept = shallowRef(null) // { text, rs, results } of the last search
 
 const ruleset = computed(() => rulesets.value.find((r) => r.id === rulesetId.value) || null)
 const byName = computed(() => new Map(catalog.objects.map((o) => [o.name, o])))
@@ -74,16 +78,40 @@ onMounted(async () => {
 watch(() => [org.orgId, org.version, org.dataSpace], async () => { await loadRulesets(); fromRoute() })
 watch(rulesetId, (id) => { try { localStorage.setItem(rsKey(), id) } catch { /* ignore */ } })
 watch(() => route.fullPath, fromRoute)
+// Remember where you were, so the Profiles link brings you back there.
+watch(() => route.fullPath, () => { if (route.path.startsWith('/profile') && (route.params.id || route.query.q)) mem().lastPath = route.fullPath }, { immediate: true })
 
 // /profile?q=...&rs=...            search
 // /profile/u/<unified id>?rs=...   a unified profile
 // /profile/s/<source id>?rs=...    a source Individual (and its unified profile if any)
 function fromRoute() {
   if (!org.version || !rulesets.value) return
+  kept.value = mem().search
   if (route.query.rs && route.query.rs !== rulesetId.value) rulesetId.value = String(route.query.rs)
   if (route.params.kind && route.params.id) openProfile(route.params.kind, String(route.params.id))
   else if (route.query.q) { text.value = String(route.query.q); runSearch() }
+  else if (mem().lastPath) router.replace(mem().lastPath)
   else { profile.value = null; results.value = null }
+}
+
+// Start over: forget the kept search and profiles.
+function clearSearch() {
+  forgetAll(mem())
+  kept.value = null
+  text.value = ''
+  samples.value = null
+  profile.value = null
+  results.value = null
+  router.push('/profile')
+}
+
+// The search box: a new search runs again even for the same words.
+function submitSearch() {
+  if (!text.value.trim()) return showSamples()
+  samples.value = null
+  mem().search = null
+  if (route.path === '/profile' && route.query.q === text.value) runSearch()
+  else go('/profile', { q: text.value })
 }
 
 function go(path, query = {}) {
@@ -108,13 +136,25 @@ async function showSamples() {
 }
 function trySample(sm) { samples.value = null; text.value = sm.value; go('/profile', { q: sm.value }) }
 
+let searchSeq = 0
 async function runSearch() {
   if (!text.value.trim() || !org.version) return
-  searching.value = true
   error.value = ''
   profile.value = null
+  const m = mem()
+  if (m.search && m.search.text === text.value && m.search.rs === rulesetId.value) {
+    results.value = m.search.results
+    kept.value = m.search
+    return
+  }
+  searching.value = true
   try {
-    results.value = await search(q, text.value, ruleset.value)
+    const seq = ++searchSeq
+    const found = await search(q, text.value, ruleset.value)
+    if (seq !== searchSeq) return
+    results.value = found
+    m.search = { text: text.value, rs: rulesetId.value, results: found }
+    kept.value = m.search
     if (results.value.groups.length === 1) {
       const g = results.value.groups[0]
       router.replace({ path: g.unifiedId ? `/profile/u/${g.unifiedId}` : `/profile/s/${g.sources[0].id}`, query: { rs: rulesetId.value || undefined } })
@@ -141,6 +181,14 @@ async function openProfile(kind, id) {
   notice.value = ''
   results.value = null
   open.value = {}
+  const memPath = `${route.path}|${rulesetId.value}`
+  const had = mem().profiles.get(memPath)
+  if (had) {
+    Object.assign(state, had)
+    loading.value = ''
+    consentLoading.value = false
+    return
+  }
   related.value = []
   unifiedRelated.value = []
   consent.value = []
@@ -169,7 +217,7 @@ async function openProfile(kind, id) {
     related.value = src
     unifiedRelated.value = uni
     missed.value = await possibleMissedMatches(q, p.sources.map((s) => s.ssot__Id__c), src).catch(() => [])
-    if (!MCN) return
+    if (!MCN) { if (seq === loadSeq) keep(); return }
     consentLoading.value = true
     const cps = [...src, ...uni].filter((r) => /ContactPoint/i.test(r.object))
     const addresses = addressesFrom(cps)
@@ -178,12 +226,32 @@ async function openProfile(kind, id) {
       addresses.emails.length || addresses.phones.length ? loadCrmConsent(orgCall(), org.version, addresses).catch((e) => ({ rows: [], errors: [e.message] })) : null,
     ])
     if (seq === loadSeq) { consent.value = c; crmConsent.value = crm && { ...crm, addresses }; consentLoading.value = false }
+    if (seq === loadSeq) keep()
   } catch (err) {
     if (seq === loadSeq) error.value = err.message
   } finally {
     if (seq === loadSeq) loading.value = ''
   }
+  function keep() {
+    rememberProfile(mem(), memPath, { profile: profile.value, related: related.value, unifiedRelated: unifiedRelated.value, consent: consent.value, crmConsent: crmConsent.value, missed: missed.value })
+  }
 }
+
+// Writes a kept profile back into the page's refs.
+const state = {
+  set profile(v) { profile.value = v },
+  set related(v) { related.value = v },
+  set unifiedRelated(v) { unifiedRelated.value = v },
+  set consent(v) { consent.value = v },
+  set crmConsent(v) { crmConsent.value = v },
+  set missed(v) { missed.value = v },
+}
+
+// Where the open profile sits in the kept results, to step through them.
+const keptGroups = computed(() => kept.value?.results?.groups || [])
+const keptIndex = computed(() => (profile.value && route.params.id ? groupIndex(keptGroups.value, route.params.kind, String(route.params.id), profile.value.unifiedId) : -1))
+const groupName = (g) => g.sources.map((s) => s.name).filter((n, i, a) => n && a.indexOf(n) === i).join(', ') || g.unifiedId || g.sources[0].id
+function goGroup(i) { const g = keptGroups.value[i]; if (g) go(groupPath(g)) }
 
 const explanation = computed(() => (profile.value && ruleset.value ? explainMatches(ruleset.value, profile.value.sources, related.value) : []))
 const title = computed(() => {
@@ -237,7 +305,7 @@ const btn = 'dci-btn'
 
 <template>
   <section class="space-y-4 max-w-7xl mx-auto">
-    <form class="dci-card p-3 flex flex-wrap gap-2 items-center shadow-[0_14px_32px_-22px_rgba(13,148,136,0.45)]" @submit.prevent="text.trim() ? (samples = null, go('/profile', { q: text })) : showSamples()">
+    <form class="dci-card p-3 flex flex-wrap gap-2 items-center shadow-[0_14px_32px_-22px_rgba(13,148,136,0.45)]" @submit.prevent="submitSearch">
       <label class="dci-search flex-1 min-w-72"><Search class="w-4 h-4 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden="true" /><input v-model="text" placeholder="Email, phone, name or ID (use * as a wildcard)" aria-label="Search people" /></label>
       <label class="text-sm text-muted-foreground" for="rs">Ruleset</label>
       <select id="rs" v-model="rulesetId" class="h-10 max-w-80 rounded-full border bg-card px-3 text-sm" @change="switchRuleset">
@@ -247,6 +315,7 @@ const btn = 'dci-btn'
       <button class="dci-btn-primary" :disabled="searching || !org.version">
         {{ searching ? 'Searching…' : 'Search' }}
       </button>
+      <button v-if="kept || profile || results" type="button" class="px-1 text-sm font-medium text-link hover:underline" title="Forget the kept search results and profiles" @click="clearSearch">Clear</button>
       <RouterLink to="/bulk" class="px-1 text-sm font-medium text-link hover:underline">Bulk lookup</RouterLink>
     </form>
     <div v-if="samples" class="border rounded-xl bg-card p-3 text-sm space-y-2">
@@ -270,7 +339,7 @@ const btn = 'dci-btn'
       <button
         v-for="g in results.groups" :key="g.unifiedId || g.sources[0].id"
         :class="[card, 'w-full text-left p-3 hover:bg-accent flex items-center gap-3']"
-        @click="g.unifiedId ? go(`/profile/u/${g.unifiedId}`) : go(`/profile/s/${g.sources[0].id}`)"
+        @click="go(groupPath(g))"
       >
         <div class="flex-1 min-w-0">
           <div class="font-medium">{{ g.sources.map((s) => s.name).filter((n, i, a) => a.indexOf(n) === i).join(', ') }}</div>
@@ -289,6 +358,15 @@ const btn = 'dci-btn'
 
     <!-- Profile -->
     <template v-if="profile">
+      <nav v-if="keptGroups.length > 1 && keptIndex >= 0" class="dci-card p-2 flex flex-wrap items-center gap-2 text-sm" aria-label="Search results">
+        <button class="dci-btn" title="Back to the search results" @click="go('/profile', { q: kept.text })"><List class="w-4 h-4" /> Results</button>
+        <button class="p-1.5 rounded-md border hover:bg-accent disabled:opacity-40" :disabled="keptIndex === 0" aria-label="Previous result" @click="goGroup(keptIndex - 1)"><ChevronLeft class="w-4 h-4" /></button>
+        <select class="h-8 max-w-[22rem] rounded-md border bg-card px-2 text-sm" aria-label="Go to a result" :value="keptIndex" @change="goGroup(Number($event.target.value))">
+          <option v-for="(g, i) in keptGroups" :key="g.unifiedId || g.sources[0].id" :value="i">{{ i + 1 }}. {{ groupName(g) }}</option>
+        </select>
+        <button class="p-1.5 rounded-md border hover:bg-accent disabled:opacity-40" :disabled="keptIndex >= keptGroups.length - 1" aria-label="Next result" @click="goGroup(keptIndex + 1)"><ChevronRight class="w-4 h-4" /></button>
+        <span class="text-muted-foreground">Result {{ keptIndex + 1 }} of {{ keptGroups.length }} for “{{ kept.text }}”</span>
+      </nav>
       <div class="flex flex-wrap items-start gap-3">
         <span class="w-14 h-14 shrink-0 rounded-full bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300 flex items-center justify-center text-xl font-bold" aria-hidden="true">{{ initials(title) }}</span>
         <div class="min-w-0">

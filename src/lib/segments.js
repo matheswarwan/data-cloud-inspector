@@ -303,6 +303,28 @@ export async function publishHistory(q, table, seg) {
 const LEAVES = /delet|remov|exit|drop/i
 
 /**
+ * Points for the publish history chart, oldest first (feedback #1038): each publish with its
+ * size, the change from the publish before (`change`, `pct`; null for the first), its share of
+ * the largest size (`height`, 0 to 1) and its row counts by delta type.
+ */
+export function publishPoints(versions) {
+  const asc = [...(versions || [])].sort((a, b) => String(a.version).localeCompare(String(b.version)))
+  const max = Math.max(1, ...asc.map((v) => v.size || 0))
+  return asc.map((v, i) => {
+    const prev = i ? asc[i - 1].size : null
+    const change = prev == null ? null : v.size - prev
+    return {
+      ...v,
+      change,
+      pct: prev ? (change / prev) * 100 : null,
+      height: (v.size || 0) / max,
+      full: /^f/i.test(v.snapshot || ''),
+      breakdown: Object.entries(v.deltas || {}).map(([type, n]) => ({ type, n })),
+    }
+  })
+}
+
+/**
  * Adds `size` to each publish (newest first in, newest first out). A full snapshot (F) holds
  * every member, minus rows marked as leaving; an incremental one changes the previous size by
  * its added and leaving rows. Only F with "new" rows has been seen live.

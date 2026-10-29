@@ -20,7 +20,7 @@ import { inSpace } from '../lib/dataSpace.js'
 import { parseRulesets, search, INDIVIDUAL } from '../lib/profile.js'
 import { useSegments, ensureSegments } from '../app/useSegments.js'
 import {
-  describeCriteria, topConditions, segmentSql, membershipTables, membershipCount, publishHistory, checkMembers, personHistory, segmentNames, loadMembers, membersSql, loadMatching, matchingSql,
+  describeCriteria, topConditions, segmentSql, publishPoints, membershipTables, membershipCount, publishHistory, checkMembers, personHistory, segmentNames, loadMembers, membersSql, loadMatching, matchingSql,
   SEGMENT_SORTS, sortSegments,
 } from '../lib/segments.js'
 
@@ -210,11 +210,18 @@ const when = (iso) => (iso ? new Date(iso).toLocaleString() : '')
 const num = (n) => (typeof n === 'number' ? n.toLocaleString() : '')
 const card = 'dci-card'
 const btn = 'dci-btn'
+// Publish history chart with a hover card per publish (feedback #1038).
+const points = computed(() => publishPoints(detail.value?.versions))
+const hovered = ref(-1)
+const hoverPoint = computed(() => points.value[hovered.value] || null)
+const signed = (n) => (n > 0 ? `+${num(n)}` : n < 0 ? `−${num(-n)}` : '0')
+const pctText = (p) => (p == null ? '' : ` (${p > 0 ? '+' : p < 0 ? '−' : ''}${Math.abs(p) < 10 ? Math.abs(p).toFixed(1) : Math.round(Math.abs(p))}%)`)
+
 const versionCols = [
   { key: 'at', label: 'Published', kind: 'date', value: (v) => when(v.at), sortValue: (v) => v.at, filter: false },
   { key: 'size', label: 'Members', align: 'right', kind: 'number' },
   { key: 'members', label: 'Rows', align: 'right', kind: 'number' },
-  { key: 'changes', label: 'Changes', value: (v) => `${v.snapshot === 'F' ? 'full, ' : v.snapshot ? 'incremental, ' : ''}${Object.entries(v.deltas).map(([k, n]) => `${num(n)} ${k}`).join(', ')}` },
+  { key: 'changes', label: 'Changes', value: (v) => `${/^f/i.test(v.snapshot || '') ? 'full, ' : v.snapshot ? 'incremental, ' : ''}${Object.entries(v.deltas).map(([k, n]) => `${num(n)} ${k}`).join(', ')}` },
   { key: 'version', label: 'Version' },
 ]
 
@@ -393,13 +400,33 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
           <p v-else-if="!detail?.history" class="p-3 text-sm text-muted-foreground">No history table found for {{ seg.on }}.</p>
           <p v-else-if="!detail.versions?.length" class="p-3 text-sm text-muted-foreground">No publishes recorded in {{ detail.history }}.</p>
           <div v-else-if="detail.versions.length > 1" class="p-3">
-            <div class="text-xs text-muted-foreground mb-1">Size over time</div>
-            <div class="flex items-end gap-0.5 h-28">
+            <div class="flex items-baseline justify-between text-xs text-muted-foreground mb-1"><span>Size over time</span><span>Hover a bar for its numbers</span></div>
+            <div class="relative" @mouseleave="hovered = -1">
+              <div class="flex items-end gap-0.5 h-28" role="list" aria-label="Members at each publish">
+                <button
+                  v-for="(p, i) in points" :key="p.version" type="button" role="listitem"
+                  class="flex-1 min-w-1 h-full flex items-end focus:outline-none group"
+                  :aria-label="`${when(p.at)}: ${num(p.size)} members`"
+                  @mouseenter="hovered = i" @focus="hovered = i" @blur="hovered = -1"
+                >
+                  <span :class="['w-full rounded-t-sm', hovered === i ? 'bg-teal-600 dark:bg-teal-400' : 'bg-foreground/60 group-hover:bg-foreground/80']" :style="{ height: `${Math.max(2, p.height * 100)}%` }" />
+                </button>
+              </div>
               <div
-                v-for="v in [...detail.versions].reverse()" :key="v.version" class="flex-1 min-w-1 bg-foreground/60 rounded-t-sm"
-                :style="{ height: `${Math.max(2, (v.size / Math.max(1, ...detail.versions.map((x) => x.size))) * 100)}%` }"
-                :title="`${when(v.at)}: ${num(v.size)} members`"
-              />
+                v-if="hoverPoint" class="absolute bottom-full mb-2 z-20 w-64 rounded-lg border bg-popover text-popover-foreground shadow-lg p-2.5 text-xs pointer-events-none"
+                :style="{ left: `clamp(0px, calc(${((hovered + 0.5) / points.length) * 100}% - 8rem), calc(100% - 16rem))` }"
+              >
+                <div class="font-semibold text-sm">{{ num(hoverPoint.size) }} members</div>
+                <div class="text-muted-foreground">{{ when(hoverPoint.at) }}</div>
+                <dl class="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
+                  <dt class="text-muted-foreground">Change</dt>
+                  <dd :class="hoverPoint.change > 0 ? 'text-emerald-700 dark:text-emerald-400' : hoverPoint.change < 0 ? 'text-rose-700 dark:text-rose-400' : ''">{{ hoverPoint.change == null ? 'first publish shown' : `${signed(hoverPoint.change)}${pctText(hoverPoint.pct)} since the publish before` }}</dd>
+                  <dt class="text-muted-foreground">Snapshot</dt><dd>{{ hoverPoint.full ? 'full' : hoverPoint.snapshot ? 'incremental' : 'unknown' }}</dd>
+                  <dt class="text-muted-foreground">Rows</dt><dd>{{ num(hoverPoint.members) }}<template v-if="hoverPoint.breakdown.length">: {{ hoverPoint.breakdown.map((b) => `${num(b.n)} ${b.type}`).join(', ') }}</template></dd>
+                  <dt class="text-muted-foreground">Publish</dt><dd>{{ hovered + 1 }} of {{ points.length }}</dd>
+                  <dt class="text-muted-foreground">Version</dt><dd class="font-mono break-all">{{ hoverPoint.version }}</dd>
+                </dl>
+              </div>
             </div>
             <div class="flex justify-between text-xs text-muted-foreground mt-1"><span>{{ when(detail.versions.at(-1).at) }}</span><span>{{ when(detail.versions[0].at) }}</span></div>
           </div>

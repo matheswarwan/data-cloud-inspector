@@ -194,3 +194,19 @@ describe('loadMembers (feedback #1031)', async () => {
     expect(seen[1]).toBe("SELECT ssot__Id__c AS id, ssot__FirstName__c AS first, ssot__LastName__c AS last FROM ssot__Individual__dlm WHERE ssot__Id__c IN ('p1', 'p2')")
   })
 })
+
+describe('publish chart points (feedback #1038)', () => {
+  it('orders oldest first with the change from the publish before', async () => {
+    const { publishPoints } = await import('../segments.js')
+    const pts = publishPoints([
+      { version: 'v3', at: '2026-10-03', size: 90, members: 90, snapshot: 'F', deltas: { new: 90 } },
+      { version: 'v1', at: '2026-10-01', size: 100, members: 100, snapshot: 'F', deltas: { new: 100 } },
+      { version: 'v2', at: '2026-10-02', size: 120, members: 30, snapshot: 'I', deltas: { added: 25, removed: 5 } },
+    ])
+    expect(pts.map((p) => [p.version, p.change, p.full])).toEqual([['v1', null, true], ['v2', 20, false], ['v3', -30, true]])
+    expect(pts[1].pct).toBe(20)
+    expect(pts[1].height).toBe(1)
+    expect(pts[1].breakdown).toEqual([{ type: 'added', n: 25 }, { type: 'removed', n: 5 }])
+    expect(publishPoints(null)).toEqual([])
+  })
+})

@@ -4,8 +4,9 @@
 // plain text; `#after-row` ({ row, colspan }) adds a row under each row. Emits `view` with
 // the rows after filters and sort, for downloads. Long tables show a page at a time with the
 // tool's rows-per-page choice (feedback #1015); `limit` instead shows the first rows with Show all.
+// Tables with more than a few rows get a search box over every column (feedback #1036).
 import { ref, reactive, computed, watch } from 'vue'
-import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Search, X } from 'lucide-vue-next'
 import { PAGE_SIZES, pageSize, pageOf } from '../lib/pageSize.js'
 import ColumnFilter from './ColumnFilter.vue'
 import { tableRows, nextSort, filterActive, colValue, valueText } from '../lib/tableView.js'
@@ -23,21 +24,26 @@ const props = defineProps({
   initialSort: { type: Object, default: null },
   // Show the first `limit` rows (after filters and sort) with a Show all button; 0 shows all.
   limit: { type: Number, default: 0 },
+  // Search box: shown when the table has more than SEARCH_MIN rows; false hides it.
+  searchable: { type: Boolean, default: true },
 })
+const SEARCH_MIN = 5
 const emit = defineEmits(['view', 'row-click'])
 
 const sort = ref(props.initialSort)
 const filters = reactive({})
 const filterOf = (key) => (filters[key] ||= { text: '', values: null })
+const search = ref('')
+const showSearch = computed(() => props.searchable && (props.rows.length > SEARCH_MIN || !!search.value))
 
-const shown = computed(() => tableRows(props.rows, props.columns, { sort: sort.value, filters }))
+const shown = computed(() => tableRows(props.rows, props.columns, { sort: sort.value, filters, search: search.value }))
 const showAll = ref(false)
 const page = ref(0)
-watch([() => sort.value, filters, () => props.rows, pageSize], () => { page.value = 0 }, { deep: true })
+watch([() => sort.value, filters, search, () => props.rows, pageSize], () => { page.value = 0 }, { deep: true })
 const paged = computed(() => pageOf(shown.value, page.value, pageSize.value))
 const paginating = computed(() => !props.limit && shown.value.length > PAGE_SIZES[0])
 const visible = computed(() => (props.limit ? (showAll.value ? shown.value : shown.value.slice(0, props.limit)) : paginating.value ? paged.value.rows : shown.value))
-const anyFilter = computed(() => Object.values(filters).some(filterActive))
+const anyFilter = computed(() => !!search.value.trim() || Object.values(filters).some(filterActive))
 watch(shown, (v) => emit('view', v), { immediate: true })
 
 const keyOf = (row, i) => (typeof props.rowKey === 'function' ? props.rowKey(row) : props.rowKey ? row[props.rowKey] : i)
@@ -45,14 +51,21 @@ const classOf = (row) => (typeof props.rowClass === 'function' ? props.rowClass(
 const sortable = (c) => c.sort !== false
 const filterable = (c) => c.filter !== false
 function clickSort(c) { if (sortable(c)) sort.value = nextSort(sort.value, c.key) }
-function clearAll() { for (const k of Object.keys(filters)) delete filters[k] }
+function clearAll() { search.value = ''; for (const k of Object.keys(filters)) delete filters[k] }
 </script>
 
 <template>
   <div class="min-w-0">
-    <div v-if="anyFilter" class="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
-      <span>{{ shown.length.toLocaleString() }} of {{ rows.length.toLocaleString() }} rows</span>
-      <button class="text-link hover:underline" @click="clearAll">Clear filters</button>
+    <div v-if="showSearch || anyFilter" class="flex flex-wrap items-center gap-2 px-0.5 pb-1.5 text-xs text-muted-foreground">
+      <label v-if="showSearch" class="relative inline-flex items-center">
+        <Search class="w-3.5 h-3.5 absolute left-2 pointer-events-none" />
+        <input v-model="search" type="text" placeholder="Search this table" aria-label="Search this table" class="border rounded-md pl-7 pr-6 py-1 bg-background text-foreground w-56" @keydown.esc="search = ''" />
+        <button v-if="search" class="absolute right-1.5 hover:text-foreground" aria-label="Clear search" @click="search = ''"><X class="w-3.5 h-3.5" /></button>
+      </label>
+      <template v-if="anyFilter">
+        <span>{{ shown.length.toLocaleString() }} of {{ rows.length.toLocaleString() }} rows</span>
+        <button class="text-link hover:underline" @click="clearAll">Clear {{ search.trim() ? 'search and filters' : 'filters' }}</button>
+      </template>
     </div>
     <div :class="['overflow-auto', bordered ? 'border rounded-xl bg-card' : '', boxClass]">
       <table :class="['w-full', textSize]">
@@ -78,7 +91,7 @@ function clearAll() { for (const k of Object.keys(filters)) delete filters[k] }
             </tr>
             <slot name="after-row" :row="row" :colspan="columns.length" />
           </template>
-          <tr v-if="!shown.length"><td :colspan="columns.length" class="p-3 text-muted-foreground">{{ rows.length ? 'No rows match the filters.' : empty }}</td></tr>
+          <tr v-if="!shown.length"><td :colspan="columns.length" class="p-3 text-muted-foreground">{{ rows.length ? (search.trim() ? 'No rows match the search or filters.' : 'No rows match the filters.') : empty }}</td></tr>
         </tbody>
       </table>
       <button v-if="limit && visible.length < shown.length" class="text-xs text-link hover:underline px-2 py-1" @click="showAll = true">Show all {{ shown.length.toLocaleString() }}</button>
