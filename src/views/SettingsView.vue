@@ -50,16 +50,6 @@ function saveCacheAge() { setCacheHours(cacheAge.value); cacheAge.value = cacheH
 const policyCacheOff = !!policy().disableCache
 function togglePage(feature, on) { setPageShown(feature, on); shown.value = shownPages(); refreshNav() }
 
-// Orgs on *.cloudforce.com (older instances) need an optional host permission.
-const CLOUDFORCE = { origins: ['https://*.cloudforce.com/*'] }
-const cloudforce = ref(false)
-chrome.permissions?.contains?.(CLOUDFORCE).then((v) => { cloudforce.value = v }).catch(() => {})
-async function toggleCloudforce(on) {
-  try {
-    cloudforce.value = on ? await chrome.permissions.request(CLOUDFORCE) : !(await chrome.permissions.remove(CLOUDFORCE))
-  } catch { /* not in an extension */ }
-}
-
 const settings = useSettings()
 const org = useOrg()
 const queries = useQueries()
@@ -213,11 +203,7 @@ function showTipsAgain() { setTipsOn(true); resetTips(); tips.value = true }
       </label>
       <label v-if="isOn('diagramforce')" class="flex items-start gap-2 text-sm" :class="diagramforceAllowed() ? '' : 'opacity-60'">
         <input type="checkbox" class="mt-1" :checked="diagramforce" :disabled="!diagramforceAllowed()" @change="toggleDiagramforce($event.target.checked)" />
-        <span>Open in Diagramforce<span class="block text-xs text-muted-foreground">Adds Open in Diagramforce to data model and stream diagrams. It hands the diagram's object, field and relationship names (no records, no session) to diagramforce.com, a free diagram editor run by a third party.{{ diagramforceAllowed() ? '' : ' Turned off by your administrator.' }}</span></span>
-      </label>
-      <label class="flex items-start gap-2 text-sm">
-        <input type="checkbox" class="mt-1" :checked="cloudforce" @change="toggleCloudforce($event.target.checked)" />
-        <span>Orgs on cloudforce.com<span class="block text-xs text-muted-foreground">Only for older orgs whose domain ends in cloudforce.com. Chrome asks you to allow the extension to read and change data on those sites.</span></span>
+        <span>Open in Diagramforce<span class="block text-xs text-muted-foreground">Adds Open in Diagramforce to data model and stream diagrams. It hands the diagram's object, field and relationship names (no records, no session) to diagramforce.com, a free diagram editor run by a third party, only when you click it. On unless you turn it off here.{{ diagramforceAllowed() ? '' : ' Turned off by your administrator.' }}</span></span>
       </label>
     </div>
 

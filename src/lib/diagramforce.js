@@ -9,16 +9,17 @@ import { policy } from './policy.js'
 
 export const DIAGRAMFORCE_ORIGIN = 'https://diagramforce.com'
 
-// Off until the user turns it on in Settings (it hands object and field names to a third-party
-// site); never available when the administrator policy disableDiagramforce is set.
+// On unless the user turns it off in Settings (feedback #1045; it hands object and field names,
+// never records, to a third-party site); never available when the administrator policy
+// disableDiagramforce is set. Stored as 'off' when turned off; an older 'on' still means on.
 const SWITCH = 'dci_diagramforce'
 export const diagramforceAllowed = (p = policy()) => !p.disableDiagramforce
 export function diagramforceOn() {
   if (!diagramforceAllowed()) return false
-  try { return localStorage.getItem(SWITCH) === 'on' } catch { return false }
+  try { return localStorage.getItem(SWITCH) !== 'off' } catch { return true }
 }
 export function setDiagramforceOn(on) {
-  try { if (on) localStorage.setItem(SWITCH, 'on'); else localStorage.removeItem(SWITCH) } catch { /* private window */ }
+  try { if (on) localStorage.removeItem(SWITCH); else localStorage.setItem(SWITCH, 'off') } catch { /* private window */ }
 }
 const APP_VERSION = '1.26.4'
 const COLORS = { DMO: '#1D73C9', DLO: '#74797F', STREAM: '#2E844A', CI: '#B652A7' }

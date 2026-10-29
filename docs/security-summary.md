@@ -85,7 +85,7 @@ sequenceDiagram
 | `identity` | `launchWebAuthFlow` and `getRedirectURL` for Log in with OAuth. No `getAuthToken`, no Google account access, no `oauth2` manifest block. | |
 | `activeTab` | On a click on the toolbar icon, read the current tab's address to open on the same org. | |
 | Host `https://*.my.salesforce.com/*` | The org's API host, and where its session cookie lives. Covers production, sandboxes (`*.sandbox.my.salesforce.com`) and scratch orgs. | Use `ExtensionSettings` `runtime_allowed_hosts`/`runtime_blocked_hosts` and the `allowedOrgDomains` policy to limit it to your own org (see `docs/enterprise-deployment.md`). |
-| Optional host `https://*.cloudforce.com/*` | Older orgs on that domain. Requested only when the user turns it on in Settings. | Leave off; block with `runtime_blocked_hosts`. |
+| Host `https://*.cloudforce.com/*` | Older orgs on that domain (their API and session cookie). Required since 1.0.8 at the user's request (feedback #1045); 1.0.7 had it too, so updates ask nothing. | Block with `runtime_blocked_hosts` where no org uses it. |
 
 Not requested: `tabs`, `scripting`, `webRequest`, `declarativeNetRequest`, `<all_urls>`, `unlimitedStorage`, `*.force.com`, `*.salesforce-setup.com`, content scripts. Removed in 1.0.8: `unlimitedStorage`, `*.salesforce.com` (all subdomains), `*.force.com`, `*.salesforce-setup.com`, and `*.cloudforce.com` as a required host.
 
@@ -126,7 +126,7 @@ Settings, Storage lists everything with its size and a Delete per item and for e
 
 Nothing else. No analytics, telemetry, error reporting, CDN fonts or scripts. Two user actions open other sites in a new tab, outside the extension's network calls:
 
-- **Open in Diagramforce** (off by default; blocked by `disableDiagramforce`): opens diagramforce.com and passes the diagram's object, field and relationship names with `postMessage`. No records or session.
+- **Open in Diagramforce** (on by default, only on a click; users can turn it off; blocked by `disableDiagramforce`): opens diagramforce.com and passes the diagram's object, field and relationship names with `postMessage`. No records or session.
 - **Open email** in the Feedback form: a `mailto:` email in the user's own mail app, as an alternative to Send.
 
 Links in Help open developer.salesforce.com, admin.salesforce.com and similar documentation pages.

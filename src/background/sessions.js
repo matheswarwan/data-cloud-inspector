@@ -8,7 +8,7 @@ import { groupSessions, orgIdFromSid, toApiHost, isApiHost } from './orgs.js'
 import { oauthSession, oauthOrgs } from './oauth.js'
 import { readManagedPolicy, hostAllowed } from '../lib/policy.js'
 
-// cloudforce.com is an optional host permission; without it the cookie list is just empty.
+// cloudforce.com is a host permission since feedback #1045 (it was optional before).
 const DOMAINS = ['salesforce.com', 'cloudforce.com']
 
 async function allSidCookies() {

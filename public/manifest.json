@@ -29,9 +29,7 @@
     "activeTab"
   ],
   "host_permissions": [
-    "https://*.my.salesforce.com/*"
-  ],
-  "optional_host_permissions": [
+    "https://*.my.salesforce.com/*",
     "https://*.cloudforce.com/*"
   ],
   "content_security_policy": {

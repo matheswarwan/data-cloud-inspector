@@ -6,13 +6,13 @@ Store versions of Data Cloud Inspector, newest first. Each entry says whether pe
 
 Security and privacy changes for enterprise review (`security/audits/1.0.7-0b0cf86.md`).
 
-**Permissions: narrower.** Removed `unlimitedStorage` and the hosts `*.salesforce.com`, `*.force.com`, `*.salesforce-setup.com`; `*.cloudforce.com` is now optional (Settings). Added `activeTab` (no install warning). Host access is `https://*.my.salesforce.com/*` only. Chrome does not ask users to approve anything for this update.
+**Permissions: narrower.** Removed `unlimitedStorage` and the hosts `*.salesforce.com`, `*.force.com`, `*.salesforce-setup.com`; Added `activeTab` (no install warning). Host access is `https://*.my.salesforce.com/*` and `https://*.cloudforce.com/*` (older orgs; feedback #1045). Chrome does not ask users to approve anything for this update.
 
 - Explicit Content Security Policy: scripts from the package only, network calls only to Salesforce and the feedback service.
 - Administrator policy through Chrome (`managed_schema.json`): `authMode` (`oauth-only` never reads the browser session cookie), `allowedOrgDomains`, `disableCache`, `disableQueryHistory`, `disableDiagramforce`. Settings shows the policies in force.
 - Bulk lookup and Compare results (people's records) are kept only until the browser closes; copies kept by earlier versions are deleted on update.
 - Feedback: Send posts to the developer's feedback service as before, or Open email starts a message in your own mail app; administrators can turn sending off (`disableFeedbackUpload`).
-- Open in Diagramforce is off until turned on in Settings.
+- Open in Diagramforce can be turned off in Settings (on by default, feedback #1045) and blocked by the administrator.
 - Log in with OAuth: log in to an org by its My Domain without a browser session; Log out revokes the token in Salesforce.
 - Read-only guard: only `/services/data/` paths (Apex REST and other `/services/` paths refused).
 - Privacy policy from one source (`PRIVACY.md`), bundled in the extension (Help, Settings, Home) and hosted; publisher Ateko. `SECURITY.md`, `docs/security-summary.md`, `docs/enterprise-deployment.md`, reproducible build with SHA-256 (`npm run package`).
