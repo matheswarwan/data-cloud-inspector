@@ -16,7 +16,9 @@ import ResultTable from '../components/ResultTable.vue'
 import { useOrg, currentOrg, orgTitle } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, ensureRecordIds, ensureUsage, orgCall } from '../app/useCatalog.js'
 import { insightPages, insightHealth, LEVEL_TEXT } from '../lib/health.js'
-import { normalizeInsight } from '../lib/insights.js'
+import { normalizeInsight, filterSql, FILTER_MAX } from '../lib/insights.js'
+import { parseInputs } from '../lib/bulkLookup.js'
+import { kindOf } from '../lib/resultView.js'
 import { sqlRefs, usageOf } from '../lib/usage.js'
 import { runQuery } from '../lib/query.js'
 import { recordUrl } from '../lib/links.js'
@@ -83,6 +85,9 @@ const sfId = computed(() => catalog.recordIds?.[ci.value?.name] || null)
 watch(() => route.params.name, () => {
   preview.value = null
   previewError.value = ''
+  filterCol.value = ''
+  filterText.value = ''
+  filtered.value = null
   variant.value = ''
   if (!['details', 'fields', 'sql', 'data', 'usedby'].includes(tab.value)) tab.value = 'details'
 })
@@ -96,11 +101,39 @@ const querySql = computed(() => {
   return `SELECT\n  ${fields.join(',\n  ') || '*'}\nFROM ${variant.value || ci.value.name}\nLIMIT 100`
 })
 
+// Filter the Data tab by values of one column (feedback #1040): pick the column, paste values,
+// and the rows come from SQL built from them (also openable in a SQL tab).
+const filterCol = ref('')
+const filterText = ref('')
+const filtered = ref(null) // { sql, count } of the filter shown, or null for the first 50 rows
+const filterColumns = computed(() => {
+  if (preview.value?.columns?.length) return preview.value.columns
+  return ci.value ? [...ci.value.dimensions, ...ci.value.measures].map((f) => ({ name: f.name, type: f.type })) : []
+})
+const filterValues = computed(() => parseInputs(filterText.value, { as: 'field' }).map((x) => x.input))
+const filterPlan = computed(() => {
+  const col = filterColumns.value.find((c) => c.name === filterCol.value)
+  return filterSql(variant.value || ci.value?.name, filterCol.value, filterValues.value, { numeric: kindOf(col?.type) === 'number' })
+})
+function runFilter() {
+  if (filterPlan.value.error) return
+  filtered.value = filterPlan.value
+  loadPreview()
+}
+function clearFilter() {
+  filterText.value = ''
+  filtered.value = null
+  loadPreview()
+}
+
 async function loadPreview() {
   previewing.value = true
   previewError.value = ''
   try {
-    const r = await runQuery(orgCall(), org.version, `SELECT * FROM ${variant.value || ci.value.name} LIMIT 50`, { rowLimit: 50 })
+    const f = filtered.value
+    const r = f
+      ? await runQuery(orgCall(), org.version, f.sql, { rowLimit: 2000 })
+      : await runQuery(orgCall(), org.version, `SELECT * FROM ${variant.value || ci.value.name} LIMIT 50`, { rowLimit: 50 })
     preview.value = r
   } catch (err) {
     previewError.value = err.message
@@ -108,7 +141,10 @@ async function loadPreview() {
     previewing.value = false
   }
 }
-watch([tab, variant], ([t]) => { if (t === 'data' && ci.value) loadPreview() })
+watch([tab, variant], ([t]) => {
+  if (filtered.value && !filterPlan.value.error) filtered.value = filterPlan.value // the other table
+  if (t === 'data' && ci.value) loadPreview()
+})
 
 // Data Cloud's own wording: "Active", "Calculated", "System Managed".
 const cap = (v) => String(v || '').toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -231,12 +267,30 @@ const ciDoc = () => docFrom({ title: `Calculated insight: ${ci.value.label}`, in
           <select id="ci-variant" v-model="variant" class="border rounded-md px-2 py-1 bg-background font-mono text-xs">
             <option v-for="v in variants" :key="v" :value="v">{{ v }}</option>
           </select>
-          <span class="text-xs text-muted-foreground">First 50 rows.</span>
-          <button class="ml-auto text-xs text-link hover:underline" @click="router.push({ path: '/sql', query: { sql: querySql } })">Open in a SQL tab</button>
+          <span class="text-xs text-muted-foreground">{{ filtered ? `Rows where ${filterCol} is one of ${filtered.count.toLocaleString()} value${filtered.count === 1 ? '' : 's'} (up to 2,000).` : 'First 50 rows.' }}</span>
+          <button v-if="filtered" class="text-xs text-link hover:underline" @click="clearFilter">Show the first 50 rows</button>
+          <button class="ml-auto text-xs text-link hover:underline" @click="router.push({ path: '/sql', query: { sql: filtered ? filtered.sql : querySql } })">Open in a SQL tab</button>
         </div>
+        <form class="dci-card p-3 space-y-2 text-sm" aria-label="Filter by column values" @submit.prevent="runFilter">
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="font-medium" for="ci-filter-col">Filter by</label>
+            <select id="ci-filter-col" v-model="filterCol" class="border rounded-md px-2 py-1 bg-background font-mono text-xs max-w-80">
+              <option value="">Pick a column…</option>
+              <option v-for="c in filterColumns" :key="c.name" :value="c.name">{{ c.name }}</option>
+            </select>
+            <span class="text-xs text-muted-foreground">Paste the values, one per line or separated by commas (up to {{ FILTER_MAX.toLocaleString() }}).</span>
+          </div>
+          <textarea v-model="filterText" rows="3" aria-label="Values" placeholder="e.g. a few individual IDs" class="w-full border rounded-md px-2 py-1.5 bg-background font-mono text-xs" @keydown.ctrl.enter.prevent="runFilter" @keydown.meta.enter.prevent="runFilter" />
+          <div class="flex flex-wrap items-center gap-2">
+            <button class="dci-btn-primary" :disabled="!!filterPlan.error || previewing">Run</button>
+            <span v-if="filterValues.length" class="text-xs text-muted-foreground">{{ filterValues.length.toLocaleString() }} value{{ filterValues.length === 1 ? '' : 's' }}</span>
+            <span v-if="filterPlan.error && (filterCol || filterText.trim())" class="text-xs text-muted-foreground">{{ filterPlan.error }}</span>
+            <button v-if="!filterPlan.error" type="button" class="text-xs text-link hover:underline" @click="router.push({ path: '/sql', query: { sql: filterPlan.sql } })">Open this SQL in a SQL tab</button>
+          </div>
+        </form>
         <Loading v-if="previewing" text="Loading rows…" />
         <p v-else-if="previewError" class="text-sm text-destructive">{{ previewError }}</p>
-        <p v-else-if="preview && !preview.rows.length" class="text-sm text-muted-foreground">No rows yet: the insight has not produced data.</p>
+        <p v-else-if="preview && !preview.rows.length" class="text-sm text-muted-foreground">{{ filtered ? 'No rows have those values.' : 'No rows yet: the insight has not produced data.' }}</p>
         <ResultTable v-else-if="preview" :columns="preview.columns" :rows="preview.rows" />
       </div>
 

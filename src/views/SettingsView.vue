@@ -16,6 +16,8 @@ import { useQueries, loadQueries, saveQuery, clearHistory, reloadQueries } from 
 import { storeAll, storeRemove } from '../lib/store.js'
 import { FEEDBACK_CONTACT_KEY } from '../lib/feedbackContact.js'
 import { diagramforceAllowed, diagramforceOn, setDiagramforceOn } from '../lib/diagramforce.js'
+import { OPTIONAL_PAGES, shownPages, setPageShown } from '../lib/optionalPages.js'
+import { ALL_NAV, refreshNav } from '../app/router.js'
 import { policy, policyOverrides } from '../lib/policy.js'
 import { isOn } from '../lib/features.js'
 
@@ -33,6 +35,15 @@ const managedLines = policyOverrides(managed).map((k) => POLICY_TEXT[k](managed[
 
 const diagramforce = ref(diagramforceOn())
 function toggleDiagramforce(on) { setDiagramforceOn(on); diagramforce.value = diagramforceOn() }
+// Pages hidden until turned on here (feedback #1041).
+const optionalPages = ALL_NAV.filter((n) => OPTIONAL_PAGES.includes(n.feature) && isOn(n.feature))
+const PAGE_NOTES = {
+  personalization: 'Personalization points, decisions, recommenders and experiments.',
+  marketingFlows: 'Marketing Cloud Next flows.',
+  campaigns: 'Marketing Cloud Next campaigns.',
+}
+const shown = ref(shownPages())
+function togglePage(feature, on) { setPageShown(feature, on); shown.value = shownPages(); refreshNav() }
 
 // Orgs on *.cloudforce.com (older instances) need an optional host permission.
 const CLOUDFORCE = { origins: ['https://*.cloudforce.com/*'] }
@@ -170,6 +181,15 @@ function showTipsAgain() { setTipsOn(true); resetTips(); tips.value = true }
         ><component :is="t.icon" class="w-4 h-4" /> {{ t.label }}</button>
       </div>
       <p class="text-xs text-muted-foreground">System follows your computer's light or dark setting.</p>
+    </div>
+
+    <div v-if="optionalPages.length" :class="card">
+      <h3 class="font-medium">Pages</h3>
+      <p class="text-xs text-muted-foreground">Marketing Cloud pages, hidden from the sidebar, Home and search until you turn them on.</p>
+      <label v-for="n in optionalPages" :key="n.path" class="flex items-start gap-2 text-sm">
+        <input type="checkbox" class="mt-1" :checked="shown.includes(n.feature)" @change="togglePage(n.feature, $event.target.checked)" />
+        <span>{{ n.label }}<span class="block text-xs text-muted-foreground">{{ PAGE_NOTES[n.feature] }}</span></span>
+      </label>
     </div>
 
     <div :class="card">

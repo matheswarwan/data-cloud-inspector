@@ -25,3 +25,15 @@ describe('calculated insight definition', () => {
     expect(asked).toEqual(['/services/data/v68.0/ssot/calculated-insights/Daily__cio'])
   })
 })
+
+describe('Data tab filter (feedback #1040)', () => {
+  it('builds IN or = with quoted text and numbers left bare', async () => {
+    const { filterSql } = await import('../insights.js')
+    expect(filterSql('CI__cio', 'individual_Id__c', ['a1', "o'b"]).sql).toBe("SELECT *\nFROM CI__cio\nWHERE individual_Id__c IN ('a1', 'o''b')\nLIMIT 2000")
+    expect(filterSql('CI__cio', 'n__c', ['5'], { numeric: true }).sql).toContain('WHERE n__c = 5\n')
+    expect(filterSql('CI__cio', 'n__c', ['5', 'x'], { numeric: true }).sql).toContain("IN ('5', 'x')")
+    expect(filterSql('CI__cio', '', ['a']).error).toMatch(/column/)
+    expect(filterSql('CI__cio', 'c', []).error).toMatch(/value/)
+    expect(filterSql('CI__cio', 'c', Array.from({ length: 1001 }, (_, i) => String(i))).error).toMatch(/At most/)
+  })
+})

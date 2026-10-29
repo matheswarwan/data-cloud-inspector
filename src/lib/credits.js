@@ -137,37 +137,47 @@ export const sortEnvs = (list) => [...list].sort((a, b) => envRank(a) - envRank(
 const num = (v) => (v == null || v === '' ? 0 : Number(v) || 0)
 const dayKey = (v) => (v == null ? '' : String(v).slice(0, 10))
 
-function fill(byDay, days, now) {
+const ranked = (byGroup) => [...byGroup.entries()].map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total)
+
+// Every day in the period; each day has its total and what used it (`groups`: card or usage
+// type, most first; feedback #1042).
+function fill(acc, days, now) {
   const series = []
   const start = new Date(`${cutoffDate(days, now)}T00:00:00Z`)
   const end = new Date(`${ISO(now)}T00:00:00Z`)
-  for (let d = start; d <= end; d = new Date(d.getTime() + 86400000)) series.push({ day: ISO(d), total: byDay.get(ISO(d)) || 0 })
+  for (let d = start; d <= end; d = new Date(d.getTime() + 86400000)) {
+    const k = ISO(d)
+    series.push({ day: k, total: acc.byDay.get(k) || 0, groups: acc.byDayGroup.has(k) ? ranked(acc.byDayGroup.get(k)) : [] })
+  }
   return series
 }
-const ranked = (byGroup) => [...byGroup.entries()].map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total)
 
 /**
  * Query rows [day, grp, env, total] (or [day, grp, total]) into a daily series (every day
  * filled) and per-group totals, for all environments together and for each one in `envs`.
  */
 export function shapeDaily(rows = [], { days = 180, now = new Date() } = {}) {
-  const all = { byDay: new Map(), byGroup: new Map() }
+  const newAcc = () => ({ byDay: new Map(), byGroup: new Map(), byDayGroup: new Map() })
+  const all = newAcc()
   const per = new Map()
   for (const row of rows) {
     const [day, grp, env, total] = row.length >= 4 ? row : [row[0], row[1], '', row[2]]
     const k = dayKey(day)
     if (!k) continue
     const e = envName(env)
-    if (!per.has(e)) per.set(e, { byDay: new Map(), byGroup: new Map() })
+    if (!per.has(e)) per.set(e, newAcc())
     const g = grp == null || grp === '' ? '(none)' : String(grp)
     for (const acc of [all, per.get(e)]) {
       acc.byDay.set(k, (acc.byDay.get(k) || 0) + num(total))
       acc.byGroup.set(g, (acc.byGroup.get(g) || 0) + num(total))
+      if (!acc.byDayGroup.has(k)) acc.byDayGroup.set(k, new Map())
+      const dg = acc.byDayGroup.get(k)
+      dg.set(g, (dg.get(g) || 0) + num(total))
     }
   }
   const envs = {}
-  for (const e of sortEnvs([...per.keys()])) envs[e] = { series: fill(per.get(e).byDay, days, now), groups: ranked(per.get(e).byGroup) }
-  return { series: fill(all.byDay, days, now), groups: ranked(all.byGroup), envs }
+  for (const e of sortEnvs([...per.keys()])) envs[e] = { series: fill(per.get(e), days, now), groups: ranked(per.get(e).byGroup) }
+  return { series: fill(all, days, now), groups: ranked(all.byGroup), envs }
 }
 
 /** Totals rows [grp, env, total, first, last] into per-group totals, with each environment's share. */
@@ -241,4 +251,42 @@ export function forecast(series = [], { fitDays = 90, horizon = 90, remaining = 
 export function balances(entitlements = [], consumed = []) {
   const used = new Map(consumed.map((g) => [g.name, g.total]))
   return entitlements.map((e) => ({ name: e.name, purchased: e.total, consumed: used.get(e.name) ?? null, remaining: used.has(e.name) ? e.total - used.get(e.name) : null }))
+}
+
+// ---- money (feedback #1042) ----
+// Salesforce does not expose what a credit costs, so the price comes from the user (their
+// contract), kept per org in this browser. The usage type multipliers (TenantUsageTypeMultiplier,
+// the rate card that turns usage into credits) are read as they are.
+
+const PRICE_KEY = (orgId) => `dci_credit_price_${String(orgId || '').slice(0, 15)}`
+
+/** `{ price, currency }` saved for an org, or null. */
+export function creditPrice(orgId) {
+  try {
+    const v = JSON.parse(localStorage.getItem(PRICE_KEY(orgId)) || 'null')
+    return v && Number(v.price) > 0 ? { price: Number(v.price), currency: String(v.currency || 'USD') } : null
+  } catch { return null }
+}
+
+export function setCreditPrice(orgId, price, currency = 'USD') {
+  try {
+    if (Number(price) > 0) localStorage.setItem(PRICE_KEY(orgId), JSON.stringify({ price: Number(price), currency }))
+    else localStorage.removeItem(PRICE_KEY(orgId))
+  } catch { /* private window */ }
+}
+
+/** Credits as money text ("$1,234"), or '' without a price. Small amounts keep cents. */
+export function moneyText(credits, p) {
+  if (!p || credits == null || !Number.isFinite(Number(credits))) return ''
+  const v = Number(credits) * p.price
+  try {
+    return v.toLocaleString(undefined, { style: 'currency', currency: p.currency, maximumFractionDigits: Math.abs(v) < 100 ? 2 : 0 })
+  } catch {
+    return `${p.currency} ${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+  }
+}
+
+/** The usage type multipliers, as stored. */
+export function multipliersSql(objectName) {
+  return `SELECT *\nFROM ${objectName}\nLIMIT 500`
 }

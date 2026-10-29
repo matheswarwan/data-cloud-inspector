@@ -1,4 +1,6 @@
+import { reactive } from 'vue'
 import { isOn } from '../lib/features.js'
+import { pageListed } from '../lib/optionalPages.js'
 import { createRouter, createWebHashHistory } from 'vue-router'
 import ProfileView from '../views/ProfileView.vue'
 import SqlView from '../views/SqlView.vue'
@@ -51,7 +53,13 @@ export const ALL_NAV = [
   { path: '/health', label: 'Health', icon: 'HeartPulse', group: 5, job: 'health:', feature: 'health' },
   { path: '/connection', label: 'Connection check', icon: 'Plug', group: 5, feature: 'connection' },
 ]
-export const NAV = ALL_NAV.filter((n) => isOn(n.feature))
+// Reactive, so turning an optional page on or off in Settings updates the sidebar, Home and
+// search at once (feedback #1041).
+export const NAV = reactive([])
+export function refreshNav() {
+  NAV.splice(0, NAV.length, ...ALL_NAV.filter((n) => isOn(n.feature) && pageListed(n.feature)))
+}
+refreshNav()
 
 export function createAppRouter() {
   const router = createRouter({

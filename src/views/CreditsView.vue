@@ -16,7 +16,7 @@ import SqlBlock from '../components/SqlBlock.vue'
 import { useOrg, currentOrg, orgName, orgTitle } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
-import { findCreditObjects, probeCreditObjects, guessFields, dailySql, totalsSql, orgsSql, shapeDaily, shapeTotals, sortEnvs, envName, forecast, balances } from '../lib/credits.js'
+import { findCreditObjects, probeCreditObjects, guessFields, dailySql, totalsSql, orgsSql, shapeDaily, shapeTotals, sortEnvs, envName, forecast, balances, creditPrice, setCreditPrice, moneyText, multipliersSql } from '../lib/credits.js'
 
 const org = useOrg()
 const catalog = useCatalog()
@@ -85,8 +85,12 @@ const sqlText = computed(() => {
   parts.push(totalsSql(source.value, fields.value))
   if (fields.value.org) parts.push(orgsSql(source.value, fields.value))
   if (ent.value && entFields.value.amount) parts.push(totalsSql(ent.value, { ...entFields.value, date: '', status: '' }))
+  if (multObject.value) parts.push(multipliersSql(multObject.value))
   return parts.join(';\n\n')
 })
+
+// The usage type multipliers (rate card), read as stored when Digital Wallet has the DLO (feedback #1042).
+const multObject = computed(() => found.value.find((x) => x.role.id === 'multipliers')?.object.name || '')
 
 async function read() {
   if (!ready.value) return
@@ -100,11 +104,12 @@ async function read() {
       fields.value.org ? run(orgsSql(source.value, fields.value)).catch((err) => ({ error: err.message })) : null,
       ent.value && entFields.value.amount ? run(totalsSql(ent.value, { ...entFields.value, date: '', status: '', env: '' })).catch((err) => ({ error: err.message })) : null,
     ])
+    const m = multObject.value ? await run(multipliersSql(multObject.value)).catch((err) => ({ error: err.message })) : null
     const shaped = shapeDaily(d.rows, { days: days.value })
     const consumedAll = shapeTotals(all.rows)
     const byOrg = o?.rows ? o.rows.map(([env, id, total, first, last]) => ({ env: envName(env), id: id || '', total: Number(total) || 0, first: first || '', last: last || '' })) : null
     const entitlements = e?.rows ? shapeTotals(e.rows).map(({ name, total }) => ({ name, total })) : null
-    result.value = { ...shaped, consumedAll, byOrg, orgError: o?.error || '', entitlements, entError: e?.error || '', at: new Date() }
+    result.value = { ...shaped, consumedAll, byOrg, orgError: o?.error || '', entitlements, entError: e?.error || '', multipliers: m, at: new Date() }
     if (!(view.value in shaped.envs)) view.value = 'all'
   } catch (err) {
     error.value = err.message
@@ -155,6 +160,19 @@ const envRows = computed(() => {
   })
 })
 
+// Price per credit (feedback #1042): from the user's contract, per org, for money estimates.
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'INR', 'JPY']
+const price = ref(creditPrice(org.orgId))
+const priceInput = ref(price.value ? String(price.value.price) : '')
+const currency = ref(price.value?.currency || 'USD')
+watch(() => org.orgId, (id) => { price.value = creditPrice(id); priceInput.value = price.value ? String(price.value.price) : ''; currency.value = price.value?.currency || 'USD' })
+function savePrice() {
+  setCreditPrice(org.orgId, priceInput.value, currency.value)
+  price.value = creditPrice(org.orgId)
+}
+const money = (credits) => moneyText(credits, price.value)
+const multCols = computed(() => (result.value?.multipliers?.columns || []).map((c, i) => ({ key: String(i), label: c.name, value: (r) => r[i] })))
+
 // Chart: the last 90 days and 30 days ahead, one bar per day
 const chart = computed(() => {
   if (!shown.value || !fc.value) return null
@@ -177,6 +195,11 @@ const chart = computed(() => {
     split: pad + past.length * bw,
   }
 })
+// The day under the pointer, with what used its credits (feedback #1042).
+const hoverIdx = ref(-1)
+const hoverBar = computed(() => chart.value?.bars[hoverIdx.value] || null)
+const hoverLeft = computed(() => (hoverBar.value ? ((hoverBar.value.x + hoverBar.value.w / 2) / chart.value.W) * 100 : 0))
+const share = (part, total) => (total ? `${Math.round((part / total) * 100)}%` : '')
 
 const n0 = (v) => (v == null ? '—' : Math.round(v).toLocaleString())
 const n2 = (v) => (v == null ? '—' : Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }))
@@ -325,7 +348,7 @@ const btn = 'dci-btn'
         <div class="flex flex-wrap items-center gap-2">
           <button class="dci-btn-primary" :disabled="busy || !ready" @click="read"><RefreshCw class="w-4 h-4" /> {{ result ? 'Read again' : 'Read consumption' }}</button>
           <button :class="btn" :disabled="!ready" @click="sqlShown = !sqlShown">{{ sqlShown ? 'Hide SQL' : 'Show SQL' }}</button>
-          <span class="text-xs text-muted-foreground">Runs 2 to 4 read-only queries, which use a few query credits themselves.</span>
+          <span class="text-xs text-muted-foreground">Runs 2 to 5 read-only queries, which use a few query credits themselves.</span>
         </div>
         <SqlBlock v-if="sqlShown" :code="sqlText" box-class="max-h-72" />
       </div>
@@ -342,11 +365,19 @@ const btn = 'dci-btn'
           <p class="text-xs text-muted-foreground">Read {{ result.at.toLocaleString() }}.</p>
           <span class="ml-auto"><DownloadMenu :get-doc="doc" :get-sheets="sheets" :file-name="`data-cloud-credits-${orgName(org.orgId)}`" /></span>
         </div>
+        <form class="flex flex-wrap items-center gap-2 text-sm" aria-label="Price per credit" @submit.prevent="savePrice">
+          <label class="flex items-center gap-1.5">Price per credit
+            <input v-model="priceInput" inputmode="decimal" placeholder="e.g. 0.001" class="w-28 border rounded-md px-2 py-1 bg-background" aria-label="Price per credit" @change="savePrice" />
+          </label>
+          <select v-model="currency" :class="sel" aria-label="Currency" @change="savePrice"><option v-for="c in CURRENCIES" :key="c" :value="c">{{ c }}</option></select>
+          <span class="text-xs text-muted-foreground">{{ price ? `Money figures use ${price.price} ${price.currency} a credit (${moneyText(1000, price)} per 1,000 credits), saved for this org in this browser.` : 'From your Salesforce contract (Salesforce does not show the price to the API). Leave empty for credits only.' }}</span>
+          <HelpTip topic="credits-price" />
+        </form>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">Used, last 30 days</div><div class="text-xl font-semibold">{{ n0(fc.last30) }}</div><div class="text-xs text-muted-foreground">{{ n2(fc.avg30) }} a day; 7-day average {{ n2(fc.avg7) }}</div></div>
-          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">Next 30 days (projected)</div><div class="text-xl font-semibold">{{ n0(fc.next30) }}</div><div class="text-xs text-muted-foreground">trend {{ fc.trend }}; next 90 days {{ n0(fc.next90) }}</div></div>
-          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">To the end of the year (projected)</div><div class="text-xl font-semibold">{{ n0(fc.toYearEnd) }}</div><div class="text-xs text-muted-foreground">this month {{ n0(fc.toMonthEnd) }} more</div></div>
-          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">Left (purchased minus used, all environments)</div><div class="text-xl font-semibold">{{ remainingTotal == null ? '—' : n0(remainingTotal) }}</div><div class="text-xs text-muted-foreground">{{ view !== 'all' && remainingTotal != null ? 'shared by every environment; run-out date under All environments' : remainingTotal == null ? (result.entError ? `could not read purchases: ${result.entError}` : 'no purchase data read') : fc.runOutDate ? `runs out around ${fc.runOutDate} (${fc.runOutDays} days)` : 'not used up at this rate' }}</div></div>
+          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">Used, last 30 days</div><div class="text-xl font-semibold">{{ n0(fc.last30) }}</div><div v-if="price" class="text-sm font-medium">{{ money(fc.last30) }}</div><div class="text-xs text-muted-foreground">{{ n2(fc.avg30) }} a day; 7-day average {{ n2(fc.avg7) }}</div></div>
+          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">Next 30 days (projected)</div><div class="text-xl font-semibold">{{ n0(fc.next30) }}</div><div v-if="price" class="text-sm font-medium">{{ money(fc.next30) }}</div><div class="text-xs text-muted-foreground">trend {{ fc.trend }}; next 90 days {{ n0(fc.next90) }}</div></div>
+          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">To the end of the year (projected)</div><div class="text-xl font-semibold">{{ n0(fc.toYearEnd) }}</div><div v-if="price" class="text-sm font-medium">{{ money(fc.toYearEnd) }}</div><div class="text-xs text-muted-foreground">this month {{ n0(fc.toMonthEnd) }} more</div></div>
+          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">Left (purchased minus used, all environments)</div><div class="text-xl font-semibold">{{ remainingTotal == null ? '—' : n0(remainingTotal) }}</div><div v-if="price && remainingTotal != null" class="text-sm font-medium">{{ money(remainingTotal) }}</div><div class="text-xs text-muted-foreground">{{ view !== 'all' && remainingTotal != null ? 'shared by every environment; run-out date under All environments' : remainingTotal == null ? (result.entError ? `could not read purchases: ${result.entError}` : 'no purchase data read') : fc.runOutDate ? `runs out around ${fc.runOutDate} (${fc.runOutDays} days)` : 'not used up at this rate' }}</div></div>
         </div>
 
         <figure v-if="chart" class="border rounded-xl bg-card p-3">
@@ -354,21 +385,46 @@ const btn = 'dci-btn'
             <span>Credits per day{{ view === 'all' ? '' : `, ${view} only` }}: last 90 days, then 30 days projected</span>
             <span v-if="chart.stacked" class="flex items-center gap-3 text-xs font-normal text-muted-foreground"><span v-for="e in envList" :key="e" class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full" :class="envDot(e)"></span>{{ e }}</span></span>
           </figcaption>
+          <div class="relative" @mouseleave="hoverIdx = -1">
           <svg :viewBox="`0 0 ${chart.W} ${chart.H + 18}`" class="w-full h-auto" role="img" :aria-label="`Daily credits, highest ${n0(chart.max)} a day; projected next 30 days ${n0(fc.next30)}`">
             <line :x1="24" :x2="chart.W" :y1="chart.H" :y2="chart.H" class="stroke-border" />
             <text x="0" y="10" class="fill-muted-foreground text-[10px]">{{ n0(chart.max) }}</text>
             <text x="0" :y="chart.H" class="fill-muted-foreground text-[10px]">0</text>
             <line :x1="chart.split" :x2="chart.split" y1="0" :y2="chart.H" class="stroke-muted-foreground" stroke-dasharray="3 3" />
             <text :x="chart.split + 4" y="10" class="fill-muted-foreground text-[10px]">projected</text>
-            <g v-for="b in chart.bars" :key="b.day">
-              <title>{{ b.day }}: {{ n2(b.total) }}{{ b.ahead ? ' (projected)' : chart.stacked ? ` (${b.parts.filter((p) => p.total).map((p) => `${p.env} ${n2(p.total)}`).join(', ')})` : '' }}</title>
-              <rect v-for="(sg, i) in b.segs" :key="i" :x="b.x" :y="sg.y" :width="b.w" :height="Math.max(0, sg.h)" rx="1" :class="envFill(sg.env, b.ahead)" />
-              <rect :x="b.x" y="0" :width="b.w" :height="chart.H" fill="transparent" />
+            <g v-for="(b, i) in chart.bars" :key="b.day" :opacity="hoverIdx >= 0 && hoverIdx !== i ? 0.55 : 1">
+              <rect v-for="(sg, j) in b.segs" :key="j" :x="b.x" :y="sg.y" :width="b.w" :height="Math.max(0, sg.h)" rx="1" :class="envFill(sg.env, b.ahead)" />
+              <rect :x="b.x - 1" y="0" :width="b.w + 2" :height="chart.H" fill="transparent" @mouseenter="hoverIdx = i" />
             </g>
             <text :x="24" :y="chart.H + 14" class="fill-muted-foreground text-[10px]">{{ chart.bars[0]?.day }}</text>
             <text :x="chart.W" :y="chart.H + 14" text-anchor="end" class="fill-muted-foreground text-[10px]">{{ chart.bars[chart.bars.length - 1]?.day }}</text>
           </svg>
-          <p class="text-xs text-muted-foreground mt-1">Hover a bar for its day. The projection is a straight line through the last 90 days (today, still counting, is left out). An estimate, not a bill: the Digital Wallet in Setup is the record.</p>
+          <div
+            v-if="hoverBar" class="absolute top-0 z-20 w-72 rounded-lg border bg-popover text-popover-foreground shadow-lg p-2.5 text-xs pointer-events-none"
+            :style="{ left: `clamp(0px, calc(${hoverLeft}% - 9rem), calc(100% - 18rem))`, transform: 'translateY(-100%)' }" aria-live="polite"
+          >
+            <div class="flex items-baseline justify-between gap-2"><span class="font-semibold text-sm">{{ n2(hoverBar.total) }} credits</span><span v-if="money(hoverBar.total)" class="font-medium">{{ money(hoverBar.total) }}</span></div>
+            <div class="text-muted-foreground">{{ hoverBar.day }}{{ hoverBar.ahead ? ', projected from the trend' : '' }}</div>
+            <template v-if="!hoverBar.ahead">
+              <div v-if="chart.stacked" class="mt-1.5 space-y-0.5">
+                <div v-for="p in hoverBar.parts.filter((x) => x.total)" :key="p.env" class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full shrink-0" :class="envDot(p.env)"></span><span class="flex-1">{{ p.env }}</span><span class="tabular-nums">{{ n2(p.total) }}</span></div>
+              </div>
+              <div v-if="hoverBar.groups?.length" class="mt-2">
+                <div class="text-muted-foreground mb-0.5">{{ fields.group ? 'Used by' : 'Total' }}</div>
+                <div v-for="g in hoverBar.groups.slice(0, 8)" :key="g.name" class="flex items-baseline gap-2">
+                  <span class="flex-1 min-w-0 truncate" :title="g.name">{{ g.name }}</span>
+                  <span class="tabular-nums">{{ n2(g.total) }}</span>
+                  <span class="w-9 text-right text-muted-foreground tabular-nums">{{ share(g.total, hoverBar.total) }}</span>
+                  <span v-if="price" class="w-16 text-right tabular-nums">{{ money(g.total) }}</span>
+                </div>
+                <div v-if="hoverBar.groups.length > 8" class="text-muted-foreground">and {{ hoverBar.groups.length - 8 }} more</div>
+              </div>
+              <div v-else-if="!hoverBar.total" class="mt-1 text-muted-foreground">No credits used.</div>
+            </template>
+            <div v-if="!price" class="mt-2 text-muted-foreground">Set a price per credit above the chart for money estimates.</div>
+          </div>
+          </div>
+          <p class="text-xs text-muted-foreground mt-1">Hover a bar for its day and what used the credits. The projection is a straight line through the last 90 days (today, still counting, is left out). An estimate, not a bill: the Digital Wallet in Setup is the record.</p>
         </figure>
 
         <div v-if="fields.env && envRows.length" class="space-y-1">
@@ -396,6 +452,15 @@ const btn = 'dci-btn'
             <template #cell-purchased="{ value }">{{ n2(value) }}</template><template #cell-consumed="{ value }">{{ n2(value) }}</template><template #cell-remaining="{ value }">{{ n2(value) }}</template>
           </DataTable>
           <p class="text-xs text-muted-foreground">Left is purchased minus used for cards whose names match on both sides; check signs and units against the Digital Wallet before relying on it.</p>
+        </div>
+        <div class="space-y-1">
+          <div class="text-sm font-medium">Usage type multipliers (rate card)</div>
+          <p v-if="!multObject" class="text-xs text-muted-foreground">Not found: Digital Wallet's TenantUsageTypeMultiplier DLO is not in this data space. It lists how many credits each unit of usage costs; add its stream in Digital Wallet setup to see it here.</p>
+          <p v-else-if="result.multipliers?.error" class="text-xs text-destructive">Could not read {{ multObject }}: {{ result.multipliers.error }}</p>
+          <template v-else-if="result.multipliers">
+            <DataTable :columns="multCols" :rows="result.multipliers.rows" text-size="text-xs" box-class="max-h-80" empty="No multipliers stored." />
+            <p class="text-xs text-muted-foreground">From <RouterLink :to="`/objects/${multObject}`" class="font-mono text-link hover:underline">{{ multObject }}</RouterLink>, as stored: credits = usage × multiplier.</p>
+          </template>
         </div>
       </template>
     </template>

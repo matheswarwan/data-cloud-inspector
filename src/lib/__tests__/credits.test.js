@@ -97,3 +97,33 @@ describe('probing the Wallet DLOs (feedback #1011)', () => {
     expect(findCreditObjects(list).map((x) => x.role.id)).toEqual(['events'])
   })
 })
+
+describe('credits per day by card and money (feedback #1042)', () => {
+  it('lists what used the credits each day, for all and per environment', async () => {
+    const { shapeDaily } = await import('../credits.js')
+    const now = new Date('2026-10-29T12:00:00Z')
+    const r = shapeDaily([
+      ['2026-10-28', 'PlatformServicesCard', 'Production', 100],
+      ['2026-10-28', 'DataStorageCard', 'Production', 5],
+      ['2026-10-28', 'PlatformServicesCard', 'Sandbox', 20],
+    ], { days: 3, now })
+    const day = r.series.find((p) => p.day === '2026-10-28')
+    expect(day.total).toBe(125)
+    expect(day.groups).toEqual([{ name: 'PlatformServicesCard', total: 120 }, { name: 'DataStorageCard', total: 5 }])
+    expect(r.envs.Sandbox.series.find((p) => p.day === '2026-10-28').groups).toEqual([{ name: 'PlatformServicesCard', total: 20 }])
+    expect(r.series.find((p) => p.day === '2026-10-27').groups).toEqual([])
+  })
+  it('keeps a price per org and shows money', async () => {
+    const { creditPrice, setCreditPrice, moneyText } = await import('../credits.js')
+    localStorage.clear()
+    expect(creditPrice('00D000000000001AAA')).toBe(null)
+    setCreditPrice('00D000000000001AAA', '0.001', 'USD')
+    const p = creditPrice('00D000000000001')
+    expect(p).toEqual({ price: 0.001, currency: 'USD' })
+    expect(moneyText(1000, p)).toMatch(/\$1\.00$/)
+    expect(moneyText(1234567, p)).toMatch(/\$1,235$/)
+    expect(moneyText(10, null)).toBe('')
+    setCreditPrice('00D000000000001AAA', '')
+    expect(creditPrice('00D000000000001AAA')).toBe(null)
+  })
+})

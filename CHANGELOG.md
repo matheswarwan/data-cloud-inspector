@@ -17,6 +17,16 @@ Security and privacy changes for enterprise review (`security/audits/1.0.7-0b0cf
 - Read-only guard: only `/services/data/` paths (Apex REST and other `/services/` paths refused).
 - Privacy policy from one source (`PRIVACY.md`), bundled in the extension (Help, Settings, Home) and hosted; publisher Ateko. `SECURITY.md`, `docs/security-summary.md`, `docs/enterprise-deployment.md`, reproducible build with SHA-256 (`npm run package`).
 
+**New and fixed since 1.0.7** (feedback #1023 to #1042):
+
+- Search box on every table; Help lists what changed in each version (this page).
+- Segments: counts, person check and publish history first, criteria folded; segment ID with Copy and search by ID; Members table, 100 at a time with names; for segments never published, who matches the criteria now; publish history chart shows each publish's count and change on hover; the person check reads the membership history and nested segments.
+- Profiles keeps the search, its results and the profiles opened while the app is open, with a results bar to step through them.
+- Insights: filter the Data tab by values of one column (pasted IDs), with the SQL to open; the Download menu is no longer cut off.
+- Credit prediction: hover a day for the cards or usage types that used its credits; price per credit for money estimates; usage type multipliers (rate card) when Digital Wallet has them.
+- SQL: field autocomplete without a table prefix, objects grouped by use with Individual first. DLO mapping diagram on Objects. Side lists fit their cards.
+- Personalization, Marketing flows and Campaigns are hidden until turned on in Settings > Pages.
+
 ## 1.0.7 (2026-10-27)
 
 No permission changes. Connection menu Load everything; segment criteria in words; user details on Home; org data kept in this browser and refreshed in the background; Personalization record panels; JSON graphs as PNG/SVG; Credit prediction setup; Look it up in Data Cloud on Objects; Open in Diagramforce; Marketing Cloud Next (consent, message history, Marketing flows, Campaigns, Health checks); stream SQL; paged tables; flow diagrams; foldable Home sections with Log in with OAuth; feature switches.

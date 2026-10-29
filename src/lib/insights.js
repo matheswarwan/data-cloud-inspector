@@ -3,6 +3,7 @@
 // it does not always run as is in the query API) and dimensions and measures with formulas.
 
 import { decodeHtml } from './segments.js'
+import { lit } from './profile.js'
 
 /** The API name to ask for: granularity variants (…__cio_DAY) are not valid API names. */
 export function baseInsightName(name) {
@@ -52,4 +53,22 @@ export async function loadInsight(call, version, name) {
   const ci = normalizeInsight(res.data || {})
   cache.set(key, ci)
   return ci
+}
+
+/** Most values a Data tab filter takes (feedback #1040). */
+export const FILTER_MAX = 1000
+
+/**
+ * SQL for the Data tab filtered to rows whose `column` is one of `values` (feedback #1040):
+ * `{ sql, count }`, or `{ error }`. Numbers go in unquoted when the column is numeric and every
+ * value is a number; everything else is quoted text.
+ */
+export function filterSql(table, column, values, { numeric = false, limit = 2000 } = {}) {
+  if (!column) return { error: 'Pick a column.' }
+  if (!values.length) return { error: 'Enter at least one value.' }
+  if (values.length > FILTER_MAX) return { error: `At most ${FILTER_MAX.toLocaleString()} values at a time (${values.length.toLocaleString()} entered).` }
+  const asNumbers = numeric && values.every((v) => /^-?\d+(\.\d+)?$/.test(v))
+  const list = values.map((v) => (asNumbers ? v : lit(v))).join(', ')
+  const where = values.length === 1 ? `${column} = ${list}` : `${column} IN (${list})`
+  return { sql: `SELECT *\nFROM ${table}\nWHERE ${where}\nLIMIT ${limit}`, count: values.length }
 }
