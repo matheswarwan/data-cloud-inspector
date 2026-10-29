@@ -20,7 +20,7 @@ import { inSpace } from '../lib/dataSpace.js'
 import { parseRulesets, search, INDIVIDUAL } from '../lib/profile.js'
 import { useSegments, ensureSegments } from '../app/useSegments.js'
 import {
-  describeCriteria, topConditions, segmentSql, membershipTables, membershipCount, publishHistory, checkMembers, personHistory, segmentNames, loadMembers, membersSql,
+  describeCriteria, topConditions, segmentSql, membershipTables, membershipCount, publishHistory, checkMembers, personHistory, segmentNames, loadMembers, membersSql, loadMatching, matchingSql,
   SEGMENT_SORTS, sortSegments,
 } from '../lib/segments.js'
 
@@ -45,8 +45,8 @@ const checkResult = ref(null) // { rows: [{ name, id, member, memberSince, match
 const notice = ref('')
 // Who is in the segment (feedback #1031): pages of 100 from the latest membership table, on request.
 const PAGE = 100
-const members = ref(null) // { rows, loading, error, done }
-const memberCols = [{ key: 'name', label: 'Name' }, { key: 'id', label: 'ID' }, { key: 'since', label: 'In the segment since' }]
+const members = ref(null) // { rows, loading, error, done, source: 'table' | 'criteria' }
+const memberCols = computed(() => [{ key: 'name', label: 'Name' }, { key: 'id', label: 'ID' }, ...(members.value?.source === 'criteria' ? [] : [{ key: 'since', label: 'In the segment since' }])])
 
 const load = (refresh = false) => ensureSegments({ refresh }).catch(() => { /* shown from store.error */ })
 onMounted(() => { ensureCatalog(); load() })
@@ -180,16 +180,19 @@ function historyLine(e) {
   return bits.join(', ')
 }
 
-async function moreMembers() {
+// Membership tables are filled only when a segment publishes (feedback #1033). Without
+// members there, the people matching the criteria now are offered instead.
+async function moreMembers(source = members.value?.source || 'table') {
   const s = seg.value
   const table = detail.value?.latest
-  if (!s || !table) return
-  if (!members.value) members.value = { rows: [], loading: false, error: '', done: false }
+  if (!s || (source === 'table' && !table)) return
+  if (!members.value || members.value.source !== source) members.value = { rows: [], loading: false, error: '', done: false, source }
   const m = members.value // the reactive copy, so changes show
   m.loading = true
   m.error = ''
   try {
-    const page = await loadMembers(q, s, catalog.objects, table, { limit: PAGE, offset: m.rows.length })
+    const opts = { limit: PAGE, offset: m.rows.length }
+    const page = source === 'criteria' ? await loadMatching(q, s, catalog.objects, opts) : await loadMembers(q, s, catalog.objects, table, opts)
     if (seg.value !== s) return
     m.rows.push(...page.map((r) => ({ ...r, since: when(r.since) })))
     m.done = page.length < PAGE
@@ -357,12 +360,18 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
         <div :class="card">
           <h3 class="px-5 py-3.5 border-b text-base font-semibold flex items-center gap-2">Members <span v-if="members?.rows.length" class="dci-count">{{ members.rows.length.toLocaleString() }}{{ members.done ? '' : '+' }}</span></h3>
           <div class="p-3 space-y-2 text-sm">
-            <p v-if="!detail?.loading && !detail?.latest" class="text-muted-foreground">No membership table found for {{ seg.on }}.</p>
-            <template v-else>
+            <p v-if="!detail?.loading && (!detail?.latest || detail.latestCount === 0)" class="text-muted-foreground">
+              {{ detail?.latest ? 'The membership table has nobody for this segment' : `No membership table found for ${seg.on}` }}{{ /success/i.test(seg.publishStatus) ? '.' : ': Data Cloud fills it only when a segment publishes, and this one has not published successfully.' }}
+              The member count comes from Data Cloud's own count. You can list the people matching the criteria now instead.
+            </p>
+            <template v-if="detail && !detail.loading">
               <div class="flex flex-wrap gap-2">
-                <button v-if="!members" class="dci-btn" :disabled="detail?.loading" @click="moreMembers">Show members</button>
-                <button v-if="detail?.latest" class="dci-btn" @click="toSql(membersSql(seg, detail.latest, { limit: 1000 }))">Open in SQL</button>
+                <button v-if="detail.latest && detail.latestCount !== 0 && members?.source !== 'table'" class="dci-btn" @click="moreMembers('table')">Show members</button>
+                <button v-if="members?.source !== 'criteria'" class="dci-btn" :disabled="!!sql?.error" :title="sql?.error || 'People matching the criteria now (from the SQL built from the criteria)'" @click="moreMembers('criteria')">Show who matches the criteria now</button>
+                <button v-if="members?.source === 'criteria' && !matchingSql(seg, catalog.objects).error" class="dci-btn" @click="toSql(matchingSql(seg, catalog.objects, { limit: 1000 }).sql)">Open in SQL</button>
+                <button v-else-if="detail.latest" class="dci-btn" @click="toSql(membersSql(seg, detail.latest, { limit: 1000 }))">Open in SQL</button>
               </div>
+              <p v-if="sql?.error && members?.source !== 'table'" class="text-xs text-muted-foreground">Matching the criteria cannot be listed: {{ sql.error }}</p>
               <p v-if="members?.error" class="text-destructive">{{ members.error }}</p>
               <DataTable v-if="members?.rows.length" :columns="memberCols" :rows="members.rows" :row-key="(r) => r.id" text-size="text-xs">
                 <template #cell-name="{ row }">
@@ -370,10 +379,10 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
                 </template>
                 <template #cell-id="{ row }"><span class="font-mono">{{ row.id }}</span></template>
               </DataTable>
-              <p v-else-if="members && !members.loading && !members.error" class="text-muted-foreground">Nobody in the membership table for this segment.</p>
+              <p v-else-if="members && !members.loading && !members.error" class="text-muted-foreground">{{ members.source === 'criteria' ? 'Nobody matches the criteria now.' : 'Nobody in the membership table for this segment.' }}</p>
               <Loading v-if="members?.loading" text="Loading members…" />
               <button v-else-if="members?.rows.length && !members.done" class="dci-btn" @click="moreMembers">Load {{ PAGE }} more</button>
-              <p v-if="members?.rows.length" class="text-xs text-muted-foreground">From {{ detail.latest }}, {{ PAGE }} at a time in ID order. Sorting and filters apply to the rows loaded.</p>
+              <p v-if="members?.rows.length" class="text-xs text-muted-foreground">{{ members.source === 'criteria' ? `Matching the criteria now (approximate, from the SQL built from the criteria), not the published membership` : `From ${detail.latest}` }}; {{ PAGE }} at a time in ID order. Sorting and filters apply to the rows loaded.</p>
             </template>
           </div>
         </div>

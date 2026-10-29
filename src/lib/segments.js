@@ -406,6 +406,27 @@ export function membersSql(seg, latestTable, { limit = 100, offset = 0 } = {}) {
  */
 export async function loadMembers(q, seg, catalog, latestTable, { limit = 100, offset = 0 } = {}) {
   const rows = toObjects(await q(membersSql(seg, latestTable, { limit, offset })))
+  return withNames(q, seg, catalog, rows)
+}
+
+/**
+ * SQL for one page of the records matching the criteria now (feedback #1033: a segment that
+ * never published has nothing in the membership tables), or `{ error }`.
+ */
+export function matchingSql(seg, catalog, { limit = 100, offset = 0 } = {}) {
+  const sql = segmentSql(seg, catalog)
+  if (sql.error) return sql
+  const pk = primaryKey(seg.on, catalog)
+  return { sql: `SELECT s.${pk} AS id FROM ${seg.on} s WHERE ${sql.where} ORDER BY s.${pk} LIMIT ${limit}${offset ? ` OFFSET ${offset}` : ''}` }
+}
+
+export async function loadMatching(q, seg, catalog, { limit = 100, offset = 0 } = {}) {
+  const m = matchingSql(seg, catalog, { limit, offset })
+  if (m.error) throw new Error(m.error)
+  return withNames(q, seg, catalog, toObjects(await q(m.sql)))
+}
+
+async function withNames(q, seg, catalog, rows) {
   const obj = catalog.find((o) => o.name === seg.on)
   const have = NAME_FIELDS.filter(([, f]) => obj?.fields?.some((x) => x.name === f))
   const names = new Map()

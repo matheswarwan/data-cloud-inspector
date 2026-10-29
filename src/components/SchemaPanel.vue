@@ -6,6 +6,7 @@ import Loading from './Loading.vue'
 import { ChevronRight, ChevronDown } from 'lucide-vue-next'
 import { useCatalog } from '../app/useCatalog.js'
 import { filterObjects } from '../lib/catalog.js'
+import { groupObjects } from '../lib/objectGroups.js'
 
 const emit = defineEmits(['insert'])
 const catalog = useCatalog()
@@ -14,7 +15,13 @@ const open = ref(null) // object name
 const fieldText = ref('')
 const ticked = ref([])
 
-const list = computed(() => filterObjects(catalog.objects, { text: text.value }).slice(0, 300))
+// Grouped and ordered by likely use (feedback #1035), at most 300 objects shown.
+const groups = computed(() => {
+  let left = 300
+  return groupObjects(filterObjects(catalog.objects, { text: text.value }))
+    .map((g) => { const objects = g.objects.slice(0, Math.max(0, left)); left -= objects.length; return { ...g, objects } })
+    .filter((g) => g.objects.length)
+})
 const selected = computed(() => catalog.objects.find((o) => o.name === open.value) || null)
 const fields = computed(() => {
   const t = fieldText.value.trim().toLowerCase()
@@ -39,7 +46,9 @@ function selectSql(o) {
     <input v-model="text" placeholder="Search objects" class="w-full border rounded-md px-2 py-1 bg-background" />
     <Loading v-if="catalog.loading" text="Loading objects…" />
     <ul class="max-h-[70vh] overflow-auto">
-      <li v-for="o in list" :key="o.name">
+      <template v-for="g in groups" :key="g.key">
+      <li class="sticky top-0 z-10 bg-card px-1 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{{ g.label }} <span class="font-normal">{{ g.objects.length }}</span></li>
+      <li v-for="o in g.objects" :key="o.name">
         <button class="w-full text-left px-1 py-1 rounded hover:bg-accent flex items-start gap-1" :title="o.name" @click="toggle(o.name)">
           <component :is="open === o.name ? ChevronDown : ChevronRight" class="w-3.5 h-3.5 mt-1 shrink-0 text-muted-foreground" />
           <span class="min-w-0">
@@ -63,6 +72,7 @@ function selectSql(o) {
           </ul>
         </div>
       </li>
+      </template>
     </ul>
   </div>
 </template>
