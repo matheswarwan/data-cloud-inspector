@@ -269,16 +269,25 @@ export function membershipTables(seg, catalog) {
   return { latest: latest?.name || null, history: history?.name || null }
 }
 
+// Membership tables hold the 15-character segment ID; match the 18-character one too in case
+// an org stores that.
+export function segIdIn(seg) {
+  return `IN ${inList([...new Set([seg.id15, seg.id].filter(Boolean))])}`
+}
+
+/** The first 15 characters of a Salesforce ID (membership tables use either length). */
+export const id15 = (id) => String(id || '').slice(0, 15)
+
 export async function membershipCount(q, table, seg) {
   if (!table) return null
-  const r = toObjects(await q(`SELECT COUNT(*) AS n FROM ${table} WHERE Segment_Id__c = ${lit(seg.id15)}`))
+  const r = toObjects(await q(`SELECT COUNT(*) AS n FROM ${table} WHERE Segment_Id__c ${segIdIn(seg)}`))
   return Number(r[0]?.n ?? 0)
 }
 
 /** One row per publish, newest first: `{ version, at, members, added, removed }`. */
 export async function publishHistory(q, table, seg) {
   if (!table) return []
-  const rows = toObjects(await q(`SELECT Version_Stamp__c AS version, Snapshot_Type__c AS snapshot, Delta_Type__c AS delta, MIN(Timestamp__c) AS at, COUNT(*) AS n FROM ${table} WHERE Segment_Id__c = ${lit(seg.id15)} GROUP BY Version_Stamp__c, Snapshot_Type__c, Delta_Type__c ORDER BY Version_Stamp__c DESC LIMIT 400`))
+  const rows = toObjects(await q(`SELECT Version_Stamp__c AS version, Snapshot_Type__c AS snapshot, Delta_Type__c AS delta, MIN(Timestamp__c) AS at, COUNT(*) AS n FROM ${table} WHERE Segment_Id__c ${segIdIn(seg)} GROUP BY Version_Stamp__c, Snapshot_Type__c, Delta_Type__c ORDER BY Version_Stamp__c DESC LIMIT 400`))
   const byVersion = new Map()
   for (const r of rows) {
     const v = byVersion.get(r.version) || { version: r.version, at: r.at, members: 0, deltas: {}, snapshot: r.snapshot || '' }
@@ -322,7 +331,7 @@ export async function checkMembers(q, seg, catalog, ids, latestTable) {
   const pk = primaryKey(seg.on, catalog)
   const sql = segmentSql(seg, catalog)
   const [members, matching] = await Promise.all([
-    latestTable ? q(`SELECT Id__c AS id, Timestamp__c AS at FROM ${latestTable} WHERE Segment_Id__c = ${lit(seg.id15)} AND Id__c IN ${list}`).then(toObjects) : [],
+    latestTable ? q(`SELECT Id__c AS id, Timestamp__c AS at FROM ${latestTable} WHERE Segment_Id__c ${segIdIn(seg)} AND Id__c IN ${list}`).then(toObjects) : [],
     sql.error ? null : q(`SELECT s.${pk} AS id FROM ${seg.on} s WHERE s.${pk} IN ${list} AND ${sql.where}`).then(toObjects),
   ])
   const conds = topConditions(seg.criteria)
@@ -344,4 +353,26 @@ export async function checkMembers(q, seg, catalog, ids, latestTable) {
     matchesNow: matchSet ? matchSet.has(id) : null,
     failing: failing.get(id),
   }))
+}
+
+/**
+ * Every segment `ids` appear in, from a membership history table (feedback #1028): one entry per
+ * person and segment, newest publish first.
+ * `Map(id -> [{ segmentId, parentId, at, version, delta, snapshot, leaving, publishes }])`
+ */
+export async function personHistory(q, historyTable, ids) {
+  const list = inList(ids)
+  const out = new Map(ids.map((id) => [id, []]))
+  if (!historyTable || !list) return out
+  const rows = toObjects(await q(`SELECT Id__c AS id, Segment_Id__c AS seg, Parent_Segment_Id__c AS parent, Delta_Type__c AS delta, Snapshot_Type__c AS snapshot, Timestamp__c AS at, Version_Stamp__c AS version FROM ${historyTable} WHERE Id__c IN ${list} ORDER BY Timestamp__c DESC LIMIT 5000`))
+  const seen = new Map()
+  for (const r of rows) {
+    const key = `${r.id}|${id15(r.seg)}`
+    const had = seen.get(key)
+    if (had) { had.publishes += 1; continue }
+    const e = { segmentId: id15(r.seg), parentId: r.parent ? id15(r.parent) : '', at: r.at || '', version: r.version ?? '', delta: r.delta || '', snapshot: r.snapshot || '', leaving: LEAVES.test(r.delta || ''), publishes: 1 }
+    seen.set(key, e)
+    out.get(r.id)?.push(e)
+  }
+  return out
 }

@@ -18,6 +18,7 @@ import { loadInsight, baseInsightName } from '../lib/insights.js'
 import InsightDefinition from '../components/InsightDefinition.vue'
 import { filterObjects, selectFor, objectMarkdown, lookupName, lookupObject } from '../lib/catalog.js'
 import { loadMappings } from '../lib/lineage.js'
+import MappingDiagram from '../components/MappingDiagram.vue'
 import { runQuery } from '../lib/query.js'
 
 const route = useRoute()
@@ -37,6 +38,8 @@ const notice = ref('')
 const counts = reactive({}) // object name -> number | 'counting' | error text
 const mappings = reactive({ name: '', list: null, error: '', loading: false })
 const feeds = ref(null) // DMOs a DLO maps to
+const mapView = ref((() => { try { return localStorage.getItem('dci_mapView') || 'diagram' } catch { return 'diagram' } })())
+function setMapView(v) { mapView.value = v; try { localStorage.setItem('dci_mapView', v) } catch { /* not kept */ } }
 
 onMounted(() => { ensureCatalog(); if (typeof route.query.field === 'string') fieldText.value = route.query.field })
 // Wait for the API version: on a fresh page load the route is known before the org is.
@@ -174,6 +177,8 @@ watch(tab, async (t) => {
   const o = selected.value
   if (!o || t !== 'sources') return
   ensureStreams()
+  // Mappings already read (Preload or an earlier search): show the DLO's at once (feedback #1027).
+  if (o.kind === 'DLO' && !feeds.value && catalog.mappings) feeds.value = catalog.mappings.filter((m) => m.source === o.name)
   if (o.kind === 'DMO' && mappings.name !== o.name) {
     Object.assign(mappings, { name: o.name, list: null, error: '', loading: true })
     try {
@@ -414,6 +419,7 @@ const tabBtn = (t) => ['dci-tab', tab.value === t ? 'is-on' : '']
           <Loading v-if="mappings.loading" text="Loading mappings…" />
           <p v-else-if="mappings.error" class="text-sm text-destructive">{{ mappings.error }}</p>
           <p v-else-if="mappings.list && !mappings.list.length" class="text-sm text-muted-foreground">Nothing is mapped to this DMO.</p>
+          <div v-if="mappings.list?.length" class="dci-seg"><button :class="['dci-seg-item', mapView === 'diagram' ? 'is-on' : '']" @click="setMapView('diagram')">Diagram</button><button :class="['dci-seg-item', mapView === 'table' ? 'is-on' : '']" @click="setMapView('table')">Table</button></div>
           <div v-for="m in mappings.list || []" :key="m.name" class="border rounded-xl bg-card">
             <div class="p-2 border-b flex flex-wrap items-center gap-2 text-sm">
               <button v-if="byName.has(m.source)" class="font-mono text-link hover:underline" @click="pick(m.source)">{{ m.source }}</button>
@@ -424,7 +430,10 @@ const tabBtn = (t) => ['dci-tab', tab.value === t ? 'is-on' : '']
                 <a :href="recordUrl(currentOrg()?.host, s.recordId)" target="_blank" rel="noopener" class="text-xs px-1.5 rounded bg-muted hover:underline">stream {{ s.label }}: {{ ran(s) }}{{ s.lastRefreshDate ? `, ${time(s.lastRefreshDate)}` : '' }}</a>
               </template>
             </div>
-            <DataTable :columns="mapCols" :rows="m.fields" :row-key="(f) => f.source + f.target" :bordered="false" text-size="text-xs font-mono" />
+            <div class="p-3">
+              <MappingDiagram v-if="mapView === 'diagram'" :mapping="m" :source-object="byName.get(m.source) || null" :target-object="selected" @pick="pick" />
+              <DataTable v-else :columns="mapCols" :rows="m.fields" :row-key="(f) => f.source + f.target" :bordered="false" text-size="text-xs font-mono" />
+            </div>
           </div>
         </div>
 
@@ -454,12 +463,19 @@ const tabBtn = (t) => ['dci-tab', tab.value === t ? 'is-on' : '']
               {{ catalog.mappingsProgress ? `Reading mappings: ${catalog.mappingsProgress}` : 'Find the DMOs this DLO maps to' }}
             </button>
             <p v-else-if="!feeds.length" class="text-sm text-muted-foreground">Not mapped to any DMO.</p>
-            <ul v-else class="text-sm space-y-1">
-              <li v-for="m in feeds" :key="m.name">
-                Maps to <button class="font-mono text-link hover:underline" @click="pick(m.target)">{{ m.target }}</button>
-                <span class="text-muted-foreground"> ({{ m.fields.length }} fields)</span>
-              </li>
-            </ul>
+            <div v-else class="space-y-3">
+              <div class="dci-seg"><button :class="['dci-seg-item', mapView === 'diagram' ? 'is-on' : '']" @click="setMapView('diagram')">Diagram</button><button :class="['dci-seg-item', mapView === 'table' ? 'is-on' : '']" @click="setMapView('table')">Table</button></div>
+              <div v-for="m in feeds" :key="m.name" class="border rounded-xl bg-card">
+                <div class="p-2 border-b flex flex-wrap items-center gap-2 text-sm">
+                  Maps to <button class="font-mono text-link hover:underline" @click="pick(m.target)">{{ m.target }}</button>
+                  <span class="text-muted-foreground">{{ m.fields.length }} fields{{ m.status ? ` · ${m.status}` : '' }}</span>
+                </div>
+                <div class="p-3">
+                  <MappingDiagram v-if="mapView === 'diagram'" :mapping="m" :source-object="selected" :target-object="byName.get(m.target) || null" @pick="pick" />
+                  <DataTable v-else :columns="mapCols" :rows="m.fields" :row-key="(f) => f.source + f.target" :bordered="false" text-size="text-xs font-mono" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

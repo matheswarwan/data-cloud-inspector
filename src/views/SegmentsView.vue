@@ -20,7 +20,7 @@ import { inSpace } from '../lib/dataSpace.js'
 import { parseRulesets, search, INDIVIDUAL } from '../lib/profile.js'
 import { useSegments, ensureSegments } from '../app/useSegments.js'
 import {
-  describeCriteria, topConditions, segmentSql, membershipTables, membershipCount, publishHistory, checkMembers,
+  describeCriteria, topConditions, segmentSql, membershipTables, membershipCount, publishHistory, checkMembers, personHistory,
   SEGMENT_SORTS, sortSegments,
 } from '../lib/segments.js'
 
@@ -119,8 +119,25 @@ async function check() {
       note = `This segment is on ${s.on}; enter that object's record ID.`
     }
     if (!people.length) { checkResult.value = { rows: [], note: note || 'Nobody found.' }; return }
-    const rows = await checkMembers(q, s, catalog.objects, people.map((p) => p.id).slice(0, 50), detail.value?.latest)
-    checkResult.value = { rows: rows.map((r) => ({ ...r, name: people.find((p) => p.id === r.id)?.name || r.id })), note }
+    const ids = people.map((p) => p.id).slice(0, 50)
+    if (people.length > 50) note = [note, `${people.length} people found; checking the first 50. Use an email or ID to narrow it down.`].filter(Boolean).join(' ')
+    // The membership history (feedback #1028) also gives every other segment each person is in.
+    const [rows, history] = await Promise.all([
+      checkMembers(q, s, catalog.objects, ids, detail.value?.latest),
+      personHistory(q, detail.value?.history, ids).catch(() => null),
+    ])
+    const byId = new Map(segments.value.map((x) => [x.id15, x]))
+    const named = (e) => ({ ...e, segment: byId.get(e.segmentId) || null, parent: e.parentId ? byId.get(e.parentId) || null : null })
+    checkResult.value = {
+      historyTable: detail.value?.history || '',
+      historyError: history === null,
+      rows: rows.map((r) => {
+        const all = (history?.get(r.id) || []).map(named)
+        const here = all.find((e) => e.segmentId === s.id15) || null
+        return { ...r, name: people.find((p) => p.id === r.id)?.name || r.id, here, others: all.filter((e) => e !== here) }
+      }),
+      note,
+    }
   } catch (err) {
     checkResult.value = { rows: [], note: `Could not check: ${err.message}` }
   } finally {
@@ -129,11 +146,26 @@ async function check() {
 }
 
 function verdict(r) {
+  // No latest-membership row, but the history says the last publish kept them in.
+  if (!r.member && r.here && !r.here.leaving && isLatestPublish(r.here)) return r.matchesNow === false ? 'Member (from the history), but no longer matches: leaves at the next publish' : 'Member (from the history)'
   if (r.member && r.matchesNow === false) return 'Member, but no longer matches: leaves at the next publish'
   if (r.member) return 'Member'
   if (r.matchesNow) return 'Not a member yet, but matches now: joins at the next publish'
   if (r.matchesNow === false) return 'Not a member, and does not match'
   return 'Not a member (the criteria could not be checked)'
+}
+
+// Whether a history entry is from the segment's latest publish (when the publish history is known).
+function isLatestPublish(e) {
+  const v = detail.value?.versions?.[0]?.version
+  return v == null || String(e.version) === String(v)
+}
+
+function historyLine(e) {
+  const bits = [`latest publish with them ${when(e.at) || e.version}`]
+  if (e.delta) bits.push(e.delta.toLowerCase())
+  if (e.publishes > 1) bits.push(`${e.publishes} history rows`)
+  return bits.join(', ')
 }
 
 function toSql(text) { router.push({ path: '/sql', query: { sql: text } }) }
@@ -263,6 +295,7 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
           </form>
           <div v-if="checkResult" class="px-3 pb-3 space-y-2 text-sm">
             <p v-if="checkResult.note" class="text-xs text-muted-foreground">{{ checkResult.note }}</p>
+            <p v-if="checkResult.historyTable" class="text-xs text-muted-foreground">Membership read from the latest table and the history table <span class="font-mono">{{ checkResult.historyTable }}</span>{{ checkResult.historyError ? ' (the history could not be read)' : '' }}.</p>
             <div v-for="r in checkResult.rows" :key="r.id" class="border rounded-md p-2">
               <div class="flex flex-wrap items-baseline gap-2">
                 <RouterLink :to="seg.on === 'ssot__Individual__dlm' ? `/profile/s/${r.id}` : `/profile/u/${r.id}`" class="text-link hover:underline">{{ r.name }}</RouterLink>
@@ -273,6 +306,19 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
               <ul v-if="r.failing.length" class="text-xs mt-1 list-disc pl-5">
                 <li v-for="i in r.failing" :key="i">Fails: <span class="font-mono">{{ describeCriteria(conditions[i]).map((l) => l.text).join(' ') }}</span></li>
               </ul>
+              <div v-if="r.here" class="text-xs text-muted-foreground mt-1">History: {{ historyLine(r.here) }}{{ r.here.leaving ? ' (left)' : '' }}</div>
+              <div v-if="r.others.length" class="mt-2">
+                <div class="text-xs font-medium">Other segments in the history ({{ r.others.length }})</div>
+                <ul class="text-xs mt-1 space-y-0.5">
+                  <li v-for="e in r.others" :key="e.segmentId" class="flex flex-wrap gap-x-2">
+                    <RouterLink v-if="e.segment" :to="`/segments/${encodeURIComponent(e.segment.apiName)}`" class="text-link hover:underline">{{ e.segment.label }}</RouterLink>
+                    <span v-else class="font-mono">{{ e.segmentId }} <span class="text-muted-foreground">(not in this data space's segment list)</span></span>
+                    <span v-if="e.parentId" class="text-muted-foreground">in {{ e.parent ? e.parent.label : e.parentId }}</span>
+                    <span class="text-muted-foreground">{{ historyLine(e) }}</span>
+                    <span v-if="e.leaving" class="dci-badge dci-badge-amber">left</span>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>

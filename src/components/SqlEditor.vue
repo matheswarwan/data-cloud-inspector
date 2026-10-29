@@ -5,7 +5,8 @@ import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { EditorView, basicSetup } from 'codemirror'
 import { keymap, Decoration } from '@codemirror/view'
 import { EditorState, Compartment, Prec, StateEffect, StateField } from '@codemirror/state'
-import { sql, PostgreSQL } from '@codemirror/lang-sql'
+import { sql, PostgreSQL, SQLDialect } from '@codemirror/lang-sql'
+import { bareFieldSource } from '../lib/sqlComplete.js'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { useSettings } from '../app/useSettings.js'
 
@@ -39,7 +40,13 @@ const flashField = StateField.define({
 })
 let flashTimer = null
 
-const lang = () => sql({ dialect: PostgreSQL, schema: props.schema, upperCaseKeywords: true })
+// Data Cloud names are mixed case (ssot__FirstName__c) and work unquoted, so completions are
+// inserted as typed, not wrapped in double quotes (feedback #1026).
+const dialect = SQLDialect.define({ ...PostgreSQL.spec, caseInsensitiveIdentifiers: true })
+const lang = () => {
+  const support = sql({ dialect, schema: props.schema, upperCaseKeywords: true })
+  return [support, support.language.data.of({ autocomplete: bareFieldSource(() => props.schema) })]
+}
 const themeExt = () => (settings.dark ? oneDark : [])
 
 onMounted(() => {

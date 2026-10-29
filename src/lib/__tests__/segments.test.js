@@ -155,3 +155,22 @@ describe('segments shown while loading (feedback #1005)', () => {
     expect(out).toHaveLength(250)
   })
 })
+
+describe('personHistory (feedback #1028)', async () => {
+  const { personHistory, segIdIn } = await import('../segments.js')
+  it('keeps the newest row per person and segment and counts the rest', async () => {
+    const q = async () => ({ columns: ['id', 'seg', 'parent', 'delta', 'snapshot', 'at', 'version'].map((name) => ({ name })), rows: [
+      ['p1', '1sgAAA000000001XYZ', '', 'Added', 'Incremental', '2026-10-02', 'v2'],
+      ['p1', '1sgAAA000000001', '', 'Added', 'Full', '2026-10-01', 'v1'],
+      ['p1', '1sgAAA000000002', '1sgAAA000000001', 'Removed', 'Full', '2026-09-01', 'v0'],
+    ] })
+    const m = await personHistory(q, 'Individual_SMH_1__dlm', ['p1', 'p2'])
+    expect(m.get('p2')).toEqual([])
+    const [a, b] = m.get('p1')
+    expect(a).toMatchObject({ segmentId: '1sgAAA000000001', publishes: 2, version: 'v2', leaving: false })
+    expect(b).toMatchObject({ segmentId: '1sgAAA000000002', parentId: '1sgAAA000000001', leaving: true })
+  })
+  it('matches 15 and 18 character segment IDs', () => {
+    expect(segIdIn({ id15: '1sgAAA000000001', id: '1sgAAA000000001XYZ' })).toBe("IN ('1sgAAA000000001', '1sgAAA000000001XYZ')")
+  })
+})
