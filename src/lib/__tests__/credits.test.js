@@ -133,7 +133,7 @@ describe('credits per resource and rounded numbers (feedback #1046)', () => {
     const { resourceSource, resourcesSql } = await import('../credits.js')
     const f = (n) => ({ name: n, type: 'string' })
     const src = resourceSource([{ name: 'TenantEnrichedUsageEvent__dll', kind: 'DLO', fields: ['eventtime__c', 'unitsconsumed__c', 'usagevalue__c', 'resourcetype__c', 'resourceidorapiname__c', 'rootresourcetype__c', 'usagetypedevelopername__c', 'carddefinitiondevelopername__c', 'usagebusinessenvtype__c'].map(f) }])
-    expect(src).toEqual({ object: 'TenantEnrichedUsageEvent__dll', fields: { date: 'eventtime__c', amount: 'unitsconsumed__c', type: 'resourcetype__c', name: 'resourceidorapiname__c', usage: 'usagetypedevelopername__c', card: 'carddefinitiondevelopername__c', env: 'usagebusinessenvtype__c', unit: '', status: '' } })
+    expect(src).toEqual({ object: 'TenantEnrichedUsageEvent__dll', fields: { date: 'eventtime__c', amount: 'unitsconsumed__c', type: 'resourcetype__c', name: 'resourceidorapiname__c', usage: 'usagetypedevelopername__c', card: 'carddefinitiondevelopername__c', env: 'usagebusinessenvtype__c', unit: '', event: '', status: '' } })
     expect(resourcesSql(src, { days: 30, now: new Date('2026-10-29T00:00:00Z') })).toContain("SUM(unitsconsumed__c) AS credits\nFROM TenantEnrichedUsageEvent__dll\nWHERE eventtime__c >= CAST('2026-09-29 00:00:00' AS timestamp)")
     expect(resourceSource([{ name: 'TenantDailyEntitlementConsumption__dll', kind: 'DLO', fields: [f('unitsconsumed__c')] }])).toBe(null)
   })
@@ -193,5 +193,15 @@ describe('projection follows the weekly pattern (feedback #1058)', () => {
     expect(Math.abs(weekdays[0].total - 150)).toBeLessThan(3)
     expect(Math.abs(week.reduce((n, p) => n + p.total, 0) - 850)).toBeLessThan(10)
     expect(forecast(series.slice(-10), { now }).weekly).toBe(false)
+  })
+})
+
+describe('each usage event counted once (feedback #1060)', () => {
+  it('reads distinct rows when the events have an id', async () => {
+    const { resourceSource, cardTypesSql } = await import('../credits.js')
+    const f = (n) => ({ name: n, type: 'string' })
+    const src = resourceSource([{ name: 'TenantEnrichedUsageEvent__dll', kind: 'DLO', fields: ['eventtime__c', 'unitsconsumed__c', 'resourcetype__c', 'resourceidorapiname__c', 'usagetypedevelopername__c', 'carddefinitiondevelopername__c', 'unit__c', 'tenantbillingusageeventid__c'].map(f) }])
+    expect(src.fields.event).toBe('tenantbillingusageeventid__c')
+    expect(cardTypesSql(src)).toContain('FROM (SELECT DISTINCT tenantbillingusageeventid__c, eventtime__c, resourcetype__c, resourceidorapiname__c, usagetypedevelopername__c, carddefinitiondevelopername__c, unit__c, unitsconsumed__c FROM TenantEnrichedUsageEvent__dll) e')
   })
 })

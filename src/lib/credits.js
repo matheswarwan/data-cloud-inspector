@@ -293,6 +293,7 @@ const RES_CANDIDATES = {
   card: ['carddefinitiondevelopername', 'cardname'],
   env: ['usagebusinessenvtype', 'businessenvtype'],
   unit: ['unit'],
+  event: ['tenantbillingusageeventid'],
 }
 const exact = (object, list) => (object?.fields || []).find((f) => list.includes(bare(f.name)))?.name || ''
 
@@ -308,12 +309,21 @@ export function resourceSource(objects = []) {
   return null
 }
 
+// Each usage event once (feedback #1060: a card's breakdown came to exactly double its total,
+// the same event stored twice). With an event id field the queries read the distinct rows.
+function fromEvents(src) {
+  const f = src.fields
+  if (!f.event) return src.object
+  const cols = [...new Set([f.event, f.date, f.type, f.name, f.usage, f.card, f.env, f.unit, f.amount, f.status].filter(Boolean))]
+  return `(SELECT DISTINCT ${cols.join(', ')} FROM ${src.object}) e`
+}
+
 /** Credits per resource over the period. Columns: type, name, usage, card, env, credits. */
 export function resourcesSql(src, { days = 180, now = new Date() } = {}) {
   const f = src.fields
   return [
     `SELECT ${f.type} AS type, ${f.name} AS name, ${f.usage || `''`} AS usage, ${f.card || `''`} AS card, ${f.env || `''`} AS env, SUM(${f.amount}) AS credits`,
-    `FROM ${src.object}`,
+    `FROM ${fromEvents(src)}`,
     `WHERE ${f.date} >= CAST('${cutoffDate(days, now)} 00:00:00' AS timestamp)${processed(f)}`,
     `GROUP BY 1, 2, 3, 4, 5`,
     `ORDER BY 6 DESC`,
@@ -326,7 +336,7 @@ export function resourceDaysSql(src, { days = 90, now = new Date() } = {}) {
   const f = src.fields
   return [
     `SELECT DATE_TRUNC('day', ${f.date}) AS day, ${f.type} AS type, ${f.name} AS name, ${f.env || `''`} AS env, SUM(${f.amount}) AS credits`,
-    `FROM ${src.object}`,
+    `FROM ${fromEvents(src)}`,
     `WHERE ${f.date} >= CAST('${cutoffDate(days, now)} 00:00:00' AS timestamp)${processed(f)}`,
     `GROUP BY 1, 2, 3, 4`,
   ].join('\n')
@@ -340,7 +350,7 @@ export function cardTypesSql(src) {
   const f = src.fields
   return [
     `SELECT ${f.card || `''`} AS card, ${f.type} AS type, ${f.usage || `''`} AS usage, MAX(${f.unit || `''`}) AS unit, SUM(${f.amount}) AS credits`,
-    `FROM ${src.object}`,
+    `FROM ${fromEvents(src)}`,
     f.status ? `WHERE ${f.status} = 'PROCESSED'` : '',
     `GROUP BY 1, 2, 3`,
   ].filter(Boolean).join('\n')

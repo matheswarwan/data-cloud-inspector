@@ -2,6 +2,10 @@
 
 Store versions of Data Cloud Inspector, newest first. Each entry says whether permissions changed. Builds 1.1.0 to 1.7.0 and the 0.x test builds were never published; they are folded into 1.0.0.
 
+## Unreleased (next: 1.0.9)
+
+- Credit prediction: each usage event counted once (a card's breakdown came to double its total), and a note when a card's breakdown and its total still differ (feedback #1060).
+
 ## 1.0.8 (2026-10-29)
 
 Security and privacy changes for enterprise review (`security/audits/1.0.7-0b0cf86.md`).

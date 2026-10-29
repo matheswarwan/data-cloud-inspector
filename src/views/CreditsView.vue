@@ -542,6 +542,7 @@ const btn = 'dci-btn'
               </button>
               <ul v-if="cardOpen[c.name]" class="pb-2 pl-9 pr-3 space-y-1 text-xs" :aria-label="`${c.name} by resource and usage type`">
                 <li class="text-muted-foreground">By resource type, or usage type where no resource is named{{ cardUnit(c.name) ? `; counted in ${cardUnit(c.name)}` : '' }}.</li>
+                <li v-if="c.used && Math.abs(typesTotal(c.name) - c.used) / c.used > 0.05" class="text-amber-700 dark:text-amber-400">The breakdown adds up to {{ approx(typesTotal(c.name)) }}, the card's total {{ approx(c.used) }}. They come from different Digital Wallet objects ({{ result.resObject }} and {{ source }}); the card total is the one the Digital Wallet bills. Each event is counted once.</li>
                 <li v-for="t in cardTypes(c.name)" :key="`${t.type}|${t.usage}`" class="grid grid-cols-[minmax(8rem,16rem)_minmax(0,1fr)_auto_auto] items-center gap-3">
                   <span class="truncate" :title="[t.type, t.usage].filter(Boolean).join(' · ')">{{ t.label }}<span v-if="t.type && t.usage" class="text-muted-foreground"> · {{ t.usage }}</span></span>
                   <span class="h-1.5 rounded-full bg-muted overflow-hidden"><span class="block h-full bg-primary/70 rounded-full" :style="{ width: `${(t.credits / Math.max(1, cardTypes(c.name)[0].credits)) * 100}%` }" /></span>
