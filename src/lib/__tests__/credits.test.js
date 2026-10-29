@@ -168,3 +168,25 @@ describe('credits by card with resource types (feedback #1054)', () => {
     expect(cardTypesSql({ object: 'E__dll', fields: { card: 'carddefinitiondevelopername__c', type: 'resourcetype__c', amount: 'unitsconsumed__c', status: '' } })).toBe('SELECT carddefinitiondevelopername__c AS card, resourcetype__c AS type, SUM(unitsconsumed__c) AS credits\nFROM E__dll\nGROUP BY 1, 2')
   })
 })
+
+describe('projection follows the weekly pattern (feedback #1058)', () => {
+  it('shapes the projected days by weekday and keeps the weekly total', async () => {
+    const { forecast } = await import('../credits.js')
+    const now = new Date('2026-10-29T12:00:00Z')
+    const series = []
+    for (let i = 70; i >= 1; i--) {
+      const d = new Date(now.getTime() - i * 86400000)
+      const w = d.getUTCDay()
+      series.push({ day: d.toISOString().slice(0, 10), total: w === 0 || w === 6 ? 50 : 150 })
+    }
+    const f = forecast(series, { now })
+    expect(f.weekly).toBe(true)
+    const week = f.projected.slice(0, 7)
+    const weekend = week.filter((p) => [0, 6].includes(new Date(`${p.day}T00:00:00Z`).getUTCDay()))
+    const weekdays = week.filter((p) => ![0, 6].includes(new Date(`${p.day}T00:00:00Z`).getUTCDay()))
+    expect(Math.abs(weekend[0].total - 50)).toBeLessThan(3)
+    expect(Math.abs(weekdays[0].total - 150)).toBeLessThan(3)
+    expect(Math.abs(week.reduce((n, p) => n + p.total, 0) - 850)).toBeLessThan(10)
+    expect(forecast(series.slice(-10), { now }).weekly).toBe(false)
+  })
+})

@@ -235,11 +235,27 @@ export function forecast(series = [], { fitDays = 90, horizon = 90, remaining = 
     intercept = my - slope * mx
   }
   const base = fit.length
+  // Day-of-week pattern (feedback #1058): how far each weekday usually sits above or below the
+  // trend line, from at least four weeks of history, averaging 1 so the totals stay the same.
+  const weekday = (day) => new Date(`${day}T00:00:00Z`).getUTCDay()
+  const trendAt = (x) => intercept + slope * x
+  let factors = null
+  if (fit.length >= 28) {
+    const sums = Array(7).fill(0)
+    const counts = Array(7).fill(0)
+    fit.forEach((p, i) => { const t = trendAt(i); if (t > 0) { sums[weekday(p.day)] += p.total / t; counts[weekday(p.day)]++ } })
+    if (counts.every((c) => c > 0)) {
+      const raw = sums.map((x, w) => x / counts[w])
+      const mean = sum(raw) / 7
+      if (mean > 0) factors = raw.map((x) => x / mean)
+    }
+  }
   const projected = []
   const last = past.length ? new Date(`${past[past.length - 1].day}T00:00:00Z`) : new Date(`${today}T00:00:00Z`)
   for (let i = 1; i <= horizon; i++) {
     const day = ISO(new Date(last.getTime() + i * 86400000))
-    projected.push({ day, total: Math.max(0, intercept + slope * (base - 1 + i)) })
+    const t = Math.max(0, trendAt(base - 1 + i))
+    projected.push({ day, total: factors ? t * factors[weekday(day)] : t })
   }
   const next = (n) => sum(projected.slice(0, n).map((p) => p.total))
   const monthEnd = ISO(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)))
@@ -247,7 +263,7 @@ export function forecast(series = [], { fitDays = 90, horizon = 90, remaining = 
   const until = (end) => sum(projected.filter((p) => p.day <= end).map((p) => p.total))
   const runOutDays = remaining != null && avg30 > 0 ? Math.floor(remaining / avg30) : null
   return {
-    avg7, avg30, slope,
+    avg7, avg30, slope, weekly: !!factors,
     trend: Math.abs(slope) < avg30 * 0.001 ? 'flat' : slope > 0 ? 'rising' : 'falling',
     last30: sum(tail(30)),
     next30: next(30), next90: next(90),

@@ -326,7 +326,7 @@ function doc() {
   if (left.value.length) blocks.push({ type: 'h', level: 2, text: 'Purchased and left' }, { type: 'table', columns: ['Card', 'Purchased', 'Used', 'Left'], rows: left.value.map((b) => [b.name, exact(b.purchased), exact(b.consumed), exact(b.remaining)]) })
   const envCols2 = envList.value.length > 1 ? envList.value : []
   blocks.push({ type: 'h', level: 2, text: 'Daily use' }, { type: 'table', columns: ['Day', 'Used', ...envCols2], rows: r.series.map((p, i) => [p.day, exact(p.total), ...envCols2.map((e) => exact(r.envs[e].series[i]?.total))]) })
-  blocks.push({ type: 'p', text: 'The forecast is a straight line through the last 90 days of daily use. Sandbox usage draws on the production cards, so what is left is shared. It is an estimate, not a bill: Salesforce\'s Digital Wallet is the record.' })
+  blocks.push({ type: 'p', text: 'The forecast is the trend through the last 90 days of daily use, shaped by the usual day-of-week pattern. Sandbox usage draws on the production cards, so what is left is shared. It is an estimate, not a bill: Salesforce\'s Digital Wallet is the record.' })
   return { title: `Data Cloud credits: ${orgName(org.orgId)}`, blocks }
 }
 const sheets = () => [
@@ -503,7 +503,7 @@ const btn = 'dci-btn'
             <div v-if="!price" class="mt-2 text-muted-foreground">Set a price per credit above the chart for money estimates.</div>
           </div>
           </div>
-          <p class="text-xs text-muted-foreground mt-1">Hover a bar for its day and what used the credits; click it to keep the card open, copy it or see every resource. The projection is a straight line through the last 90 days (today, still counting, is left out). An estimate, not a bill: the Digital Wallet in Setup is the record.</p>
+          <p class="text-xs text-muted-foreground mt-1">Hover a bar for its day and what used the credits; click it to keep the card open, copy it or see every resource. The projection is the trend through the last 90 days, shaped by the usual day-of-week pattern when there are at least four weeks of data (today, still counting, is left out). An estimate, not a bill: the Digital Wallet in Setup is the record.</p>
         </figure>
 
         <div class="space-y-1">
@@ -553,7 +553,7 @@ const btn = 'dci-btn'
             <template #cell-env="{ value }"><span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" :class="envDot(value)"></span>{{ value }}</span></template>
             <template #cell-last30="{ value }">{{ n2(value) }}</template><template #cell-avg30="{ value }">{{ n2(value) }}</template><template #cell-next30="{ value }">{{ n2(value) }}</template><template #cell-toYearEnd="{ value }">{{ n2(value) }}</template><template #cell-toDate="{ value }">{{ n2(value) }}</template>
           </DataTable>
-          <p class="text-xs text-muted-foreground">Each environment's forecast is a straight line through its own last 90 days. Sandbox and scratch usage draws on the production cards.</p>
+          <p class="text-xs text-muted-foreground">Each environment's forecast is the trend through its own last 90 days with its day-of-week pattern. Sandbox and scratch usage draws on the production cards.</p>
         </div>
         <div v-if="result.byOrg?.length || result.orgError" class="space-y-1">
           <div class="text-sm font-medium">By org</div>
