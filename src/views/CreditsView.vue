@@ -7,7 +7,7 @@ import PageHeader from '../components/PageHeader.vue'
 // production but count sandbox usage too, so every figure can be split by environment and
 // by the org that used it. Without the objects, the page says how to turn them on.
 import { ref, computed, watch, onMounted } from 'vue'
-import { RefreshCw } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-vue-next'
 import HelpTip from '../components/HelpTip.vue'
 import Loading from '../components/Loading.vue'
 import DataTable from '../components/DataTable.vue'
@@ -16,7 +16,7 @@ import SqlBlock from '../components/SqlBlock.vue'
 import { useOrg, currentOrg, orgName, orgTitle } from '../app/useOrg.js'
 import { useCatalog, ensureCatalog, orgCall } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
-import { findCreditObjects, probeCreditObjects, guessFields, dailySql, totalsSql, orgsSql, shapeDaily, shapeTotals, sortEnvs, envName, forecast, balances, creditPrice, setCreditPrice, moneyText, approx, resourceSource, resourcesSql, resourceDaysSql, shapeResources, shapeResourceDays, resourcesForDay } from '../lib/credits.js'
+import { findCreditObjects, probeCreditObjects, guessFields, dailySql, totalsSql, orgsSql, shapeDaily, shapeTotals, sortEnvs, envName, forecast, balances, creditPrice, setCreditPrice, moneyText, approx, resourceSource, resourcesSql, resourceDaysSql, shapeResources, shapeResourceDays, resourcesForDay, cardTypesSql, shapeCardTypes, cardRows } from '../lib/credits.js'
 import { cacheGet, cacheSet, orgCached } from '../lib/store.js'
 import { metadataTtl } from '../lib/cacheAge.js'
 
@@ -90,7 +90,7 @@ const sqlText = computed(() => {
   parts.push(totalsSql(source.value, fields.value))
   if (fields.value.org) parts.push(orgsSql(source.value, fields.value))
   if (ent.value && entFields.value.amount) parts.push(totalsSql(ent.value, { ...entFields.value, date: '', status: '' }))
-  if (resSrc.value) parts.push(resourcesSql(resSrc.value, { days: days.value }), resourceDaysSql(resSrc.value))
+  if (resSrc.value) parts.push(resourcesSql(resSrc.value, { days: days.value }), resourceDaysSql(resSrc.value), cardTypesSql(resSrc.value))
   return parts.join(';\n\n')
 })
 
@@ -118,16 +118,17 @@ async function read() {
       ent.value && entFields.value.amount ? run(totalsSql(ent.value, { ...entFields.value, date: '', status: '', env: '' })).catch((err) => ({ error: err.message })) : null,
     ])
     const rs = resSrc.value
-    const [res, resDays] = rs ? await Promise.all([
+    const [res, resDays, ct] = rs ? await Promise.all([
       runQuery(call, org.version, resourcesSql(rs, { days: days.value }), { rowLimit: 5000 }).catch((err) => ({ error: err.message })),
       runQuery(call, org.version, resourceDaysSql(rs), { rowLimit: 50000 }).catch((err) => ({ error: err.message })),
-    ]) : [null, null]
+      runQuery(call, org.version, cardTypesSql(rs), { rowLimit: 5000 }).catch((err) => ({ error: err.message })),
+    ]) : [null, null, null]
     const shaped = shapeDaily(d.rows, { days: days.value })
     const consumedAll = shapeTotals(all.rows)
     const byOrg = o?.rows ? o.rows.map(([env, id, total, first, last]) => ({ env: envName(env), id: id || '', total: Number(total) || 0, first: first || '', last: last || '' })) : null
     const entitlements = e?.rows ? shapeTotals(e.rows).map(({ name, total }) => ({ name, total })) : null
     result.value = { ...shaped, consumedAll, byOrg, orgError: o?.error || '', entitlements, entError: e?.error || '',
-      resources: res?.rows ? shapeResources(res.rows) : null, resError: res?.error || resDays?.error || '', resourceDays: resDays?.rows ? shapeResourceDays(resDays.rows) : null, resObject: rs?.object || '',
+      resources: res?.rows ? shapeResources(res.rows) : null, resError: res?.error || resDays?.error || '', resourceDays: resDays?.rows ? shapeResourceDays(resDays.rows) : null, resObject: rs?.object || '', cardTypes: ct?.rows ? shapeCardTypes(ct.rows) : null,
       at: new Date() }
     cacheSet(storeKey(), { at: Date.now(), value: JSON.parse(JSON.stringify({ ...result.value, at: undefined })) })
     if (!(view.value in shaped.envs)) view.value = 'all'
@@ -226,6 +227,14 @@ const share = (part, total) => (total ? `${Math.round((part / total) * 100)}%` :
 const n0 = approx
 const n2 = approx
 const exact = (v) => (v == null ? '—' : Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }))
+// Cards (feedback #1054): purchased, used to date and left per card, opening to the resource
+// types that used it.
+const cards = computed(() => (result.value ? cardRows(result.value.entitlements, result.value.consumedAll) : []))
+const cardTypes = (name) => result.value?.cardTypes?.[name] || []
+const cardOpen = ref({})
+const typesTotal = (name) => cardTypes(name).reduce((n, t) => n + t.credits, 0) || 1
+const pct = (x) => (x == null ? '' : `${x < 0.001 && x > 0 ? '<0.1' : Math.round(x * 1000) / 10}%`)
+
 // Top resources (feedback #1046): credits, share and money per data stream, transform...
 const resRows = computed(() => {
   const list = result.value?.resources || []
@@ -272,13 +281,6 @@ const orgCols = [
   { key: 'first', label: 'From', value: (r) => String(r.first).slice(0, 10) },
   { key: 'last', label: 'To', value: (r) => String(r.last).slice(0, 10) },
 ]
-const leftCols = [
-  { key: 'name', label: 'Card' },
-  { key: 'purchased', label: 'Purchased', kind: 'number', align: 'right' },
-  { key: 'consumed', label: 'Used', kind: 'number', align: 'right' },
-  { key: 'remaining', label: 'Left', kind: 'number', align: 'right' },
-]
-
 function doc() {
   const r = result.value
   const v = shown.value
@@ -388,7 +390,7 @@ const btn = 'dci-btn'
         <div class="flex flex-wrap items-center gap-2">
           <button class="dci-btn-primary" :disabled="busy || !ready" @click="read"><RefreshCw class="w-4 h-4" /> {{ result ? 'Read again' : 'Read consumption' }}</button>
           <button :class="btn" :disabled="!ready" @click="sqlShown = !sqlShown">{{ sqlShown ? 'Hide SQL' : 'Show SQL' }}</button>
-          <span class="text-xs text-muted-foreground">Runs 2 to 6 read-only queries, which use a few query credits themselves. The result is kept in this browser and shown next time without querying.</span>
+          <span class="text-xs text-muted-foreground">Runs 2 to 7 read-only queries, which use a few query credits themselves. The result is kept in this browser and shown next time without querying.</span>
         </div>
         <SqlBlock v-if="sqlShown" :code="sqlText" box-class="max-h-72" />
       </div>
@@ -417,7 +419,7 @@ const btn = 'dci-btn'
           <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">Used, last 30 days</div><div class="text-xl font-semibold">{{ n0(fc.last30) }}</div><div v-if="price" class="text-sm font-medium">{{ money(fc.last30) }}</div><div class="text-xs text-muted-foreground">{{ n2(fc.avg30) }} a day; 7-day average {{ n2(fc.avg7) }}</div></div>
           <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">Next 30 days (projected)</div><div class="text-xl font-semibold">{{ n0(fc.next30) }}</div><div v-if="price" class="text-sm font-medium">{{ money(fc.next30) }}</div><div class="text-xs text-muted-foreground">trend {{ fc.trend }}; next 90 days {{ n0(fc.next90) }}</div></div>
           <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">To the end of the year (projected)</div><div class="text-xl font-semibold">{{ n0(fc.toYearEnd) }}</div><div v-if="price" class="text-sm font-medium">{{ money(fc.toYearEnd) }}</div><div class="text-xs text-muted-foreground">this month {{ n0(fc.toMonthEnd) }} more</div></div>
-          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">Left (purchased minus used, all environments)</div><div class="text-xl font-semibold">{{ remainingTotal == null ? '—' : n0(remainingTotal) }}</div><div v-if="price && remainingTotal != null" class="text-sm font-medium">{{ money(remainingTotal) }}</div><div class="text-xs text-muted-foreground">{{ view !== 'all' && remainingTotal != null ? 'shared by every environment; run-out date under All environments' : remainingTotal == null ? (result.entError ? `could not read purchases: ${result.entError}` : 'no purchase data read') : fc.runOutDate ? `runs out around ${fc.runOutDate} (${fc.runOutDays} days)` : 'not used up at this rate' }}</div></div>
+          <div class="border rounded-xl bg-card p-3"><div class="text-xs text-muted-foreground">Left (purchased minus used, all environments)</div><div class="text-xl font-semibold">{{ remainingTotal == null ? '—' : n0(remainingTotal) }}</div><div v-if="price && remainingTotal != null" class="text-sm font-medium">{{ money(remainingTotal) }}</div><div class="text-xs text-muted-foreground">{{ view !== 'all' && remainingTotal != null ? 'shared by every environment; run-out date under All environments' : remainingTotal == null ? (result.entError ? `could not read purchases: ${result.entError}` : 'no purchase data read') : fc.runOutDate ? (fc.runOutDays > 36500 ? 'more than 100 years at this rate' : `runs out around ${fc.runOutDate} (${approx(fc.runOutDays)} days)`) : 'not used up at this rate' }}</div></div>
         </div>
 
         <figure v-if="chart" class="border rounded-xl bg-card p-3">
@@ -476,6 +478,47 @@ const btn = 'dci-btn'
           <p class="text-xs text-muted-foreground mt-1">Hover a bar for its day and what used the credits. The projection is a straight line through the last 90 days (today, still counting, is left out). An estimate, not a bill: the Digital Wallet in Setup is the record.</p>
         </figure>
 
+        <div class="space-y-1">
+          <div class="text-sm font-medium">Top resources, last {{ days }} days{{ view === 'all' ? '' : `, ${view}` }}</div>
+          <p v-if="!result.resObject" class="text-xs text-muted-foreground">To see which data stream, data transform or other resource used the credits, add Digital Wallet's TenantEnrichedUsageEvent DLO to this data space, then Check again and Read again.</p>
+          <p v-else-if="result.resError" class="text-xs text-destructive">Could not read {{ result.resObject }}: {{ result.resError }}</p>
+          <template v-else-if="result.resources">
+            <DataTable :columns="resCols" :rows="resRows" row-key="key" text-size="text-xs" box-class="max-h-96" empty="No credits used by a resource in this period.">
+              <template #cell-name="{ row }"><span class="font-mono break-all">{{ row.name }}</span></template>
+              <template #cell-credits="{ value }"><span :title="exact(value)">{{ approx(value) }}</span></template>
+            </DataTable>
+            <p class="text-xs text-muted-foreground">Credits per resource from <RouterLink :to="`/objects/${result.resObject}`" class="font-mono text-link hover:underline">{{ result.resObject }}</RouterLink>; the money column uses your price per credit.</p>
+          </template>
+        </div>
+        <div v-if="cards.length" class="space-y-1">
+          <div class="text-sm font-medium">Credits by card, to date (all environments)</div>
+          <ul class="border rounded-xl bg-card divide-y text-sm">
+            <li v-for="c in cards" :key="c.name">
+              <button class="w-full text-left px-3 py-2.5 hover:bg-accent/50 grid grid-cols-[1rem_minmax(0,1fr)] gap-x-2 items-start" :aria-expanded="!!cardOpen[c.name]" :disabled="!cardTypes(c.name).length" @click="cardOpen = { ...cardOpen, [c.name]: !cardOpen[c.name] }">
+                <component :is="cardOpen[c.name] ? ChevronDown : ChevronRight" :class="['w-4 h-4 mt-0.5 text-muted-foreground', cardTypes(c.name).length ? '' : 'invisible']" />
+                <span class="min-w-0 space-y-1">
+                  <span class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                    <span class="font-medium break-all">{{ c.name }}</span>
+                    <span class="text-muted-foreground"><span :title="exact(c.used)">used {{ approx(c.used) }}</span><template v-if="c.purchased != null"> of <span :title="exact(c.purchased)">{{ approx(c.purchased) }}</span> purchased ({{ pct(c.share) }})</template><template v-else>, no purchase found</template></span>
+                    <span v-if="c.left != null" :class="c.left < 0 ? 'text-destructive' : 'text-muted-foreground'" :title="exact(c.left)">{{ c.left < 0 ? `${approx(-c.left)} over` : `${approx(c.left)} left` }}</span>
+                    <span v-if="price" class="ml-auto font-medium">{{ money(c.used) }}<span v-if="c.purchased != null" class="text-muted-foreground font-normal"> of {{ money(c.purchased) }}</span></span>
+                  </span>
+                  <span v-if="c.purchased" class="block h-1.5 rounded-full bg-muted overflow-hidden" :aria-label="`${pct(c.share)} used`"><span class="block h-full rounded-full" :class="c.share > 1 ? 'bg-destructive' : c.share > 0.8 ? 'bg-amber-500' : 'bg-primary'" :style="{ width: `${Math.min(100, Math.max(c.share * 100, c.used ? 0.5 : 0))}%` }" /></span>
+                </span>
+              </button>
+              <ul v-if="cardOpen[c.name]" class="pb-2 pl-9 pr-3 space-y-1 text-xs" :aria-label="`${c.name} by resource type`">
+                <li v-for="t in cardTypes(c.name)" :key="t.type" class="grid grid-cols-[minmax(8rem,14rem)_minmax(0,1fr)_auto_auto] items-center gap-3">
+                  <span class="truncate" :title="t.type">{{ t.type }}</span>
+                  <span class="h-1.5 rounded-full bg-muted overflow-hidden"><span class="block h-full bg-primary/70 rounded-full" :style="{ width: `${(t.credits / Math.max(1, cardTypes(c.name)[0].credits)) * 100}%` }" /></span>
+                  <span class="tabular-nums text-right" :title="exact(t.credits)">{{ approx(t.credits) }} <span class="text-muted-foreground">({{ pct(t.credits / typesTotal(c.name)) }})</span></span>
+                  <span v-if="price" class="tabular-nums text-right w-24">{{ money(t.credits) }}</span>
+                </li>
+              </ul>
+            </li>
+          </ul>
+          <p class="text-xs text-muted-foreground">Purchased is shared by every resource type on the card; used and the types are to date{{ result.resObject ? `, the types from ${result.resObject}` : '' }}. Card names must match on both sides; check against the Digital Wallet before relying on it.</p>
+        </div>
+
         <div v-if="fields.env && envRows.length" class="space-y-1">
           <div class="text-sm font-medium">By environment</div>
           <DataTable :columns="envCols" :rows="envRows" row-key="env" text-size="text-xs">
@@ -494,25 +537,6 @@ const btn = 'dci-btn'
         <div class="grid md:grid-cols-2 gap-3">
           <div class="space-y-1"><div class="text-sm font-medium">By {{ fields.group || 'total' }}, last {{ days }} days{{ view === 'all' ? '' : `, ${view}` }}</div><DataTable :columns="groupCols" :rows="shown.groups" row-key="name" text-size="text-xs" box-class="max-h-80"><template #cell-total="{ value }">{{ n2(value) }}</template></DataTable></div>
           <div class="space-y-1"><div class="text-sm font-medium">Used to date</div><DataTable :columns="allCols" :rows="result.consumedAll" row-key="name" text-size="text-xs" box-class="max-h-80"><template #cell-total="{ value }">{{ n2(value) }}</template></DataTable></div>
-        </div>
-        <div v-if="left.length" class="space-y-1">
-          <div class="text-sm font-medium">Purchased and left</div>
-          <DataTable :columns="leftCols" :rows="left" row-key="name" text-size="text-xs" box-class="max-h-80">
-            <template #cell-purchased="{ value }">{{ n2(value) }}</template><template #cell-consumed="{ value }">{{ n2(value) }}</template><template #cell-remaining="{ value }">{{ n2(value) }}</template>
-          </DataTable>
-          <p class="text-xs text-muted-foreground">Left is purchased minus used for cards whose names match on both sides; check signs and units against the Digital Wallet before relying on it.</p>
-        </div>
-        <div class="space-y-1">
-          <div class="text-sm font-medium">Top resources, last {{ days }} days{{ view === 'all' ? '' : `, ${view}` }}</div>
-          <p v-if="!result.resObject" class="text-xs text-muted-foreground">To see which data stream, data transform or other resource used the credits, add Digital Wallet's TenantEnrichedUsageEvent DLO to this data space, then Check again and Read again.</p>
-          <p v-else-if="result.resError" class="text-xs text-destructive">Could not read {{ result.resObject }}: {{ result.resError }}</p>
-          <template v-else-if="result.resources">
-            <DataTable :columns="resCols" :rows="resRows" row-key="key" text-size="text-xs" box-class="max-h-96" empty="No credits used by a resource in this period.">
-              <template #cell-name="{ row }"><span class="font-mono break-all">{{ row.name }}</span></template>
-              <template #cell-credits="{ value }"><span :title="exact(value)">{{ approx(value) }}</span></template>
-            </DataTable>
-            <p class="text-xs text-muted-foreground">Credits per resource from <RouterLink :to="`/objects/${result.resObject}`" class="font-mono text-link hover:underline">{{ result.resObject }}</RouterLink>; the money column uses your price per credit.</p>
-          </template>
         </div>
       </template>
     </template>

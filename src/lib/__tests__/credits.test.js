@@ -158,3 +158,13 @@ describe('credits per resource and rounded numbers (feedback #1046)', () => {
     expect(moneyText(512093864, { price: 0.01, currency: 'USD' })).toMatch(/^~.*\$5\.1 million$/)
   })
 })
+
+describe('credits by card with resource types (feedback #1054)', () => {
+  it('lists purchased, used, left and share per card, and the types inside each', async () => {
+    const { cardRows, shapeCardTypes, cardTypesSql } = await import('../credits.js')
+    const rows = cardRows([{ name: 'PlatformServicesCard', total: 11.5e9 }, { name: 'DataStorageCard', total: 27600 }], [{ name: 'PlatformServicesCard', total: 603e6 }, { name: 'DataStorageCard', total: 35393 }, { name: 'EinsteinAI', total: 200 }])
+    expect(rows.map((r) => [r.name, r.left, r.share && Math.round(r.share * 1000) / 10])).toEqual([['PlatformServicesCard', 10897e6, 5.2], ['DataStorageCard', -7793, 128.2], ['EinsteinAI', null, null]])
+    expect(shapeCardTypes([['PlatformServicesCard', 'DataTransform', 400], ['PlatformServicesCard', 'DataStream', 100], ['PlatformServicesCard', 'DataTransform', 50], ['', 'Segment', 5]])).toEqual({ PlatformServicesCard: [{ type: 'DataTransform', credits: 450 }, { type: 'DataStream', credits: 100 }], '(none)': [{ type: 'Segment', credits: 5 }] })
+    expect(cardTypesSql({ object: 'E__dll', fields: { card: 'carddefinitiondevelopername__c', type: 'resourcetype__c', amount: 'unitsconsumed__c', status: '' } })).toBe('SELECT carddefinitiondevelopername__c AS card, resourcetype__c AS type, SUM(unitsconsumed__c) AS credits\nFROM E__dll\nGROUP BY 1, 2')
+  })
+})

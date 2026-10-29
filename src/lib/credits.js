@@ -315,6 +315,50 @@ export function resourceDaysSql(src, { days = 90, now = new Date() } = {}) {
   ].join('\n')
 }
 
+/** Credits per card and resource type over all the rows (used to date, feedback #1054). Columns: card, type, credits. */
+export function cardTypesSql(src) {
+  const f = src.fields
+  return [
+    `SELECT ${f.card || `''`} AS card, ${f.type} AS type, SUM(${f.amount}) AS credits`,
+    `FROM ${src.object}`,
+    f.status ? `WHERE ${f.status} = 'PROCESSED'` : '',
+    `GROUP BY 1, 2`,
+  ].filter(Boolean).join('\n')
+}
+
+/** Rows [card, type, credits] into `{ [card]: [{ type, credits }] }`, most first. */
+export function shapeCardTypes(rows = []) {
+  const by = {}
+  for (const [card, type, credits] of rows) {
+    const list = (by[card || '(none)'] ||= [])
+    const t = type || '(none)'
+    const hit = list.find((x) => x.type === t)
+    if (hit) hit.credits += num(credits)
+    else list.push({ type: t, credits: num(credits) })
+  }
+  for (const list of Object.values(by)) list.sort((a, b) => b.credits - a.credits)
+  return by
+}
+
+/**
+ * One row per card for the card view (feedback #1054): purchased, used to date, left and the
+ * share used, for cards bought or used; most used first.
+ */
+export function cardRows(entitlements = [], consumed = []) {
+  const out = new Map()
+  for (const e of entitlements || []) out.set(e.name, { name: e.name, purchased: e.total, used: 0 })
+  for (const g of consumed || []) {
+    const r = out.get(g.name) || { name: g.name, purchased: null, used: 0 }
+    r.used += g.total
+    out.set(g.name, r)
+  }
+  return [...out.values()].map((r) => ({
+    ...r,
+    left: r.purchased == null ? null : r.purchased - r.used,
+    share: r.purchased ? r.used / r.purchased : null,
+  })).sort((a, b) => b.used - a.used || (b.purchased || 0) - (a.purchased || 0))
+}
+
 /** Rows [type, name, usage, card, env, credits] into resources, most credits first, with each environment's share. */
 export function shapeResources(rows = []) {
   const by = new Map()
