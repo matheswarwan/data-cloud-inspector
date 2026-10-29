@@ -7,7 +7,7 @@ import PageHeader from '../components/PageHeader.vue'
 // production but count sandbox usage too, so every figure can be split by environment and
 // by the org that used it. Without the objects, the page says how to turn them on.
 import { ref, computed, watch, onMounted } from 'vue'
-import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-vue-next'
+import { Check, ChevronDown, ChevronRight, Copy, RefreshCw, X } from 'lucide-vue-next'
 import HelpTip from '../components/HelpTip.vue'
 import Loading from '../components/Loading.vue'
 import DataTable from '../components/DataTable.vue'
@@ -217,7 +217,29 @@ const chart = computed(() => {
 })
 // The day under the pointer, with what used its credits (feedback #1042).
 const hoverIdx = ref(-1)
-const hoverBar = computed(() => chart.value?.bars[hoverIdx.value] || null)
+// Click a bar to keep its card open, with Copy and every resource (feedback #1055).
+const pinned = ref(-1)
+const showAll = ref(false)
+const copied = ref(false)
+const activeIdx = computed(() => (pinned.value >= 0 ? pinned.value : hoverIdx.value))
+const hoverBar = computed(() => chart.value?.bars[activeIdx.value] || null)
+function togglePin(i) { pinned.value = pinned.value === i ? -1 : i; showAll.value = false }
+function closePin() { pinned.value = -1; showAll.value = false }
+watch([view, result], closePin)
+const listed = (list) => (showAll.value ? list : list.slice(0, 8))
+async function copyDay() {
+  const b = hoverBar.value
+  if (!b) return
+  const lines = [`Data Cloud credits, ${b.day}${b.ahead ? ' (projected)' : ''}: ${exact(b.total)}${money(b.total) ? ` (${money(b.total)})` : ''}`]
+  if (chart.value?.stacked && !b.ahead) for (const p of b.parts.filter((x) => x.total)) lines.push(`${p.env}: ${exact(p.total)}`)
+  const rows = hoverResources.value.length
+    ? hoverResources.value.map((r) => [r.name, r.type, exact(r.credits), money(r.credits)])
+    : (b.groups || []).map((g) => [g.name, '', exact(g.total), money(g.total)])
+  if (rows.length) lines.push('', ['Used by', 'Type', 'Credits', price.value ? `Approx ${price.value.currency}` : ''].filter(Boolean).join('\t'), ...rows.map((r) => r.filter((x, i) => i < 3 || price.value).join('\t')))
+  await navigator.clipboard.writeText(lines.join('\n'))
+  copied.value = true
+  setTimeout(() => { copied.value = false }, 1500)
+}
 const hoverLeft = computed(() => (hoverBar.value ? ((hoverBar.value.x + hoverBar.value.w / 2) / chart.value.W) * 100 : 0))
 const hoverResources = computed(() => (hoverBar.value && !hoverBar.value.ahead ? resourcesForDay(result.value?.resourceDays, hoverBar.value.day, view.value) : []))
 const share = (part, total) => (total ? `${Math.round((part / total) * 100)}%` : '')
@@ -427,25 +449,29 @@ const btn = 'dci-btn'
             <span>Credits per day{{ view === 'all' ? '' : `, ${view} only` }}: last 90 days, then 30 days projected</span>
             <span v-if="chart.stacked" class="flex items-center gap-3 text-xs font-normal text-muted-foreground"><span v-for="e in envList" :key="e" class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full" :class="envDot(e)"></span>{{ e }}</span></span>
           </figcaption>
-          <div class="relative" @mouseleave="hoverIdx = -1">
+          <div class="relative" @mouseleave="hoverIdx = -1" @keydown.esc="closePin">
           <svg :viewBox="`0 0 ${chart.W} ${chart.H + 18}`" class="w-full h-auto" role="img" :aria-label="`Daily credits, highest ${n0(chart.max)} a day; projected next 30 days ${n0(fc.next30)}`">
             <line :x1="24" :x2="chart.W" :y1="chart.H" :y2="chart.H" class="stroke-border" />
             <text x="0" y="10" class="fill-muted-foreground text-[10px]">{{ n0(chart.max) }}</text>
             <text x="0" :y="chart.H" class="fill-muted-foreground text-[10px]">0</text>
             <line :x1="chart.split" :x2="chart.split" y1="0" :y2="chart.H" class="stroke-muted-foreground" stroke-dasharray="3 3" />
             <text :x="chart.split + 4" y="10" class="fill-muted-foreground text-[10px]">projected</text>
-            <g v-for="(b, i) in chart.bars" :key="b.day" :opacity="hoverIdx >= 0 && hoverIdx !== i ? 0.55 : 1">
+            <g v-for="(b, i) in chart.bars" :key="b.day" :opacity="activeIdx >= 0 && activeIdx !== i ? 0.55 : 1">
               <rect v-for="(sg, j) in b.segs" :key="j" :x="b.x" :y="sg.y" :width="b.w" :height="Math.max(0, sg.h)" rx="1" :class="envFill(sg.env, b.ahead)" />
-              <rect :x="b.x - 1" y="0" :width="b.w + 2" :height="chart.H" fill="transparent" @mouseenter="hoverIdx = i" />
+              <rect :x="b.x - 1" y="0" :width="b.w + 2" :height="chart.H" fill="transparent" class="cursor-pointer" @mouseenter="hoverIdx = i" @click="togglePin(i)" />
             </g>
             <text :x="24" :y="chart.H + 14" class="fill-muted-foreground text-[10px]">{{ chart.bars[0]?.day }}</text>
             <text :x="chart.W" :y="chart.H + 14" text-anchor="end" class="fill-muted-foreground text-[10px]">{{ chart.bars[chart.bars.length - 1]?.day }}</text>
           </svg>
           <div
-            v-if="hoverBar" class="absolute top-0 z-20 w-72 rounded-lg border bg-popover text-popover-foreground shadow-lg p-2.5 text-xs pointer-events-none"
-            :style="{ left: `clamp(0px, calc(${hoverLeft}% - 9rem), calc(100% - 18rem))`, transform: 'translateY(-100%)' }" aria-live="polite"
+            v-if="hoverBar" :class="['absolute top-0 z-20 w-80 rounded-lg border bg-popover text-popover-foreground shadow-lg p-2.5 text-xs max-h-[70vh] overflow-auto', pinned >= 0 ? 'ring-2 ring-primary/40' : 'pointer-events-none']"
+            :style="{ left: `clamp(0px, calc(${hoverLeft}% - 10rem), calc(100% - 20rem))`, transform: 'translateY(-100%)' }" aria-live="polite" :role="pinned >= 0 ? 'dialog' : undefined" :aria-label="pinned >= 0 ? `Credits on ${hoverBar.day}` : undefined"
           >
             <div class="flex items-baseline justify-between gap-2"><span class="font-semibold text-sm">{{ n2(hoverBar.total) }} credits</span><span v-if="money(hoverBar.total)" class="font-medium">{{ money(hoverBar.total) }}</span></div>
+            <div v-if="pinned >= 0" class="flex items-center gap-2 mt-1">
+              <button class="dci-btn dci-btn-sm" @click="copyDay"><component :is="copied ? Check : Copy" class="w-3.5 h-3.5" /> {{ copied ? 'Copied' : 'Copy' }}</button>
+              <button class="dci-btn dci-btn-sm ml-auto" aria-label="Close" @click="closePin"><X class="w-3.5 h-3.5" /></button>
+            </div>
             <div class="text-muted-foreground">{{ hoverBar.day }}{{ hoverBar.ahead ? ', projected from the trend' : '' }}</div>
             <template v-if="!hoverBar.ahead">
               <div v-if="chart.stacked" class="mt-1.5 space-y-0.5">
@@ -453,29 +479,31 @@ const btn = 'dci-btn'
               </div>
               <div v-if="hoverResources.length" class="mt-2">
                 <div class="text-muted-foreground mb-0.5">Used by</div>
-                <div v-for="r in hoverResources.slice(0, 8)" :key="`${r.type}|${r.name}`" class="flex items-baseline gap-2">
+                <div v-for="r in listed(hoverResources)" :key="`${r.type}|${r.name}`" class="flex items-baseline gap-2">
                   <span class="flex-1 min-w-0 truncate" :title="`${r.name}${r.type ? ` (${r.type})` : ''}`">{{ r.name }}<span v-if="r.type" class="text-muted-foreground"> · {{ r.type }}</span></span>
                   <span class="tabular-nums">{{ n2(r.credits) }}</span>
                   <span v-if="price" class="w-20 text-right tabular-nums">{{ money(r.credits) }}</span>
                 </div>
-                <div v-if="hoverResources.length > 8" class="text-muted-foreground">and {{ hoverResources.length - 8 }} more</div>
+                <button v-if="hoverResources.length > 8 && pinned >= 0" class="text-link hover:underline" @click="showAll = !showAll">{{ showAll ? 'Show fewer' : `and ${hoverResources.length - 8} more` }}</button>
+                <div v-else-if="hoverResources.length > 8" class="text-muted-foreground">and {{ hoverResources.length - 8 }} more (click the bar to see all)</div>
               </div>
               <div v-else-if="hoverBar.groups?.length" class="mt-2">
                 <div class="text-muted-foreground mb-0.5">{{ fields.group ? 'Used by' : 'Total' }}</div>
-                <div v-for="g in hoverBar.groups.slice(0, 8)" :key="g.name" class="flex items-baseline gap-2">
+                <div v-for="g in listed(hoverBar.groups)" :key="g.name" class="flex items-baseline gap-2">
                   <span class="flex-1 min-w-0 truncate" :title="g.name">{{ g.name }}</span>
                   <span class="tabular-nums">{{ n2(g.total) }}</span>
                   <span class="w-9 text-right text-muted-foreground tabular-nums">{{ share(g.total, hoverBar.total) }}</span>
                   <span v-if="price" class="w-16 text-right tabular-nums">{{ money(g.total) }}</span>
                 </div>
-                <div v-if="hoverBar.groups.length > 8" class="text-muted-foreground">and {{ hoverBar.groups.length - 8 }} more</div>
+                <button v-if="hoverBar.groups.length > 8 && pinned >= 0" class="text-link hover:underline" @click="showAll = !showAll">{{ showAll ? 'Show fewer' : `and ${hoverBar.groups.length - 8} more` }}</button>
+                <div v-else-if="hoverBar.groups.length > 8" class="text-muted-foreground">and {{ hoverBar.groups.length - 8 }} more (click the bar to see all)</div>
               </div>
               <div v-else-if="!hoverBar.total" class="mt-1 text-muted-foreground">No credits used.</div>
             </template>
             <div v-if="!price" class="mt-2 text-muted-foreground">Set a price per credit above the chart for money estimates.</div>
           </div>
           </div>
-          <p class="text-xs text-muted-foreground mt-1">Hover a bar for its day and what used the credits. The projection is a straight line through the last 90 days (today, still counting, is left out). An estimate, not a bill: the Digital Wallet in Setup is the record.</p>
+          <p class="text-xs text-muted-foreground mt-1">Hover a bar for its day and what used the credits; click it to keep the card open, copy it or see every resource. The projection is a straight line through the last 90 days (today, still counting, is left out). An estimate, not a bill: the Digital Wallet in Setup is the record.</p>
         </figure>
 
         <div class="space-y-1">

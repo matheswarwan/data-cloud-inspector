@@ -380,7 +380,7 @@ export function shapeResources(rows = []) {
  * Rows [day, type, name, env, credits] into `{ [day]: { [env]: [{ type, name, credits }] } }`, the
  * top `keep` per day and environment (the rest summed as "Other"), small enough to store.
  */
-export function shapeResourceDays(rows = [], { keep = 12 } = {}) {
+export function shapeResourceDays(rows = [], { keep = 40 } = {}) {
   const by = {}
   for (const [day, type, name, env, credits] of rows) {
     const k = dayKey(day)
