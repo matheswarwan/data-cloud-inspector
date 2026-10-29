@@ -235,3 +235,18 @@ describe('credit page helpers (design Option D)', () => {
     expect(t).toMatchObject({ count: 3, total: 10, topShare: 0.9 })
   })
 })
+
+describe('Customize layout (design Option D)', () => {
+  it('keeps every block once and moves one', async () => {
+    const { normalizeLayout, moveKey } = await import('../cardLayout.js')
+    const l = normalizeLayout({ order: ['top', 'gone', 'top', 'chart'], span: { top: 'full', chart: 'wide' } }, ['summary', 'chart', 'top'], { summary: 'full', chart: 'full', top: 'half' })
+    expect(l).toEqual({ order: ['top', 'chart', 'summary'], span: { summary: 'full', chart: 'full', top: 'full' } })
+    expect(moveKey(['a', 'b', 'c'], 2, 0)).toEqual(['c', 'a', 'b'])
+    expect(moveKey(['a', 'b'], 0, 5)).toEqual(['a', 'b'])
+  })
+  it('has a list price until one is entered (#1062)', async () => {
+    const { DEFAULT_CREDIT_PRICE, moneyText } = await import('../credits.js')
+    expect(DEFAULT_CREDIT_PRICE.price).toBe(0.005)
+    expect(moneyText(100000, DEFAULT_CREDIT_PRICE)).toMatch(/500/)
+  })
+})

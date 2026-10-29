@@ -501,6 +501,10 @@ export function approx(v) {
 const PRICE_KEY = (orgId) => `dci_credit_price_${String(orgId || '').slice(0, 15)}`
 
 /** `{ price, currency }` saved for an org, or null. */
+// Used until the org's own price is entered (feedback #1062): Salesforce's list price of
+// $500 per 100,000 credits, $0.005 a credit.
+export const DEFAULT_CREDIT_PRICE = Object.freeze({ price: 0.005, currency: 'USD', isDefault: true })
+
 export function creditPrice(orgId) {
   try {
     const v = JSON.parse(localStorage.getItem(PRICE_KEY(orgId)) || 'null')
