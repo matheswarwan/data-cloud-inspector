@@ -2,11 +2,11 @@
 
 Store versions of Data Cloud Inspector, newest first. Each entry says whether permissions changed. Builds 1.1.0 to 1.7.0 and the 0.x test builds were never published; they are folded into 1.0.0.
 
-## Unreleased (next: 1.0.8)
+## 1.0.8 (2026-10-29)
 
 Security and privacy changes for enterprise review (`security/audits/1.0.7-0b0cf86.md`).
 
-**Permissions: narrower.** Removed `unlimitedStorage` and the hosts `*.salesforce.com`, `*.force.com`, `*.salesforce-setup.com`; Added `activeTab` (no install warning). Host access is `https://*.my.salesforce.com/*` and `https://*.cloudforce.com/*` (older orgs; feedback #1045). Chrome does not ask users to approve anything for this update.
+**Permissions: narrower.** Removed `unlimitedStorage` and the hosts `*.salesforce.com`, `*.force.com`, `*.salesforce-setup.com`; added `activeTab` (no install warning). Host access is `https://*.my.salesforce.com/*` and `https://*.cloudforce.com/*` (older orgs; feedback #1045). Chrome does not ask users to approve anything for this update.
 
 - Explicit Content Security Policy: scripts from the package only, network calls only to Salesforce and the feedback service.
 - Administrator policy through Chrome (`managed_schema.json`): `authMode` (`oauth-only` never reads the browser session cookie), `allowedOrgDomains`, `disableCache`, `disableQueryHistory`, `disableDiagramforce`. Settings shows the policies in force.
