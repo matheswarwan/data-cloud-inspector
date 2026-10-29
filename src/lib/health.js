@@ -235,9 +235,30 @@ export function healthMarkdown(sections, { host, at = new Date() } = {}) {
     if (s.error) { lines.push(`Could not load: ${s.error}`, ''); continue }
     if (s.notice) { lines.push(s.notice, ''); continue }
     if (!s.items.length) { lines.push('None.', ''); continue }
-    lines.push('| Status | Name | Why | Last run | Details |', '| --- | --- | --- | --- | --- |')
-    for (const i of s.items) lines.push(`| ${LEVEL_TEXT[i.level]} | ${i.label} | ${i.reason} | ${i.lastRun || ''} | ${(i.details || '').replace(/\|/g, '\\|')} |`)
-    lines.push('')
+    lines.push(...itemTable(s.items), '')
   }
   return lines.join('\n')
+}
+
+const cell = (v) => String(v ?? '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ')
+function itemTable(items) {
+  return ['| Status | Name | Why | Last run | Details |', '| --- | --- | --- | --- | --- |',
+    ...items.map((i) => `| ${LEVEL_TEXT[i.level]} | ${cell(i.label)} | ${cell(i.reason)} | ${cell(i.lastRun)} | ${cell(i.details)} |`)]
+}
+
+/** Failed and needs-a-look items only (feedback #1044). */
+export const problemItems = (items) => (items || []).filter((i) => i.level === 'fail' || i.level === 'warn')
+
+/**
+ * One Health section as Markdown, to copy or download on its own (feedback #1044): `items` are
+ * the rows chosen (all, or problemItems), `which` says which in the heading line.
+ */
+export function sectionMarkdown(title, items, { host = '', at = new Date(), which = '' } = {}) {
+  const c = countLevels(items)
+  return [
+    `# ${title}${which ? `: ${which}` : ''}${host ? ` (${host})` : ''}`, '',
+    `${at.toISOString().slice(0, 16).replace('T', ' ')} UTC. ${items.length} item${items.length === 1 ? '' : 's'}: ${c.fail} failed, ${c.warn} need a look.`, '',
+    ...(items.length ? itemTable(items) : ['None.']),
+    '',
+  ].join('\n')
 }

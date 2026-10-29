@@ -2,6 +2,9 @@
 import { badgeClass } from '../lib/badges.js'
 import PageHeader from '../components/PageHeader.vue'
 import { ref, computed, watch, onMounted } from 'vue'
+import { orgCached } from '../lib/store.js'
+import { metadataTtl } from '../lib/cacheAge.js'
+import { ensureSegments } from '../app/useSegments.js'
 import Loading from '../components/Loading.vue'
 import HelpTip from '../components/HelpTip.vue'
 import { docFrom, sheetsFrom } from '../lib/tableDoc.js'
@@ -18,7 +21,6 @@ import { recordUrl } from '../lib/links.js'
 import { toObjects } from '../lib/profile.js'
 import { loadActivations, loadActivation, describeActivationFilter, activationMarkdown } from '../lib/activations.js'
 import { activationHealth } from '../lib/health.js'
-import { loadSegments } from '../lib/segments.js'
 
 const route = useRoute()
 const org = useOrg()
@@ -30,12 +32,14 @@ const actError = ref('')
 const counts = ref({})
 const segments = ref([])
 
-async function load() {
+// Kept in this browser and shown at once (feedback #1043); Load again reads the org now.
+async function load({ refresh = false } = {}) {
   if (!org.version) return
   loading.value = true
   error.value = ''
-  try { list.value = await loadActivations(orgCall(), org.version) } catch (err) { error.value = err.message }
-  segments.value = await loadSegments(orgCall(), org.version).catch(() => [])
+  const key = `dci_s_${org.orgId}_${org.dataSpace || 'default'}_activations`
+  try { list.value = await orgCached(key, metadataTtl(), () => loadActivations(orgCall(), org.version), { refresh, onUpdate: (v) => { list.value = v } }) } catch (err) { error.value = err.message }
+  segments.value = await ensureSegments({ refresh }).catch(() => [])
   loading.value = false
 }
 onMounted(load)
@@ -97,7 +101,7 @@ const attrCols = [
       <div class="flex items-center gap-2">
         <span class="text-xs text-muted-foreground"><strong class="text-foreground">{{ list.length }}</strong> activations</span>
         <span class="ml-auto"><DownloadMenu small label="Download" :get-doc="listDoc" :get-sheets="() => sheetsFrom(listSections())" file-name="activations" :disabled="!list.length" /></span>
-        <button class="dci-btn-icon" title="Load again" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
+        <button class="dci-btn-icon" title="Load again" @click="load({ refresh: true })"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /></button>
       </div>
       <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
       <p v-else-if="!loading && !list.length" class="text-sm text-muted-foreground">No activations in this data space.</p>

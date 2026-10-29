@@ -5,7 +5,7 @@ import Loading from '../components/Loading.vue'
 import HelpTip from '../components/HelpTip.vue'
 import DataTable from '../components/DataTable.vue'
 import { ref, computed, watch, onMounted } from 'vue'
-import { RefreshCw } from 'lucide-vue-next'
+import { Check, Copy, RefreshCw } from 'lucide-vue-next'
 import { useOrg, currentOrg, orgName, orgTitle } from '../app/useOrg.js'
 import { orgCall, useCatalog, ensureCatalog } from '../app/useCatalog.js'
 import { runQuery } from '../lib/query.js'
@@ -14,7 +14,7 @@ import { normalizeSegment, membershipTables, publishHistory } from '../lib/segme
 import { useJob, startJob, markSeen } from '../app/useJobs.js'
 import { healthJobId } from '../app/usePreload.js'
 import { recordUrl } from '../lib/links.js'
-import { loadHealth, countLevels, healthMarkdown, LEVELS, LEVEL_TEXT } from '../lib/health.js'
+import { loadHealth, countLevels, healthMarkdown, sectionMarkdown, problemItems, LEVELS, LEVEL_TEXT } from '../lib/health.js'
 import { latestProblemsSql } from '../lib/problems.js'
 import { useRouter } from 'vue-router'
 
@@ -103,6 +103,19 @@ function inside(i) {
   return null
 }
 
+// Copy or download one section (feedback #1044): its failed and needs-a-look items, or the rows
+// shown (after Problems only and a clicked count), to share on their own.
+const copied = ref('')
+async function copySection(title, items, which) {
+  await navigator.clipboard.writeText(sectionMarkdown(title, items, { host: orgTitle(org.orgId), at: checkedAt.value || new Date(), which }))
+  copied.value = `${title}|${which}`
+  setTimeout(() => { if (copied.value === `${title}|${which}`) copied.value = '' }, 1500)
+}
+const shownWhich = (title) => (levelFilter.value?.title === title ? LEVEL_TEXT[levelFilter.value.level].toLowerCase() + ' only' : problemsOnly.value ? 'problems only' : '')
+const sectionMd = (title, items) => () => sectionMarkdown(title, items, { host: orgTitle(org.orgId), at: checkedAt.value || new Date(), which: shownWhich(title) })
+const sectionSheets = (title, items) => () => [{ name: title.slice(0, 31), columns: ['Status', 'Name', 'Why', 'Last run', 'Details'], rows: items.map((i) => [LEVEL_TEXT[i.level], i.label, i.reason, i.lastRun || '', i.details || '']) }]
+const fileFor = (title) => `data-cloud-health-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+
 const healthMd = () => healthMarkdown(sections.value, { host: orgTitle(org.orgId), at: checkedAt.value || new Date() })
 const healthSheets = () => sections.value.map((s) => ({ name: s.title, columns: ['Status', 'Name', 'Why', 'Last run', 'Details'], rows: s.items.map((i) => [i.level, i.label, i.reason, i.lastRun || '', i.details || '']) }))
 
@@ -161,7 +174,12 @@ const btn = 'dci-btn'
     </table>
 
     <div v-if="attention.length" :class="card">
-      <h3 class="px-5 py-3.5 border-b text-base font-semibold">Failed or needs a look <span class="text-muted-foreground font-normal text-sm">({{ attention.length }})</span></h3>
+      <h3 class="px-5 py-3 border-b text-base font-semibold flex flex-wrap items-center gap-2">Failed or needs a look <span class="text-muted-foreground font-normal text-sm">({{ attention.length }})</span>
+        <span class="ml-auto flex items-center gap-2 font-normal">
+          <button class="dci-btn dci-btn-sm" title="Copy these as a Markdown table" @click="copySection('Failed or needs a look', attention.map((i) => ({ ...i, label: `${i.area}: ${i.label}` })), '')"><component :is="copied === 'Failed or needs a look|' ? Check : Copy" class="w-3.5 h-3.5" /> {{ copied === 'Failed or needs a look|' ? 'Copied' : 'Copy' }}</button>
+          <DownloadMenu small :get-markdown="sectionMd('Failed or needs a look', attention.map((i) => ({ ...i, label: `${i.area}: ${i.label}` })))" :get-sheets="sectionSheets('Failed or needs a look', attention.map((i) => ({ ...i, label: `${i.area}: ${i.label}` })))" :file-name="fileFor('failed or needs a look')" />
+        </span>
+      </h3>
       <ul class="divide-y text-sm">
         <li v-for="i in attention" :key="`${i.area}:${i.name}`" class="p-2 px-3 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
           <span class="whitespace-nowrap w-28 shrink-0"><span :class="['inline-block w-2 h-2 rounded-full mr-2', DOT[i.level]]" />{{ LEVEL_TEXT[i.level] }}</span>
@@ -174,8 +192,15 @@ const btn = 'dci-btn'
     </div>
 
     <div v-for="s in sections" :id="sectionId(s.title)" :key="s.title" :class="[card, 'scroll-mt-4']">
-      <h3 class="px-5 py-3.5 border-b text-base font-semibold">{{ s.title }} <span class="text-muted-foreground font-normal text-sm">({{ s.items.length }})</span>
-        <span v-if="levelFilter?.title === s.title" class="ml-2 text-xs font-normal text-muted-foreground">Showing {{ LEVEL_TEXT[levelFilter.level].toLowerCase() }} only. <button class="text-link hover:underline" @click="levelFilter = null">Show all</button></span>
+      <h3 class="px-5 py-3 border-b text-base font-semibold flex flex-wrap items-center gap-x-2 gap-y-1">{{ s.title }} <span class="text-muted-foreground font-normal text-sm">({{ s.items.length }})</span>
+        <span v-if="levelFilter?.title === s.title" class="text-xs font-normal text-muted-foreground">Showing {{ LEVEL_TEXT[levelFilter.level].toLowerCase() }} only. <button class="text-link hover:underline" @click="levelFilter = null">Show all</button></span>
+        <span v-if="s.items.length" class="ml-auto flex flex-wrap items-center gap-2 font-normal">
+          <button v-if="problemItems(s.items).length" class="dci-btn dci-btn-sm" :title="`Copy the ${problemItems(s.items).length} failed or needs-a-look ${s.title.toLowerCase()} as a Markdown table`" @click="copySection(s.title, problemItems(s.items), 'failed or needs a look')">
+            <component :is="copied === `${s.title}|failed or needs a look` ? Check : Copy" class="w-3.5 h-3.5" /> {{ copied === `${s.title}|failed or needs a look` ? 'Copied' : `Copy failed and needs a look (${problemItems(s.items).length})` }}
+          </button>
+          <button class="dci-btn dci-btn-sm" title="Copy every row of this section as a Markdown table" @click="copySection(s.title, s.items, '')"><component :is="copied === `${s.title}|` ? Check : Copy" class="w-3.5 h-3.5" /> {{ copied === `${s.title}|` ? 'Copied' : 'Copy all' }}</button>
+          <DownloadMenu small :get-markdown="sectionMd(s.title, shown(s.items, s.title))" :get-sheets="sectionSheets(s.title, shown(s.items, s.title))" :file-name="fileFor(s.title)" />
+        </span>
       </h3>
       <p v-if="s.error" class="p-3 text-sm text-destructive">Could not load: {{ s.error }}</p>
       <p v-else-if="s.notice" class="p-3 text-sm text-muted-foreground">{{ s.notice }}</p>

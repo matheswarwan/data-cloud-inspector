@@ -10,6 +10,7 @@ import { loadUsage } from '../lib/usage.js'
 import { fetchAllPages } from '../lib/pages.js'
 import { withDataSpace } from '../lib/dataSpace.js'
 import { cacheGet, cacheSet, orgCached, forgetCached } from '../lib/store.js'
+import { metadataTtl } from '../lib/cacheAge.js'
 import { loadDataGraphs } from '../lib/dataGraphs.js'
 import { ensureSegments } from './useSegments.js'
 import { useOrg, currentDataSpaceId } from './useOrg.js'
@@ -36,14 +37,13 @@ export function orgCall() {
 /** Data graphs with their definitions, kept 10 minutes in session storage. */
 export function ensureDataGraphs({ refresh = false } = {}) {
   if (!org.orgId || !org.version) return Promise.resolve([])
-  return orgCached(sessionKey(org.orgId, 'dataGraphs'), 10 * 60 * 1000, () => loadDataGraphs(orgCall(), org.version), { refresh })
+  return orgCached(sessionKey(org.orgId, 'dataGraphs'), metadataTtl(), () => loadDataGraphs(orgCall(), org.version), { refresh })
 }
 
 const cacheKey = (orgId) => `dci_catalog_${orgId}${org.dataSpace && org.dataSpace !== 'default' ? `_${org.dataSpace}` : ''}`
-// Streams, mappings, record IDs and usage change more often than metadata: kept in this browser
-// (feedback #1007) and shown at once, read again in the background once over 30 minutes old;
-// Refresh on the Objects page reloads them.
-const SESSION_TTL = 30 * 60 * 1000
+// Streams, mappings, record IDs and usage: kept in this browser (feedback #1007) and shown at
+// once, read again in the background once older than Settings > Keep org details (feedback
+// #1043, a day by default); Refresh on the Objects page reloads them.
 const sessionKey = (orgId, what) => `dci_s_${orgId}_${org.dataSpace || 'default'}_${what}`
 
 // One catalog load at a time per org and data space: a second caller waits for the load
@@ -93,7 +93,7 @@ export async function ensureStreams() {
   if (state.streams || !org.version) return state.streams
   const { orgId, version } = org
   const key = state.key
-  state.streams = await orgCached(sessionKey(orgId, 'streams'), SESSION_TTL, () => loadStreams(orgCall(), version), { onUpdate: (v) => { if (state.key === key) state.streams = v } })
+  state.streams = await orgCached(sessionKey(orgId, 'streams'), metadataTtl(), () => loadStreams(orgCall(), version), { onUpdate: (v) => { if (state.key === key) state.streams = v } })
     .catch((err) => { state.error = err.message; return null })
   return state.streams
 }
@@ -105,7 +105,7 @@ export async function ensureAllMappings() {
   const dmos = state.objects.filter((o) => o.kind === 'DMO').map((o) => o.name)
   if (!dmos.length) return null // no objects yet: never cache an empty list
   const key = state.key
-  state.mappings = await orgCached(sessionKey(org.orgId, 'mappings'), SESSION_TTL, () => loadAllMappings(orgCall(), org.version, dmos, {
+  state.mappings = await orgCached(sessionKey(org.orgId, 'mappings'), metadataTtl(), () => loadAllMappings(orgCall(), org.version, dmos, {
     onProgress: (done, total) => { state.mappingsProgress = `${done} of ${total} DMOs`; setTask('mappings', `mappings: ${done} of ${total} data model objects`) },
   }).finally(() => { endTask('mappings'); state.mappingsProgress = '' }), { onUpdate: (v) => { if (state.key === key) state.mappings = v } })
   state.mappingsProgress = ''
@@ -117,7 +117,7 @@ let recordIdsLoading = null
 export function ensureRecordIds() {
   if (state.recordIds || !org.version) return Promise.resolve(state.recordIds)
   const key = state.key
-  recordIdsLoading ||= orgCached(sessionKey(org.orgId, 'recordIds'), SESSION_TTL, () => loadRecordIds(orgCall(), org.version, fetchAllPages), { onUpdate: (v) => { if (state.key === key) state.recordIds = v } })
+  recordIdsLoading ||= orgCached(sessionKey(org.orgId, 'recordIds'), metadataTtl(), () => loadRecordIds(orgCall(), org.version, fetchAllPages), { onUpdate: (v) => { if (state.key === key) state.recordIds = v } })
     .then((ids) => { state.recordIds = ids; return ids })
     .finally(() => { recordIdsLoading = null })
   return recordIdsLoading
@@ -129,7 +129,7 @@ export function ensureUsage({ refresh = false } = {}) {
   if (refresh) state.usage = null
   if (state.usage || !org.version) return Promise.resolve(state.usage)
   const key = state.key
-  usageLoading ||= orgCached(sessionKey(org.orgId, 'usage'), SESSION_TTL, () => loadUsage(orgCall(), org.version, { segments: () => ensureSegments({ refresh }) }), { refresh, onUpdate: (v) => { if (state.key === key) state.usage = v } })
+  usageLoading ||= orgCached(sessionKey(org.orgId, 'usage'), metadataTtl(), () => loadUsage(orgCall(), org.version, { segments: () => ensureSegments({ refresh }) }), { refresh, onUpdate: (v) => { if (state.key === key) state.usage = v } })
     .then((u) => { state.usage = u; return u })
     .finally(() => { usageLoading = null })
   return usageLoading

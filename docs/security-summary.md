@@ -109,7 +109,7 @@ No `eval`, `new Function` or remote code in the source or the bundle; every scri
 | Saved queries, SQL tabs, Query Builder drafts | `chrome.storage.local`, `localStorage` | only values the user typed into SQL | until deleted |
 | Query run history (last 50) | `chrome.storage.local` | only values the user typed into SQL | until deleted; off under `disableQueryHistory` |
 | Saved orgs (domain, org ID, username, optional name) | `chrome.storage.local` | the user's own Salesforce username | until deleted |
-| Metadata cache (objects, fields, streams, mappings, rulesets, segment names, usage) and Health result | `chrome.storage.local` | no (setup, not records) | object list until Refresh; other org data refreshed after 30 min and dropped after 7 days; session only under `disableCache` |
+| Metadata cache (objects, fields, streams, mappings, rulesets, segments, activations, insights, flows, campaigns, usage) and Health result | `chrome.storage.local` | no (setup, not records) | object list until Refresh; other org data refreshed after Settings > Keep org details (1 hour to 7 days, default 1 day) and dropped after 7 days; session only under `disableCache` |
 | Bulk lookup and Compare results | `chrome.storage.session` | yes (people's records) | until the browser closes |
 | OAuth access token | `chrome.storage.session` | credential | until log out or the browser closes |
 | Profiles, SQL results, records on every other page | memory only | yes | until the tab closes |

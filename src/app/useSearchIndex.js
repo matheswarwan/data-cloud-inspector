@@ -3,10 +3,9 @@
 import { ref, computed } from 'vue'
 import { NAV } from './router.js'
 import { useOrg } from './useOrg.js'
-import { useCatalog, ensureCatalog, orgCall } from './useCatalog.js'
+import { useCatalog, ensureCatalog } from './useCatalog.js'
 import { useQueries, loadQueries } from './useQueries.js'
-import { loadSegments } from '../lib/segments.js'
-import { orgCached } from '../lib/store.js'
+import { ensureSegments } from './useSegments.js'
 import { paletteItems } from '../lib/palette.js'
 
 const segments = ref([])
@@ -16,8 +15,8 @@ export async function loadSearchIndex() {
   ensureCatalog()
   loadQueries()
   if (org.version) {
-    const key = `dci_s_${org.orgId}_${org.dataSpace || 'default'}_segmentsList`
-    segments.value = await orgCached(key, 10 * 60 * 1000, () => loadSegments(orgCall(), org.version).then((l) => l.map((s) => ({ apiName: s.apiName, label: s.label })))).catch(() => [])
+    // The shared segment list (feedback #1043): no second read of every segment.
+    segments.value = (await ensureSegments().catch(() => [])).map((s) => ({ apiName: s.apiName, label: s.label }))
   }
 }
 

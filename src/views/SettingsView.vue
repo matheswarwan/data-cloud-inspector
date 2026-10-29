@@ -17,6 +17,7 @@ import { storeAll, storeRemove } from '../lib/store.js'
 import { FEEDBACK_CONTACT_KEY } from '../lib/feedbackContact.js'
 import { diagramforceAllowed, diagramforceOn, setDiagramforceOn } from '../lib/diagramforce.js'
 import { OPTIONAL_PAGES, shownPages, setPageShown } from '../lib/optionalPages.js'
+import { CACHE_AGES, cacheHours, setCacheHours } from '../lib/cacheAge.js'
 import { ALL_NAV, refreshNav } from '../app/router.js'
 import { policy, policyOverrides } from '../lib/policy.js'
 import { isOn } from '../lib/features.js'
@@ -43,6 +44,10 @@ const PAGE_NOTES = {
   campaigns: 'Marketing Cloud Next campaigns.',
 }
 const shown = ref(shownPages())
+// How long org details are used from this browser (feedback #1043).
+const cacheAge = ref(cacheHours())
+function saveCacheAge() { setCacheHours(cacheAge.value); cacheAge.value = cacheHours() }
+const policyCacheOff = !!policy().disableCache
 function togglePage(feature, on) { setPageShown(feature, on); shown.value = shownPages(); refreshNav() }
 
 // Orgs on *.cloudforce.com (older instances) need an optional host permission.
@@ -226,6 +231,13 @@ function showTipsAgain() { setTipsOn(true); resetTips(); tips.value = true }
         Everything Data Cloud Inspector keeps, only in this browser. Records and query results are not kept after the
         browser closes: Bulk lookup and Compare results are session items. Session items are deleted when the browser closes.
       </p>
+      <label class="flex flex-wrap items-center gap-2 text-sm">
+        Keep org details for
+        <select v-model.number="cacheAge" class="border rounded-md px-2 py-1 bg-background" aria-label="Keep org details for" @change="saveCacheAge">
+          <option v-for="a in CACHE_AGES" :key="a.hours" :value="a.hours">{{ a.label }}</option>
+        </select>
+        <span class="basis-full text-xs text-muted-foreground">Segments, activations, insights, streams, mappings, flows, campaigns and data graphs read from an org are used from this browser for this long before they are read again. Older copies still show at once and refresh in the background; Refresh in the connection menu or Load again on a page reads them now.{{ policyCacheOff ? ' Your administrator set them to be kept only until the browser closes.' : '' }}</span>
+      </label>
       <p v-if="storage && !storage.groups.length" class="text-sm text-muted-foreground">Nothing stored.</p>
       <table v-if="storage?.groups.length" class="w-full text-sm">
         <tbody>

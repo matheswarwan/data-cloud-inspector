@@ -86,3 +86,21 @@ describe('Marketing Cloud Next health', () => {
     expect(engagementHealth(o, null, now)).toMatchObject({ level: 'warn', reason: 'No rows' })
   })
 })
+
+describe('per-section copy and download (feedback #1044)', () => {
+  it('keeps failed and needs-a-look items and writes one section', async () => {
+    const { problemItems, sectionMarkdown } = await import('../health.js')
+    const items = [
+      { level: 'ok', label: 'Fine', reason: '', lastRun: '', details: '' },
+      { level: 'fail', label: 'Seg | A', reason: 'Last publish: failed', lastRun: '2026-10-28', details: 'line1\nline2' },
+      { level: 'warn', label: 'Seg B', reason: 'Not published in 3 days', lastRun: '', details: '' },
+    ]
+    const p = problemItems(items)
+    expect(p.map((i) => i.label)).toEqual(['Seg | A', 'Seg B'])
+    const md = sectionMarkdown('Segments', p, { host: 'Bell Prod', at: new Date('2026-10-29T10:00:00Z'), which: 'failed or needs a look' })
+    expect(md).toContain('# Segments: failed or needs a look (Bell Prod)')
+    expect(md).toContain('2 items: 1 failed, 1 need a look.')
+    expect(md).toContain('| Failed | Seg \\| A | Last publish: failed | 2026-10-28 | line1 line2 |')
+    expect(sectionMarkdown('Streams', [], { at: new Date('2026-10-29T10:00:00Z') })).toContain('None.')
+  })
+})

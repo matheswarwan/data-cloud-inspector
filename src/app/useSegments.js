@@ -2,15 +2,15 @@
 // #1005). Pages of 100 show as they arrive, and loading carries on while you use other
 // pages. Refresh keeps the current list on screen until the new one is complete. The list is
 // kept in this browser (feedback #1007): shown at once next time, and read again in the
-// background when over 30 minutes old.
+// background when older than Settings > Keep org details (feedback #1043, a day by default).
 import { reactive } from 'vue'
 import { useOrg } from './useOrg.js'
 import { orgCall } from './useCatalog.js'
 import { loadSegments } from '../lib/segments.js'
 import { storeGet, storeSet } from '../lib/store.js'
+import { metadataTtl } from '../lib/cacheAge.js'
 
 const state = reactive({ key: '', list: [], loading: false, done: false, loaded: 0, total: null, error: '', storedAt: null })
-const STORED_TTL = 30 * 60 * 1000
 const storeKey = (orgId, dataSpace) => `dci_s_${orgId}_${dataSpace || 'default'}_segments`
 let running = null
 const keyOf = (org) => `${org.orgId}|${org.version}|${org.dataSpace || 'default'}`
@@ -38,7 +38,7 @@ export function ensureSegments({ refresh = false } = {}) {
       if (state.key !== key) return []
       if (hit?.value?.length) {
         Object.assign(state, { list: hit.value, storedAt: hit.at })
-        if (Date.now() - hit.at < STORED_TTL) { state.done = true; return hit.value }
+        if (Date.now() - hit.at < metadataTtl()) { state.done = true; return hit.value }
         keepOld = true // older: show it while the new list loads
       }
     }

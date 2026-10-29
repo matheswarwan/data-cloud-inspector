@@ -5,6 +5,8 @@ import PageHeader from '../components/PageHeader.vue'
 // open one for its start (segment, event, record, schedule) and steps in run order, read
 // from the active (else latest) version's metadata with the Tooling API. Read only.
 import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
+import { orgCached } from '../lib/store.js'
+import { metadataTtl } from '../lib/cacheAge.js'
 import { RefreshCw, X, ExternalLink } from 'lucide-vue-next'
 import DataTable from '../components/DataTable.vue'
 import Loading from '../components/Loading.vue'
@@ -21,11 +23,13 @@ const loading = ref(false)
 const error = ref('')
 const only = ref('marketing') // marketing | all | <ProcessType>
 
-async function load() {
+// Kept in this browser and shown at once (feedback #1043); Load again reads the org now.
+async function load({ refresh = false } = {}) {
   if (!org.version) return
   loading.value = true
   error.value = ''
-  try { flows.value = await loadFlows(orgCall(), org.version) } catch (e) { error.value = e.message } finally { loading.value = false }
+  const key = `dci_s_${org.orgId}_${org.dataSpace || 'default'}_flows`
+  try { flows.value = await orgCached(key, metadataTtl(), () => loadFlows(orgCall(), org.version), { refresh, onUpdate: (v) => { flows.value = v } }) } catch (e) { error.value = e.message } finally { loading.value = false }
 }
 onMounted(load)
 watch(() => [org.orgId, org.version], load)
@@ -72,7 +76,7 @@ const chip = (on) => ['px-2 py-0.5 rounded-full border text-xs', on ? 'bg-accent
       <div>
         <PageHeader path="/flows" title="Marketing flows" topic="flows">Flows with their type, trigger and status. Open one for what starts it and its steps in order. Marketing Cloud Next sends email, SMS and WhatsApp from these flows.</PageHeader>
       </div>
-      <button class="ml-auto shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50" :disabled="loading" @click="load"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /> Load again</button>
+      <button class="ml-auto shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-sm hover:bg-accent disabled:opacity-50" :disabled="loading" @click="load({ refresh: true })"><RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" /> Load again</button>
     </div>
     <Loading v-if="loading && !flows.length" text="Reading flows" />
     <p v-else-if="error" class="text-sm text-destructive">{{ error }}</p>
