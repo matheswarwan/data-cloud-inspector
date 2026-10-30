@@ -10,7 +10,8 @@ function read(key, fallback) {
 }
 
 const media = window.matchMedia?.('(prefers-color-scheme: dark)')
-const state = reactive({ theme: read(THEME, 'system'), dark: false })
+// Light until chosen otherwise (feedback #1067; it followed the system before).
+const state = reactive({ theme: read(THEME, 'light'), dark: false })
 
 function apply() {
   state.dark = state.theme === 'dark' || (state.theme === 'system' && !!media?.matches)
