@@ -4,6 +4,8 @@ Store versions of Data Cloud Inspector, newest first. Each entry says whether pe
 
 ## Unreleased (next: 1.0.9)
 
+- Credit prediction fixes (feedback #1065): By environment no longer squeezed into a narrow column beside Top resources (the block grid measured the wrong width); chart colours set directly so bars keep their colour in screenshots; a number in the unit field (1073741824, 1000000) is no longer shown as a unit.
+- People: each section can be maximized to fill the window (Esc or the button restores), and the side column's section headers no longer break (feedback #1066).
 - New page Data targets (feedback #1064): every activation target from ActivationTarget (platform, connection and target type, output format, status, run status, last publish and its error, export directory or endpoint, owner, communication capping), the activations that send to it, its audience objects with row counts, and all fields. An activation's Target now opens it.
 - Health in the new layout (design "Option D – Health"): a score ring with the headline ("3 things failed and 120 need a look"), a tile per area that filters the page, problems in groups (Failed activations, Segments never published, Engagement data going stale on a 1 hour to 1 year scale, Inactive) with numbered rows, hints for known errors such as partnererror, Mark as expected (this browser; they count as OK), what changed since the last check with "new" badges, and Problems / Everything.
 - Credit prediction: Customize layout (move blocks with drag or arrows, half or full width, Reset; saved in this browser).

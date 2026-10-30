@@ -728,7 +728,7 @@ const btn = 'dci-btn'
         </div>
 
         <!-- Side column -->
-        <div class="flex-[1_1_300px] min-w-0 flex flex-col gap-5">
+        <div class="flex-[1_1_300px] min-w-[18rem] flex flex-col gap-5">
           <!-- Segment membership -->
           <PersonSection v-if="segments.length" id="pp-segments" title="Segment membership" :count="`${segmentsNow.length} now`" :icon="Users" tone="pink" :entries="segments" :label="labelOf" pad="px-[18px] py-4" compact>
             <p v-if="!segmentsNow.length" class="text-sm text-muted-foreground">In no segment now.</p>

@@ -146,8 +146,10 @@ watch(() => [org.orgId, org.dataSpace], () => { result.value = null; error.value
 const view = ref('all')
 const envList = computed(() => (result.value ? Object.keys(result.value.envs) : []))
 const shown = computed(() => (result.value && view.value !== 'all' && result.value.envs[view.value]) || result.value)
-const ENV_FILL = { Production: 'fill-primary', Sandbox: 'fill-amber-500', Scratch: 'fill-slate-400' }
-const envFill = (e, ahead = false) => (ahead ? 'fill-primary/35' : ENV_FILL[e] || 'fill-sky-400')
+// Chart colours as plain values (feedback #1065): the feedback screenshot does not apply
+// Tailwind's fill classes to SVG, so the bars came out black there.
+const ENV_COLOR = { Production: '#0d9488', Sandbox: '#f59e0b', Scratch: '#94a3b8' }
+const envColor = (e) => ENV_COLOR[e] || '#38bdf8'
 const ENV_DOT = { Production: 'bg-primary', Sandbox: 'bg-amber-500', Scratch: 'bg-slate-400' }
 const envDot = (e) => ENV_DOT[e] || 'bg-sky-400'
 
@@ -285,8 +287,10 @@ const exact = (v) => (v == null ? '—' : Number(v).toLocaleString(undefined, { 
 const cards = computed(() => (result.value ? cardRows(result.value.entitlements, result.value.consumedAll) : []))
 const cardTypes = (name) => result.value?.cardTypes?.[name]?.parts || []
 // The unit a card counts in (feedback #1059): storage cards are not credits, so no money for them.
-const cardUnit = (name) => result.value?.cardTypes?.[name]?.unit || ''
-const inCredits = (name) => !cardUnit(name) || /credit/i.test(cardUnit(name))
+// Some orgs keep a number in the unit field (1073741824, 1000000: a size or a multiplier, feedback
+// #1065), not a unit name; only a word counts as a unit.
+const cardUnit = (name) => { const u = String(result.value?.cardTypes?.[name]?.unit || '').trim(); return /^[\d.,\s]+$/.test(u) ? '' : u }
+const inCredits = (name) => (cardUnit(name) ? /credit/i.test(cardUnit(name)) : !/storage/i.test(name))
 const unitWord = (name) => (inCredits(name) ? '' : ` ${cardUnit(name)}`)
 const cardOpen = ref({})
 const typesTotal = (name) => cardTypes(name).reduce((n, t) => n + t.credits, 0) || 1
@@ -513,7 +517,8 @@ const btn = 'dci-btn'
           <span class="ml-auto flex gap-2"><button type="button" class="dci-btn dci-btn-sm" @click="resetLayout">Reset</button><button type="button" class="dci-btn-primary h-8" @click="editLayout = false">Done</button></span>
         </div>
         <!-- Blocks: order and width from Customize layout -->
-        <div class="@container grid grid-cols-1 @3xl:grid-cols-2 grid-flow-row-dense gap-5 items-start">
+        <!-- The container is a wrapper: a grid cannot query its own width (feedback #1065: By environment was squeezed into a sliver). -->
+        <div class="@container"><div class="grid grid-cols-1 @3xl:grid-cols-2 grid-flow-row-dense gap-5 items-start">
           <LayoutBlock name="Summary" :index="layout.order.indexOf('summary')" :count="layout.order.length" :full="layout.span.summary === 'full'" :editing="editLayout" :over="dragOver === 'summary' && dragKey && dragKey !== 'summary'" :dragging="dragKey === 'summary'" @span="setSpan('summary', $event)" @move="moveBlock('summary', $event)" @dragstart="dragKey = 'summary'" @dragover="dragOver = 'summary'" @drop="dropOn('summary')" @dragend="dragKey = dragOver = ''">
           <!-- Tiles -->
           <div class="grid grid-cols-2 @3xl:grid-cols-4 gap-3.5">
@@ -550,15 +555,15 @@ const btn = 'dci-btn'
               <div class="flex-[999_1_560px] min-w-0 relative" @mouseleave="hoverIdx = -1" @keydown.esc="closePin">
                 <svg :viewBox="`0 0 ${chart.W} ${chart.H + 22}`" class="w-full h-auto overflow-visible" role="img" :aria-label="`Daily credits, up to ${n0(chart.max)} a day; projected next 30 days ${n0(fc.next30)}`">
                   <defs>
-                    <pattern id="cr-hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" class="fill-primary/15" /><rect width="2" height="4" class="fill-primary/50" /></pattern>
+                    <pattern id="cr-hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="#0d9488" fill-opacity="0.15" /><rect width="2" height="4" fill="#0d9488" fill-opacity="0.55" /></pattern>
                   </defs>
                   <g v-for="t in chart.ticks" :key="t.v">
                     <line :x1="chart.pad" :x2="chart.W" :y1="t.y" :y2="t.y" class="stroke-border" :stroke-dasharray="t.v ? '3 3' : ''" />
                     <text :x="chart.pad - 6" :y="t.y + 4" text-anchor="end" class="fill-muted-foreground text-[11px]">{{ t.label }}</text>
                   </g>
                   <g v-for="(b, i) in chart.bars" :key="b.day">
-                    <rect v-if="i === activeIdx" :x="b.x - 0.5" y="0" :width="b.w + 1" :height="chart.H" rx="2" class="fill-primary/10" />
-                    <rect v-for="(sg, j) in b.segs" :key="j" :x="b.x" :y="sg.y" :width="b.w" :height="Math.max(0, sg.h)" rx="1" :fill="b.ahead ? 'url(#cr-hatch)' : undefined" :class="b.ahead ? '' : envFill(sg.env)" :opacity="activeIdx >= 0 && activeIdx !== i && pinned >= 0 ? 0.6 : 1" />
+                    <rect v-if="i === activeIdx" :x="b.x - 0.5" y="0" :width="b.w + 1" :height="chart.H" rx="2" fill="#0d9488" fill-opacity="0.12" />
+                    <rect v-for="(sg, j) in b.segs" :key="j" :x="b.x" :y="sg.y" :width="b.w" :height="Math.max(0, sg.h)" rx="1" :fill="b.ahead ? 'url(#cr-hatch)' : envColor(sg.env)" :opacity="activeIdx >= 0 && activeIdx !== i && pinned >= 0 ? 0.6 : 1" />
                     <rect :x="b.x - 0.75" y="0" :width="b.w + 1.5" :height="chart.H" fill="transparent" class="cursor-pointer" @mouseenter="hoverIdx = i" @click="togglePin(i)"><title>{{ b.day }}: {{ n2(b.total) }}</title></rect>
                   </g>
                   <line :x1="chart.split" :x2="chart.split" y1="-4" :y2="chart.H" class="stroke-foreground" stroke-width="1.5" stroke-dasharray="4 3" />
@@ -629,7 +634,7 @@ const btn = 'dci-btn'
                   <div><dt class="text-[11px] text-muted-foreground">Purchased</dt><dd class="font-semibold" :title="exact(c.purchased)">{{ c.purchased == null ? 'not found' : approx(c.purchased) }}</dd></div>
                   <div v-if="c.left != null"><dt class="text-[11px] text-muted-foreground">{{ c.left < 0 ? 'Over' : 'Left' }}</dt><dd :class="c.left < 0 ? 'font-bold text-red-700 dark:text-red-300' : 'font-semibold'" :title="exact(c.left)">{{ approx(Math.abs(c.left)) }}</dd></div>
                 </dl>
-                <span v-if="cardUnit(c.name) && !inCredits(c.name)" class="text-xs text-muted-foreground">Counted in {{ cardUnit(c.name) }}, not credits.</span>
+                <span v-if="!inCredits(c.name)" class="text-xs text-muted-foreground">Counted in {{ cardUnit(c.name) || "its own storage unit" }}, not credits.</span>
                 <span v-if="money(c.used) && inCredits(c.name)" class="text-xs font-medium">{{ money(c.used) }}<span v-if="c.purchased != null" class="text-muted-foreground font-normal"> of {{ money(c.purchased) }}</span></span>
                 <details v-if="Object.keys(c.envs).length" class="text-xs">
                   <summary class="cursor-pointer font-semibold text-link">By environment<template v-if="c.first"> · {{ range(c.first, c.last) }}</template></summary>
@@ -718,7 +723,7 @@ const btn = 'dci-btn'
             <p class="text-xs text-muted-foreground">Each forecast is the trend through that environment's last 90 days with its day-of-week pattern. Sandbox and scratch usage draws on the production cards.</p>
           </div>
           </LayoutBlock>
-        </div>
+        </div></div>
 
         <!-- About this data: the tables that are not in the cards -->
         <div v-if="aboutOpen" class="flex flex-col gap-4">
