@@ -4,7 +4,7 @@ Store versions of Data Cloud Inspector, newest first. Each entry says whether pe
 
 ## Unreleased (next: 1.0.9)
 
-- Appearance is Light until you choose Dark or System in Settings (feedback #1067); a choice made earlier is kept.
+- Appearance is Light until you choose Dark or System in Settings (feedback #1067). A "System" saved by an earlier build switches to Light once; choosing System again is kept.
 - Credit prediction fixes (feedback #1065): By environment no longer squeezed into a narrow column beside Top resources (the block grid measured the wrong width); chart colours set directly so bars keep their colour in screenshots; a number in the unit field (1073741824, 1000000) is no longer shown as a unit.
 - People: each section can be maximized to fill the window (Esc or the button restores), and the side column's section headers no longer break (feedback #1066).
 - New page Data targets (feedback #1064): every activation target from ActivationTarget (platform, connection and target type, output format, status, run status, last publish and its error, export directory or endpoint, owner, communication capping), the activations that send to it, its audience objects with row counts, and all fields. An activation's Target now opens it.
