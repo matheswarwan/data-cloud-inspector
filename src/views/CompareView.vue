@@ -95,7 +95,7 @@ const pairs = [
       <p v-if="diff.same" :class="[card, 'p-3 text-sm']">No differences in objects, fields, segments, calculated insights or data streams.</p>
       <template v-else>
         <div class="grid md:grid-cols-2 gap-4">
-          <div v-for="[side, key] in [['A', 'objectsOnlyA'], ['B', 'objectsOnlyB']]" :key="key" :class="card">
+          <div v-expand v-for="[side, key] in [['A', 'objectsOnlyA'], ['B', 'objectsOnlyB']]" :key="key" :class="card">
             <h3 class="px-5 py-3.5 border-b text-base font-semibold">Objects only in {{ side === 'A' ? labelA : labelB }} ({{ diff[key].length }})</h3>
             <ul class="p-3 text-sm space-y-0.5">
               <li v-for="o in diff[key]" :key="o.name"><span class="text-[10px] border rounded px-1 text-muted-foreground mr-1">{{ o.kind }}</span>{{ o.label }} <span class="font-mono text-xs text-muted-foreground">{{ o.name }}</span></li>
@@ -103,7 +103,7 @@ const pairs = [
             </ul>
           </div>
         </div>
-        <div :class="card">
+        <div v-expand :class="card">
           <h3 class="px-5 py-3.5 border-b text-base font-semibold">Objects in both with field differences ({{ diff.changed.length }})</h3>
           <p v-if="!diff.changed.length" class="p-3 text-sm text-muted-foreground">None.</p>
           <div v-for="c in diff.changed" :key="c.name" class="p-3 border-b last:border-0 text-sm space-y-0.5">

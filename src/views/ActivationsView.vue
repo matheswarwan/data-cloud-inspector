@@ -154,7 +154,7 @@ const attrCols = [
           </div>
         </div>
         <div class="grid xl:grid-cols-[3fr_2fr] gap-4 items-start">
-          <div class="dci-card">
+          <div v-expand class="dci-card">
             <div class="px-5 py-3 border-b flex flex-wrap items-center gap-3">
               <h3 class="text-base font-semibold flex items-center gap-2">Attributes sent <span class="dci-count">{{ act.attributes.length }}</span></h3>
               <label class="dci-search ml-auto w-64"><Search class="w-4 h-4 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden="true" /><input v-model="attrText" placeholder="Filter attributes" aria-label="Filter attributes" /></label>
@@ -165,12 +165,12 @@ const attrCols = [
             </DataTable>
           </div>
           <div class="space-y-4">
-            <div class="dci-card p-5 text-sm space-y-1.5">
+            <div v-expand class="dci-card p-5 text-sm space-y-1.5">
               <div class="text-base font-semibold">Contact points</div>
               <p v-if="!act.contactPoints.length" class="text-muted-foreground">None.</p>
               <div v-for="c in act.contactPoints" :key="c.entity"><RouterLink :to="`/objects/${c.entity}`" class="font-mono text-xs text-link hover:underline">{{ c.entity }}</RouterLink><div v-if="c.path.length" class="text-xs text-muted-foreground">through {{ c.path.join(' → ') }}</div></div>
             </div>
-            <div class="dci-card p-5 text-sm space-y-2">
+            <div v-expand class="dci-card p-5 text-sm space-y-2">
               <div class="text-base font-semibold flex items-center gap-2">Filters <span v-if="act.filters.length" class="dci-count">{{ act.filters.length }}</span></div>
               <p v-if="!act.filters.length" class="text-muted-foreground">None: every segment member is activated.</p>
               <div v-for="(f, i) in act.filters" :key="i" class="space-y-1 border-t pt-2 first-of-type:border-0">
@@ -183,7 +183,7 @@ const attrCols = [
                 </details>
               </div>
             </div>
-            <div class="dci-card p-5 text-sm space-y-2">
+            <div v-expand class="dci-card p-5 text-sm space-y-2">
               <div class="text-base font-semibold">Audience</div>
               <div v-for="[label, t] in [['Latest', act.latestAudience], ['History', act.historyAudience]].filter(([, t]) => t)" :key="t" class="flex gap-2">
                 <span class="w-16 text-muted-foreground">{{ label }}</span>

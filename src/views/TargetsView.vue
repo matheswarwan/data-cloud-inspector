@@ -145,13 +145,13 @@ const listDoc = () => docFrom({ title: 'Data targets', intro: `${orgTitle(org.or
 
           <div class="grid xl:grid-cols-[3fr_2fr] gap-4 items-start">
             <div class="space-y-4 min-w-0">
-              <div class="dci-card">
+              <div v-expand class="dci-card">
                 <div class="px-5 py-3 border-b"><h3 class="text-base font-semibold">Where it sends</h3></div>
                 <dl class="px-5 py-4 grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
                   <div v-for="[k, v] in facts" :key="k" class="min-w-0"><dt class="text-xs text-muted-foreground">{{ k }}</dt><dd class="font-medium break-words" :class="/ID|directory|endpoint/i.test(k) ? 'font-mono text-[13px]' : ''">{{ v }}</dd></div>
                 </dl>
               </div>
-              <div class="dci-card">
+              <div v-expand class="dci-card">
                 <div class="px-5 py-3 border-b flex items-center gap-2"><h3 class="text-base font-semibold">Activations using it</h3><span class="dci-count">{{ uses.length }}</span></div>
                 <p v-if="!uses.length" class="px-5 py-4 text-sm text-muted-foreground">No activation in this data space sends to this target.</p>
                 <ul v-else class="divide-y text-sm">
@@ -166,7 +166,7 @@ const listDoc = () => docFrom({ title: 'Data targets', intro: `${orgTitle(org.or
               </div>
             </div>
             <div class="space-y-4 min-w-0">
-              <div class="dci-card p-5 text-sm space-y-2">
+              <div v-expand class="dci-card p-5 text-sm space-y-2">
                 <div class="text-base font-semibold">Status</div>
                 <div class="flex justify-between gap-3"><span class="text-muted-foreground">Target status</span><span class="text-right">{{ target.status.toLowerCase() || '—' }}<template v-if="target.statusAt"><br><span class="text-xs text-muted-foreground">{{ when(target.statusAt) }}</span></template></span></div>
                 <div v-if="target.statusError" class="flex justify-between gap-3"><span class="text-muted-foreground">Error code</span><span class="text-right text-destructive font-mono text-xs">{{ target.statusError }}</span></div>
@@ -174,7 +174,7 @@ const listDoc = () => docFrom({ title: 'Data targets', intro: `${orgTitle(org.or
                 <div class="flex justify-between gap-3"><span class="text-muted-foreground">Last publish</span><span class="text-right">{{ when(target.publishAt) || 'not recorded' }}</span></div>
                 <div v-if="target.publishError" class="text-xs text-destructive break-words">{{ target.publishError }}</div>
               </div>
-              <div class="dci-card p-5 text-sm space-y-2">
+              <div v-expand class="dci-card p-5 text-sm space-y-2">
                 <div class="text-base font-semibold">Audience objects</div>
                 <p v-if="!target.latestDmo && !target.historyDmo && !target.auditDmo" class="text-muted-foreground">None recorded.</p>
                 <div v-for="[label, t] in [['Latest', target.latestDmo], ['History', target.historyDmo], ['Audit', target.auditDmo]].filter(([, t]) => t)" :key="t" class="flex gap-2 items-baseline">

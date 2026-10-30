@@ -4,6 +4,7 @@ Store versions of Data Cloud Inspector, newest first. Each entry says whether pe
 
 ## Unreleased (next: 1.0.9)
 
+- Maximize on cards across the extension, like People's sections (feedback #1068): Credit prediction (chart, top resources, environments, cards), Health problem groups and sections, Data targets, Activations, Segments, Identity, Profiles (consent, match rules, missed matches), Personalization, Compare and the Objects detail. The card fills the window; Esc, a click outside or the button restores it.
 - Appearance is Light until you choose Dark or System in Settings (feedback #1067). A "System" saved by an earlier build switches to Light once; choosing System again is kept.
 - Credit prediction fixes (feedback #1065): By environment no longer squeezed into a narrow column beside Top resources (the block grid measured the wrong width); chart colours set directly so bars keep their colour in screenshots; a number in the unit field (1073741824, 1000000) is no longer shown as a unit.
 - People: each section can be maximized to fill the window (Esc or the button restores), and the side column's section headers no longer break (feedback #1066).

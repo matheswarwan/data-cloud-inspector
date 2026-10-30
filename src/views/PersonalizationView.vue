@@ -172,7 +172,7 @@ const doc = () => docFrom({ title: 'Personalization', intro: `${orgTitle(org.org
       <div v-if="tab === 'setup'" class="space-y-3">
         <p v-if="errors('points')" class="text-sm text-destructive">{{ errors('points') }}</p>
         <p v-else-if="!points.length" class="text-sm text-muted-foreground">No personalization points in this org.</p>
-        <div v-for="p in points" :key="p.Id" :class="card">
+        <div v-expand v-for="p in points" :key="p.Id" :class="card">
           <div class="p-3 border-b flex flex-wrap items-baseline gap-2">
             <button class="font-medium text-link hover:underline" @click="openRecord('PersonalizationPoint', p)">{{ p.Name }}</button>
             <span class="font-mono text-xs text-muted-foreground">{{ p.DeveloperName }}</span>
@@ -268,7 +268,7 @@ const doc = () => docFrom({ title: 'Personalization', intro: `${orgTitle(org.org
           The personalization log has no requests in this period. Requests appear here once a site or app calls Salesforce Personalization.
         </p>
         <template v-else-if="activity">
-          <div :class="[card, 'p-3']">
+          <div v-expand :class="[card, 'p-3']">
             <div class="text-sm font-medium mb-2">Requests per day</div>
             <div class="flex items-end gap-0.5 h-32">
               <div v-for="d in activity.daily" :key="d.day" class="flex-1 bg-foreground/70 min-w-0.5" :style="{ height: `${(Number(d.requests) / maxDaily) * 100}%` }" :title="`${d.day}: ${num(d.requests)} requests, ${num(d.people)} people, ${Math.round(d.avg_ms || 0)} ms on average`" />
@@ -278,7 +278,7 @@ const doc = () => docFrom({ title: 'Personalization', intro: `${orgTitle(org.org
             <DataTable :columns="byDecisionCols" :rows="activity.byDecision" />
             <DataTable :columns="statusCols" :rows="activity.byStatus" row-key="status" />
           </div>
-          <div :class="card">
+          <div v-expand :class="card">
             <h3 class="px-5 py-3.5 border-b text-base font-semibold">Latest requests</h3>
             <DataTable :columns="recentCols" :rows="activity.recent" :bordered="false" box-class="max-h-[60vh]">
               <template #cell-at="{ value }"><span class="whitespace-nowrap">{{ value }}</span></template>

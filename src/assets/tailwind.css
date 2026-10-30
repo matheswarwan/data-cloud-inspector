@@ -136,6 +136,21 @@
   .dci-card { @apply rounded-[14px] border bg-card; }
   .dci-card-head { @apply flex items-center gap-2 px-5 py-4 border-b; }
   .dci-card-title { @apply text-base font-semibold; }
+  /* Maximize on any card (v-expand, lib/expandCard.js, feedback #1068). The header that holds the
+     button lines up as a row; the button sits at the right unless a sibling already took the space. */
+  [data-expand-head]:not(.flex):not(.inline-flex) { @apply flex items-center gap-2; }
+  .dci-expand-btn { @apply ml-auto; }
+  [data-expand-head] > .ml-auto ~ .dci-expand-btn { @apply ml-1; }
+  [data-expand-head].justify-between > :nth-last-child(2):not(:first-child) { @apply ml-auto; }
+  [data-expand-head].justify-between > .dci-expand-btn:not(:nth-child(2)) { @apply ml-1; }
+  [data-expand-float] { @apply relative; }
+  .dci-expand-float { @apply absolute top-2 right-2 z-10 opacity-0 focus-visible:opacity-100; }
+  [data-expand-float]:hover > .dci-expand-float, [data-dci-max] > .dci-expand-float { @apply opacity-100; }
+  [data-dci-max] {
+    @apply fixed! inset-3 sm:inset-6 z-50 overflow-auto! m-0! max-w-none! max-h-none! bg-card shadow-2xl;
+    container-type: inline-size;
+  }
+  .dci-expand-backdrop { @apply fixed inset-0 z-40 bg-black/40; }
   /* Search field: a pill with the teal ring of Home's search. */
   .dci-search { @apply min-w-0 flex items-center gap-2 h-10 pl-3.5 pr-3 rounded-full border border-teal-200 bg-card shadow-[0_0_0_4px_rgba(13,148,136,0.06)] dark:border-teal-500/30 focus-within:border-primary; }
   .dci-search > input, .dci-search > .dci-search-input { @apply flex-1 min-w-0 bg-transparent outline-none text-sm border-0 p-0; }

@@ -281,7 +281,7 @@ const btn = 'dci-btn'
       <!-- Problems, in groups -->
       <template v-if="mode === 'problems'">
         <p v-if="!shownGroups.length" class="dci-card px-5 py-4 text-sm text-muted-foreground">No problems{{ area ? ` in ${area}` : '' }}.</p>
-        <section v-for="g in shownGroups" :key="g.id" :class="['dci-card overflow-hidden border-l-4', g.level === 'fail' ? '!border-l-red-600' : g.level === 'warn' ? '!border-l-amber-500' : '!border-l-gray-400']">
+        <section v-expand v-for="g in shownGroups" :key="g.id" :class="['dci-card overflow-hidden border-l-4', g.level === 'fail' ? '!border-l-red-600' : g.level === 'warn' ? '!border-l-amber-500' : '!border-l-gray-400']">
           <div class="px-5 py-3.5 border-b flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3 min-w-0">
               <component :is="g.level === 'fail' ? AlertCircle : g.level === 'warn' ? AlertTriangle : CircleSlash" :class="['w-5 h-5 shrink-0', g.level === 'fail' ? 'text-red-600' : g.level === 'warn' ? 'text-amber-500' : 'text-muted-foreground']" aria-hidden="true" />
@@ -389,7 +389,7 @@ const btn = 'dci-btn'
 
       <!-- Everything: every item per area -->
       <template v-else>
-        <div v-for="s in shownSections" :id="sectionId(s.title)" :key="s.title" :class="[card, 'scroll-mt-4']">
+        <div v-expand v-for="s in shownSections" :id="sectionId(s.title)" :key="s.title" :class="[card, 'scroll-mt-4']">
           <h3 class="px-5 py-3 border-b text-base font-semibold flex flex-wrap items-center gap-x-2 gap-y-1">{{ s.title }} <span class="text-muted-foreground font-normal text-sm">({{ s.items.length }})</span>
             <span v-if="levelFilter?.title === s.title" class="text-xs font-normal text-muted-foreground">Showing {{ LEVEL_TEXT[levelFilter.level].toLowerCase() }} only. <button class="text-link hover:underline" @click="levelFilter = null">Show all</button></span>
             <span v-if="s.items.length" class="ml-auto flex flex-wrap items-center gap-2 font-normal">

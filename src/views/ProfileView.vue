@@ -583,7 +583,7 @@ const btn = 'dci-btn'
 
 
           <!-- Consent (Marketing Cloud Next): through the contact points -->
-          <div v-if="consent.length || consentLoading || crmConsent" :class="card">
+          <div v-expand v-if="consent.length || consentLoading || crmConsent" :class="card">
             <h3 class="px-5 py-3.5 border-b text-base font-semibold">Consent</h3>
             <div v-if="crmConsent" class="mx-5 mt-4 rounded-xl bg-muted/60 p-4 flex gap-3">
               <ShieldCheck class="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -674,7 +674,7 @@ const btn = 'dci-btn'
           </PersonSection>
 
           <!-- Why these records are together -->
-          <div v-if="ruleset" :class="card">
+          <div v-expand v-if="ruleset" :class="card">
             <h3 class="px-5 py-3.5 border-b text-base font-semibold" data-help="profile-rules">Match rules of {{ ruleset.label }} <HelpTip topic="profile-rules" /></h3>
             <div class="p-5 space-y-4 text-sm">
               <p v-if="profile.sources.length < 2" class="text-muted-foreground">
@@ -715,7 +715,7 @@ const btn = 'dci-btn'
           </div>
 
           <!-- Possible missed matches -->
-          <div v-if="missed.length" :class="card">
+          <div v-expand v-if="missed.length" :class="card">
             <h3 class="px-5 py-3.5 border-b text-base font-semibold flex items-center gap-2" data-help="profile-missed">Possible missed matches <span class="dci-count">{{ missed.length }}</span> <HelpTip topic="profile-missed" /></h3>
             <p class="px-5 pt-4 text-xs text-muted-foreground">Other people with the same email who are not in this profile. That is expected when the other criteria differ (for example the names); check the match rules above.</p>
             <ul class="px-5 py-4 text-sm space-y-1">

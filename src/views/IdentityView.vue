@@ -175,7 +175,7 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
 
         <!-- Rules -->
         <div class="grid lg:grid-cols-2 gap-4">
-          <div :class="card">
+          <div v-expand :class="card">
             <h3 class="px-5 py-3.5 border-b text-base font-semibold">Match rules ({{ ruleset.rules.length }})</h3>
             <p class="px-3 pt-2 text-xs text-muted-foreground">Two records join when every criterion of any one rule holds.</p>
             <div v-for="(r, i) in ruleset.rules" :key="i" class="p-3 text-sm border-b last:border-0">
@@ -183,7 +183,7 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
               <ul class="list-disc pl-5 mt-1 space-y-0.5"><li v-for="c in r.criteria" :key="c.entity + c.field">{{ describeCriterion(c) }}</li></ul>
             </div>
           </div>
-          <div :class="card">
+          <div v-expand :class="card">
             <h3 class="px-5 py-3.5 border-b text-base font-semibold">Reconciliation rules</h3>
             <p class="px-3 pt-2 text-xs text-muted-foreground">Which value the unified profile keeps when the source records differ.</p>
             <div v-for="rec in ruleset.reconciliation" :key="rec.entity" class="p-3 text-sm border-b last:border-0">
@@ -194,7 +194,7 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
 
         <!-- Profile sizes and largest -->
         <div class="grid lg:grid-cols-2 gap-4">
-          <div :class="card">
+          <div v-expand :class="card">
             <h3 class="px-5 py-3.5 border-b text-base font-semibold">Source records per unified profile</h3>
             <Loading v-if="detailLoading" text="Counting…" />
             <p v-else-if="detail?.errors.sizes" class="p-3 text-sm text-destructive">{{ detail.errors.sizes }}</p>
@@ -210,7 +210,7 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
             </table>
             <p v-if="detail?.sizes.length" class="px-3 pb-3 text-xs text-muted-foreground"><button class="text-link hover:underline" @click="router.push({ path: '/sql', query: { sql: IDENTITY_SQL.sizes(ruleset.link) } })">Open in SQL</button></p>
           </div>
-          <div :class="card">
+          <div v-expand :class="card">
             <h3 class="px-5 py-3.5 border-b text-base font-semibold">Largest unified profiles</h3>
             <p class="px-3 pt-2 text-xs text-muted-foreground">Unusually large profiles are where wrong merges usually hide (a shared email or phone, test data).</p>
             <p v-if="detail && !detail.largest.length" class="p-3 text-sm text-muted-foreground">No profile has more than one source record.</p>
@@ -223,7 +223,7 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
           </div>
         </div>
 
-        <div :class="card">
+        <div v-expand :class="card">
           <h3 class="px-5 py-3.5 border-b text-base font-semibold">Where the source records come from</h3>
           <DataTable :columns="sourceCols" :rows="detail?.sources || []" :row-key="(s) => s.source + s.object" :bordered="false" :empty="detailLoading ? 'Counting…' : 'None.'">
             <template #cell-n="{ value }">{{ num(value) }}</template>
@@ -231,7 +231,7 @@ const rsDoc = () => docFrom({ title: `Identity ruleset: ${ruleset.value.label}`,
         </div>
 
         <!-- Compare people -->
-        <div :class="card">
+        <div v-expand :class="card">
           <h3 class="px-5 py-3.5 border-b text-base font-semibold" data-help="identity-compare">Compare people <HelpTip topic="identity-compare" /></h3>
           <div class="p-3 space-y-3">
             <p class="text-sm text-muted-foreground">Pick two or more source records (up to {{ MAX_COMPARE }}) to see, criterion by criterion, which of them this ruleset would join, and how that compares with the unified profiles they are in now.</p>

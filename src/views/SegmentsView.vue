@@ -302,7 +302,7 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
         </div>
         <p v-if="notice" class="text-sm text-muted-foreground">{{ notice }}</p>
 
-        <div :class="card">
+        <div v-expand :class="card">
           <h3 class="px-5 py-3.5 border-b text-base font-semibold" data-help="segment-counts">Counts <HelpTip topic="segment-counts" /></h3>
           <div class="p-5 space-y-3 text-sm">
             <div class="grid sm:grid-cols-3 gap-3">
@@ -329,7 +329,7 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
           </div>
         </div>
 
-        <div :class="card">
+        <div v-expand :class="card">
           <h3 class="px-5 py-3.5 border-b text-base font-semibold" data-help="segment-check">Is this person in the segment? <HelpTip topic="segment-check" /></h3>
           <form class="p-3 flex gap-2" @submit.prevent="check">
             <input v-model="who" placeholder="Email, phone, name or ID" class="flex-1 border rounded-md px-2 py-1 bg-background text-sm" />
@@ -364,7 +364,7 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
           </div>
         </div>
 
-        <div :class="card">
+        <div v-expand :class="card">
           <h3 class="px-5 py-3.5 border-b text-base font-semibold flex items-center gap-2">Members <span v-if="members?.rows.length" class="dci-count">{{ members.rows.length.toLocaleString() }}{{ members.done ? '' : '+' }}</span></h3>
           <div class="p-3 space-y-2 text-sm">
             <p v-if="!detail?.loading && (!detail?.latest || detail.latestCount === 0)" class="text-muted-foreground">
@@ -394,7 +394,7 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
           </div>
         </div>
 
-        <div :class="card">
+        <div v-expand :class="card">
           <h3 class="px-5 py-3.5 border-b text-base font-semibold">Publish history</h3>
           <Loading v-if="detail?.loading" text="Loading…" />
           <p v-else-if="!detail?.history" class="p-3 text-sm text-muted-foreground">No history table found for {{ seg.on }}.</p>
@@ -450,7 +450,7 @@ const segDoc = () => docFrom({ title: `Segment: ${seg.value.label}`, intro: `${o
           <div><dt>Modified</dt><dd>{{ when(seg.modified) }}</dd></div>
         </dl>
 
-        <div :class="card">
+        <div v-expand :class="card">
           <h3 :class="['px-5 py-3.5 text-base font-semibold flex items-center gap-2', criteriaOpen ? 'border-b' : '']">
             <button class="inline-flex items-center gap-1.5 hover:underline" :aria-expanded="criteriaOpen" @click="criteriaOpen = !criteriaOpen"><component :is="criteriaOpen ? ChevronDown : ChevronRight" class="w-4 h-4" /> Criteria</button>
             <button v-if="criteriaOpen" class="ml-auto text-xs text-link hover:underline font-semibold" @click="showRaw = !showRaw">{{ showRaw ? 'Hide' : 'Show' }} raw JSON</button>

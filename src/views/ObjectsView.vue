@@ -314,7 +314,7 @@ const tabBtn = (t) => ['dci-tab', tab.value === t ? 'is-on' : '']
         </div>
       </div>
 
-      <div v-else class="dci-card p-5 space-y-4">
+      <div v-expand v-else class="dci-card p-5 space-y-4">
         <div class="flex flex-wrap items-start gap-3">
           <div class="min-w-0 space-y-1.5">
             <h2 class="text-2xl font-bold leading-[30px]">{{ selected.label }}</h2>

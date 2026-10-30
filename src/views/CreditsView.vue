@@ -538,7 +538,7 @@ const btn = 'dci-btn'
           </LayoutBlock>
           <LayoutBlock v-if="chart" name="Credits per day" :index="layout.order.indexOf('chart')" :count="layout.order.length" :full="layout.span.chart === 'full'" :editing="editLayout" :over="dragOver === 'chart' && dragKey && dragKey !== 'chart'" :dragging="dragKey === 'chart'" @span="setSpan('chart', $event)" @move="moveBlock('chart', $event)" @dragstart="dragKey = 'chart'" @dragover="dragOver = 'chart'" @drop="dropOn('chart')" @dragend="dragKey = dragOver = ''">
           <!-- Credits per day -->
-          <section v-if="chart" class="dci-card px-5 py-[18px] flex flex-col gap-3.5">
+          <section v-expand v-if="chart" class="dci-card px-5 py-[18px] flex flex-col gap-3.5">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <h2 class="text-base font-semibold">Credits per day</h2>
               <div class="flex flex-wrap items-center gap-3.5">
@@ -613,7 +613,7 @@ const btn = 'dci-btn'
           </LayoutBlock>
           <LayoutBlock v-if="cards.length" name="Credits by card" :index="layout.order.indexOf('cards')" :count="layout.order.length" :full="layout.span.cards === 'full'" :editing="editLayout" :over="dragOver === 'cards' && dragKey && dragKey !== 'cards'" :dragging="dragKey === 'cards'" @span="setSpan('cards', $event)" @move="moveBlock('cards', $event)" @dragstart="dragKey = 'cards'" @dragover="dragOver = 'cards'" @drop="dropOn('cards')" @dragend="dragKey = dragOver = ''">
           <!-- Credits by card -->
-          <section v-if="cards.length" class="dci-card px-5 py-[18px] flex flex-col gap-3.5">
+          <section v-expand v-if="cards.length" class="dci-card px-5 py-[18px] flex flex-col gap-3.5">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <h2 class="text-base font-semibold">Credits by card, to date</h2>
               <span class="text-xs text-muted-foreground">All environments · sorted by share used</span>
@@ -667,7 +667,7 @@ const btn = 'dci-btn'
           </LayoutBlock>
           <LayoutBlock name="Top resources" :index="layout.order.indexOf('top')" :count="layout.order.length" :full="layout.span.top === 'full'" :editing="editLayout" :over="dragOver === 'top' && dragKey && dragKey !== 'top'" :dragging="dragKey === 'top'" @span="setSpan('top', $event)" @move="moveBlock('top', $event)" @dragstart="dragKey = 'top'" @dragover="dragOver = 'top'" @drop="dropOn('top')" @dragend="dragKey = dragOver = ''">
           <!-- Top resources -->
-          <section class="dci-card px-5 py-[18px] flex flex-col gap-1">
+          <section v-expand class="dci-card px-5 py-[18px] flex flex-col gap-1">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
               <h2 class="text-base font-semibold">Top resources, last {{ days }} days{{ view === 'all' ? '' : `, ${view}` }}</h2>
               <span v-if="tops.count" class="text-[13px] font-semibold px-3 py-1 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">Top {{ tops.top.length }} of {{ tops.count.toLocaleString() }} = {{ Math.round(tops.topShare * 100) }}% of credits</span>
@@ -707,7 +707,7 @@ const btn = 'dci-btn'
           <div v-if="fields.env && envRows.length" class="flex flex-col gap-2.5">
             <h2 class="text-base font-semibold">By environment</h2>
             <div class="grid @3xl:grid-cols-2 gap-3.5">
-              <div v-for="e in envRows" :key="e.env" class="dci-card px-5 py-[18px] flex flex-col gap-3.5 min-w-0">
+              <div v-expand v-for="e in envRows" :key="e.env" class="dci-card px-5 py-[18px] flex flex-col gap-3.5 min-w-0">
                 <div class="flex items-center justify-between gap-2">
                   <span class="inline-flex items-center gap-2 text-base font-bold"><span class="w-2.5 h-2.5 rounded-full" :class="envDot(e.env)" />{{ e.env }}</span>
                   <span :class="['dci-badge capitalize', TREND_TONE[e.trend] || '']">{{ e.trend }}</span>
